@@ -182,9 +182,9 @@ class WebStreamSecurityTest {
 
     @Test
     fun testTotpOtpauthUriFormat() {
-        val secret = "JBSWY3DPEHPK3PXP"
+        val secret = com.homemonitor.TotpAuthenticator.generateBase32Secret(16)
         val uri = com.homemonitor.TotpAuthenticator.getOtpauthUri(secret, "TestDevice")
         assertTrue("Otpauth URI must start with otpauth://totp/", uri.startsWith("otpauth://totp/"))
-        assertTrue("Otpauth URI must contain secret", uri.contains("secret=JBSWY3DPEHPK3PXP"))
+        assertTrue("Otpauth URI must contain secret", uri.contains("secret=$secret"))
     }
 }

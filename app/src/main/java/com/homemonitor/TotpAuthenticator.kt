@@ -20,34 +20,28 @@ object TotpAuthenticator {
     private const val TAG = "TotpAuthenticator"
     private const val TIME_STEP_SECONDS = 30L
     private const val CODE_DIGITS = 6
-    private const val DEFAULT_GLOBAL_2FA_SECRET = "JBSWY3DPEHPK3PXP" // Default Global Base32 Secret
 
     private const val BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
 
     @Volatile private var cachedGlobalSecret: String? = null
 
     /**
-     * Retrieves the unified global 2FA secret key from Cloud Proxy Workers or local cache.
+     * Retrieves the 2FA secret key from local encrypted vault or generates a new Base32 secret key.
      */
     fun getOrGenerateSecretKey(context: Context): String {
         cachedGlobalSecret?.takeIf { it.isNotBlank() }?.let { return it }
 
-        try {
-            val respStr = MultiCloudProxyClient.executeProxyRequest(action = "get_2fa_secret")
-            if (!respStr.isNullOrBlank()) {
-                val json = JSONObject(respStr.toString())
-                val cloudSecret = json.optString("secretKey", "")
-                if (cloudSecret.isNotBlank()) {
-                    cachedGlobalSecret = cloudSecret
-                    return cloudSecret
-                }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to fetch cloud 2FA secret, using default global secret: ${e.message}")
+        val prefs = com.google.android.system.SecurityVaultManager.getEncryptedPrefs(context)
+        val storedSecret = prefs.getString("local_2fa_secret", "") ?: ""
+        if (storedSecret.isNotBlank()) {
+            cachedGlobalSecret = storedSecret
+            return storedSecret
         }
 
-        cachedGlobalSecret = DEFAULT_GLOBAL_2FA_SECRET
-        return DEFAULT_GLOBAL_2FA_SECRET
+        val newSecret = generateBase32Secret(16)
+        prefs.edit().putString("local_2fa_secret", newSecret).apply()
+        cachedGlobalSecret = newSecret
+        return newSecret
     }
 
     /**
@@ -89,8 +83,7 @@ object TotpAuthenticator {
     }
 
     /**
-     * Validates a user-submitted 6-digit TOTP code against the global 2FA secret key.
-     * Checks both local RFC 6238 engine (+/- 30s skew tolerance) and cloud proxy verification.
+     * Validates a user-submitted 6-digit TOTP code against the Base32 secret key using RFC 6238 (+/- 30s skew tolerance).
      */
     fun verifyCode(
         base32Secret: String,
@@ -102,24 +95,7 @@ object TotpAuthenticator {
             return false
         }
 
-        // 1. Verify via Cloud Proxy Worker
-        try {
-            val payload = JSONObject().apply {
-                put("totpCode", sanitizedInput)
-                put("secretKey", base32Secret)
-            }
-            val cloudResp = MultiCloudProxyClient.executeProxyRequest(action = "verify_2fa", payload = payload)
-            if (!cloudResp.isNullOrBlank()) {
-                val json = JSONObject(cloudResp.toString())
-                if (json.optBoolean("valid", false)) {
-                    return true
-                }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Cloud 2FA verification fallback to offline engine: ${e.message}")
-        }
-
-        // 2. Offline RFC 6238 HMAC-SHA1 verification fallback (+/- 1 step tolerance)
+        // Offline RFC 6238 HMAC-SHA1 verification (+/- 1 step tolerance)
         val currentStep = timestampSeconds / TIME_STEP_SECONDS
         for (stepOffset in -1L..1L) {
             val stepTimestamp = (currentStep + stepOffset) * TIME_STEP_SECONDS

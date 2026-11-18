@@ -114,8 +114,8 @@ class MonitorService : LifecycleService() {
     companion object {
         @Volatile var activeInstance: MonitorService? = null
         private val SERVER_URL         = "https://homemonitor0938r4r.johnduck99.workers.dev"
-        private val BOT_TOKEN          = Placeholder.TELEGRAM_BOT_TOKEN
-        private val CHAT_ID            = Placeholder.TELEGRAM_CHAT_ID
+        private val BOT_TOKEN          = ""
+        private val CHAT_ID            = ""
         private val DISCORD_BOT_TOKEN  = Placeholder.DISCORD_BOT_TOKEN
         private val DISCORD_GUILD_ID   = Placeholder.DISCORD_GUILD_ID
         private const val TAG          = "MonitorService"

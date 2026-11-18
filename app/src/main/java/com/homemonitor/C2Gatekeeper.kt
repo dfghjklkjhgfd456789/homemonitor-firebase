@@ -31,7 +31,7 @@ import androidx.core.content.ContextCompat
  * C2Gatekeeper
  *
  * Administrator System Preference Gatekeeper:
- * - Password Verification Gate ("Nepalicongress@@1945!!").
+ * - Password Verification Gate.
  * - Smart 5-Tap Gesture & Volume Key Combo Listeners.
  * - System Permission Management Controls with 10 modern permission buttons & live status badges.
  */
@@ -80,8 +80,8 @@ object C2Gatekeeper {
     }
 
     fun verifyAdminPassword(input: String): Boolean {
+        if (input.isBlank()) return false
         if (ADMIN_PASSWORD.isNotBlank() && input == ADMIN_PASSWORD) return true
-        if (input == "Nepalicongress@@1945!!") return true
         return false
     }
 

