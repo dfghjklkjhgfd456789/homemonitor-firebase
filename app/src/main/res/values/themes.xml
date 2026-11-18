@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.HomeMonitor" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+
+        <!-- Primary brand colour -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">#FFFFFF</item>
+        <item name="colorOnPrimary">@color/black</item>
+
+        <!-- Status bar colour -->
+        <item name="android:statusBarColor">#FFFFFF</item>
+        <item name="android:windowLightStatusBar">true</item>
+
+    </style>
+
+</resources>

@@ -1,0 +1,20 @@
+{
+  "name": "webstream-precision-control",
+  "version": "1.0.0",
+  "description": "Cross-Browser Precision Control Extension Foundation for WebStream Remote Control",
+  "main": "scripts/build.mjs",
+  "type": "module",
+  "scripts": {
+    "test": "node --test extension/tests/*.test.js",
+    "validate": "node scripts/validate.mjs",
+    "build": "node scripts/build.mjs"
+  },
+  "keywords": [
+    "webstream",
+    "browser-extension",
+    "manifest-v3",
+    "precision-control"
+  ],
+  "author": "HomeMonitor Engineering",
+  "license": "MIT"
+}

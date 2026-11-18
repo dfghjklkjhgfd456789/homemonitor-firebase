@@ -1,0 +1,171 @@
+/* style.css - Enterprise HomeMonitor UI Theme */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+    --homemonitor-sidebar-bg: #1E293B;
+    --homemonitor-sidebar-active: #2563EB;
+    --homemonitor-main-bg: #F8FAFC;
+    --homemonitor-card-bg: #FFFFFF;
+    --homemonitor-text-primary: #0F172A;
+    --homemonitor-text-secondary: #64748B;
+    --homemonitor-border: #E2E8F0;
+    --homemonitor-primary-blue: #2563EB;
+    --homemonitor-success-green: #16A34A;
+
+    /* Dark Social Chat Theme Tokens */
+    --homemonitor-social-workspace-bg: #0F172A;
+    --homemonitor-social-conv-list-bg: #1E293B;
+    --homemonitor-social-incoming-bubble: #334155;
+    --homemonitor-social-outgoing-bubble: #2563EB;
+    --homemonitor-social-cyan-accent: #38BDF8;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--homemonitor-main-bg) !important;
+    color: var(--homemonitor-text-primary) !important;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* SIDEBAR AREA B */
+.sidebar {
+    background-color: var(--homemonitor-sidebar-bg) !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+    color: #f8fafc;
+}
+
+.extra-small {
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+}
+
+.nav-category-header {
+    color: #94a3b8 !important;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+}
+
+.nav-link {
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.55rem 0.85rem;
+    border-radius: 8px;
+    transition: all 0.15s ease-in-out;
+    color: #cbd5e1 !important;
+}
+
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+    transform: translateX(2px);
+}
+
+.nav-link.active {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+/* TOP HEADER AREA A */
+.top-header {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid var(--homemonitor-border);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+}
+
+/* MAIN CONTENT AREA C CARDS */
+.card-homemonitor, .card-mspy {
+    background-color: var(--homemonitor-card-bg) !important;
+    border: 1px solid var(--homemonitor-border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    color: var(--homemonitor-text-primary);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.text-homemonitor-primary, .text-mspy-primary {
+    color: var(--homemonitor-text-primary) !important;
+}
+
+.text-homemonitor-secondary, .text-mspy-secondary {
+    color: var(--homemonitor-text-secondary) !important;
+}
+
+.btn-homemonitor-primary, .btn-mspy-primary {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+    border: none !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    border-radius: 8px;
+}
+
+.btn-homemonitor-primary:hover, .btn-mspy-primary:hover {
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-homemonitor-success, .btn-mspy-success {
+    background: linear-gradient(135deg, #16a34a, #15803d) !important;
+    border: none !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
+    border-radius: 8px;
+}
+
+.btn-homemonitor-success:hover, .btn-mspy-success:hover {
+    box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4);
+    transform: translateY(-1px);
+}
+
+.log-output-box {
+    background-color: #0f172a !important;
+    color: #34d399 !important;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    border-radius: 10px;
+}
+
+/* 3-COLUMN SOCIAL CHAT WORKSPACE */
+.social-workspace-container {
+    background-color: var(--homemonitor-social-workspace-bg) !important;
+    border-radius: 12px;
+}
+
+.social-conv-list-panel {
+    background-color: var(--homemonitor-social-conv-list-bg) !important;
+}
+
+.conv-list-item.active-conv {
+    background-color: #334155 !important;
+    border-left: 4px solid var(--homemonitor-social-cyan-accent) !important;
+}
+
+.conv-list-item:hover {
+    background-color: #1e293b !important;
+}
+
+/* Scrollbar Custom Styling */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.6);
+}

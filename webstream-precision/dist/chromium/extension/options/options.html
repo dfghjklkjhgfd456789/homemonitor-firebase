@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebStream Precision Control - Settings</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+    <div class="options-container">
+        <header class="header">
+            <h1>🎯 WebStream Precision Control Settings</h1>
+            <p>Manage approved origins and non-sensitive diagnostic preferences.</p>
+        </header>
+
+        <section class="card">
+            <h2>Approved WebStream Origins</h2>
+            <p class="subtitle">The extension operates only on explicitly authorized origins.</p>
+
+            <div class="add-origin-bar">
+                <input type="url" id="newOriginInput" placeholder="e.g. https://my-tunnel.trycloudflare.com" class="input-field" />
+                <button id="addOriginBtn" class="btn btn-primary">Add Origin</button>
+            </div>
+            <div id="originErr" class="error-msg" style="display:none;"></div>
+
+            <ul id="originsList" class="origins-list">
+                <!-- Dynamically populated -->
+            </ul>
+        </section>
+
+        <section class="card">
+            <h2>General Preferences</h2>
+            <div class="pref-row">
+                <label class="toggle-container">
+                    <input type="checkbox" id="prefOverlayToggle" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Show Precision Frame Overlay by Default</span>
+                </label>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <button id="resetBtn" class="btn btn-danger">Reset to Defaults</button>
+            <span id="saveStatus" class="save-status" style="display:none;">Saved!</span>
+        </footer>
+    </div>
+    <script type="module" src="options.js"></script>
+</body>
+</html>
