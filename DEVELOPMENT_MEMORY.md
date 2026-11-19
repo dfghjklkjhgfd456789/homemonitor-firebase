@@ -22,12 +22,13 @@
 ### 3. Signaling Infrastructure & Firebase Database Schema Contract
 - **Root Authorization Path**: `/users/{uid}/devices/{deviceId}`
 - **Security Rules**: Authoritative `database.rules.json` enforces authenticated user isolation (`auth != null && auth.uid == $uid`) across all device nodes.
-- **Audited Schema Nodes**:
-  - `status`: `{ deviceId, model, androidVersion, sdkInt, lastSeen, battery, online }`
+- **Audited Schema Nodes & Data Contracts**:
+  - `status`: `{ deviceId, model, androidVersion, sdkInt, lastSeen, battery, activeAccount, online }`
   - `feature_flags`: `{ camera_enabled, mic_enabled, location_enabled, screen_record_enabled, termux_enabled, sms_calls_enabled, files_enabled, mdm_wipe_enabled }`
   - `commands`: Pushed `{ text, status, timestamp }`
   - `response`: Console execution output string
   - `telemetry/{category}`: Log items `{ category, content, timestamp }`
+  - `location`: `{ latitude, longitude, altitude, speed, accuracy, provider, timestamp }`
   - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
   - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
 
