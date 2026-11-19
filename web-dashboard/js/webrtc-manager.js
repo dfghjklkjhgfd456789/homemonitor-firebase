@@ -46,6 +46,18 @@ function initWebRtcSession(sessionId, isInitiator) {
         postSessionRequestedToFirebase(sessionId);
     }
 
+    pc.oniceconnectionstatechange = () => {
+        console.log("[WebRTC Manager] ICE Connection State:", pc.iceConnectionState);
+        if (pc.iceConnectionState === "disconnected" || pc.iceConnectionState === "failed") {
+            console.warn("[WebRTC Manager] PeerConnection disconnected. Transitioning to Firebase Relay Bus fallback...");
+            const connBadge = document.getElementById("connectionModeBadge");
+            if (connBadge) {
+                connBadge.className = "badge bg-warning bg-opacity-10 text-warning border border-warning px-3 py-2";
+                connBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>Reconnecting P2P...';
+            }
+        }
+    };
+
     pc.onnegotiationneeded = async () => {
         try {
             makingOffer = true;
@@ -272,5 +284,39 @@ async function handleRemoteAnswerSignal(sdp) {
         console.log("[WebRTC Manager] Successfully installed Remote Answer SDP");
     } catch (err) {
         console.error("[WebRTC Manager] Error handling remote answer signal:", err);
+    }
+}
+
+function startP2pWebStreamSession() {
+    const sessId = "sess_" + Date.now();
+    initWebRtcSession(sessId, true);
+    console.log("[WebRTC Manager] Dispatched WebRTC P2P Session Request:", sessId);
+}
+
+function stopP2pWebStreamSession() {
+    console.log("[WebRTC Manager] Stopping WebRTC P2P Session:", activeSessionId);
+    try {
+        if (activeSessionId) {
+            const uid = currentUser ? currentUser.uid : "default_user";
+            const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
+            firebase.database().ref(`users/${uid}/devices/${devId}/webrtc_signaling/sessions/${activeSessionId}`).update({
+                status: "TERMINATED",
+                terminatedAt: Date.now()
+            });
+        }
+        if (dc) { try { dc.close(); } catch (_) {} dc = null; }
+        if (pc) { try { pc.close(); } catch (_) {} pc = null; }
+    } catch (e) {
+        console.warn("[WebRTC Teardown Error]", e);
+    } finally {
+        activeSessionId = null;
+        pendingIceCandidates = [];
+        const connBadge = document.getElementById("connectionModeBadge");
+        if (connBadge) {
+            connBadge.className = "badge bg-info bg-opacity-10 text-info border border-info px-3 py-2";
+            connBadge.innerHTML = '<i class="fa-solid fa-cloud me-1 text-info"></i>Firebase Relay Bus 🟢';
+        }
+        const statusBadge = document.getElementById("p2pStatusBadge");
+        if (statusBadge) statusBadge.innerText = "P2P Session Idle";
     }
 }
