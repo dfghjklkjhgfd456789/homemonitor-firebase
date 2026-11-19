@@ -26,3 +26,6 @@
 *.jks
 server.log
 uploads/
+*.db
+__pycache__/
+

