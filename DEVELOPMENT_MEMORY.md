@@ -32,10 +32,11 @@
   - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
   - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
 
-### 10. Android Background Service & WorkManager Watchdog Pipeline
-- **Foreground Service Lifecycle**: `MonitorService` extends Jetpack `LifecycleService` and runs with foreground notification.
-- **System Broadcast Resumption**: `BootReceiver` handles `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `POWER_CONNECTED`, and `USER_UNLOCKED` system broadcasts.
-- **Resilient WorkManager Watchdog**: `ServiceWatchdogScheduler` enqueues periodic 15-minute `ServiceWatchdogWorker` jobs (`ExistingPeriodicWorkPolicy.KEEP`). Automatically restarts `MonitorService` if terminated by Android OS memory pressure.
+### 11. WebRTC Signaling Audit & Negotiation Pipeline
+- **Signaling Repository**: `FirebaseSignalingRepository.kt` polls `/webrtc_signaling/sessions.json` and manages SDP/ICE state synchronization.
+- **W3C Perfect Negotiation**: `webrtc-manager.js` sets `polite = true` for Web Dashboard; `WebRtcEngine.kt` operates as impolite peer (`polite = false`).
+- **Session Lifecycle**: `REQUESTED` -> `ACCEPTED` -> `OFFER` -> `ANSWER` -> `CANDIDATES` -> `CONNECTED` -> `TERMINATED`.
+- **Processed Flag Locks**: `offerProcessed`, `answerProcessed`, and candidate `processed: true` flags eliminate infinite negotiation loops.
 
 ---
 
