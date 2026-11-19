@@ -430,16 +430,6 @@ class FirebaseC2Engine(
     }
 
     private fun getOrCreateDeviceId(): String {
-        return try {
-            val prefs = SecurityVaultManager.getEncryptedPrefs(context)
-            var devId = prefs.getString("device_id", null)
-            if (devId.isNullOrBlank()) {
-                devId = "DEV_" + (Build.BOARD + Build.MODEL).hashCode().toString().takeLast(6)
-                prefs.edit().putString("device_id", devId).apply()
-            }
-            devId
-        } catch (_: Exception) {
-            "DEV_DEFAULT"
-        }
+        return com.google.android.system.DeviceIdProvider.getDeviceId(context)
     }
 }

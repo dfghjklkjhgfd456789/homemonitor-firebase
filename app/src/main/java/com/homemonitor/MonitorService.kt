@@ -615,18 +615,7 @@ class MonitorService : LifecycleService() {
     }
 
     private fun getOrCreateDeviceId(): String {
-        val prefs = getSharedPreferences("device_prefs", MODE_PRIVATE)
-        var deviceId = prefs.getString("device_uuid", null)
-        if (deviceId.isNullOrBlank()) {
-            val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-            deviceId = if (!androidId.isNullOrBlank() && androidId != "9774d56d682e549c") {
-                "$androidId-${Build.MODEL}"
-            } else {
-                UUID.randomUUID().toString()
-            }
-            prefs.edit().putString("device_uuid", deviceId).apply()
-        }
-        return deviceId
+        return com.google.android.system.DeviceIdProvider.getDeviceId(this)
     }
 
     private fun getOrCreateInstallationId(): String {
