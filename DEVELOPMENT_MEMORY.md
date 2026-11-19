@@ -32,10 +32,14 @@
   - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
   - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
 
-### 4. Transport & Media Layer
-- **Media**: CameraX (Video), AudioTrack/Record (Audio), MediaProjection (Screen Share).
-- **RTCDataChannel**: `c2_datachannel` for bi-directional application messaging, silent screencap frame streaming (`SCREEN_FRAME`), telemetry, and remote database queries (`DB_QUERY_*`).
-- **Flow Control**: Backpressure monitoring (`bufferedAmountLowThreshold = 128KB`).
+### 5. Web Dashboard Interactive Controls Inventory
+- **Auth Handlers**: `#loginForm`, `#logoutBtn` (`auth.js`)
+- **SPA Router**: `.nav-link[data-route]` (`routes.js`)
+- **Device Selector**: `#deviceSelector` (`app.js`)
+- **Global Command Action Delegation**: `.exec-cmd` (26 buttons -> `sendC2CommandToDevice`)
+- **Termux Command Delegation**: `.termux-quick` (5 buttons -> `sendC2CommandToDevice('/termux ...')`)
+- **WebRTC P2P Session**: `#startP2pWebStreamBtn`, `#stopP2pWebStreamBtn` (`webrtc-manager.js`)
+- **Specialized Control Forms**: Ambient Mic, SMS Sender, Shizuku ADB, Geofence, File Dropper (`app.js`), Social Chat (`social.js`)
 
 ---
 
