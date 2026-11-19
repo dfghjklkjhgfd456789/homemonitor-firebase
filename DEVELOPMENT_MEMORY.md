@@ -32,12 +32,12 @@
   - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
   - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
 
-### 8. Authenticated Dashboard-to-Device Command Delivery Pipeline
+### 8. Authenticated Dashboard-to-Device Command Delivery & Response Pipeline
 - **Dashboard Push**: `sendC2CommandToDevice()` pushes `{ text, status: "pending", timestamp }` to `/users/$uid/devices/$activeDeviceId/commands`.
 - **Android Polling**: `FirebaseC2Engine.startCommandPollingLoop()` polls `/users/$uid/devices/$devId/commands.json` every 3 seconds.
-- **Status State Machine**: Command status transitions `pending` -> `processing` -> `completed`.
-- **Command Execution & Response**: `MonitorService.dispatchCommand()` executes command and returns string output to `/users/$uid/devices/$devId/response.json`.
-- **Dashboard Render**: Realtime `.on("value")` response listener appends execution log output to console views.
+- **Status State Machine**: Command status transitions `pending` -> `processing` -> `completed` via `updateCommandStatus()`.
+- **Command Execution & Response**: `MonitorService.dispatchCommand()` executes command and returns string output to `/users/$uid/devices/$devId/response.json` and `/commands/$cmdId/response.json` via `sendExecutionResponse()`.
+- **Dashboard Render**: Realtime `.on("value")` response listener appends execution log output to console views and auto-scrolls.
 
 ---
 
