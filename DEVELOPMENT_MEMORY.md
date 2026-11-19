@@ -32,12 +32,9 @@
   - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
   - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
 
-### 11. Authenticated WebRTC Session Contract & Negotiation Pipeline
-- **Signaling Path**: `/users/$uid/devices/$devId/webrtc_signaling/sessions/$sessionId`
-- **Signaling Repository**: `FirebaseSignalingRepository.kt` polls `/webrtc_signaling/sessions.json` and manages SDP/ICE state synchronization.
-- **W3C Perfect Negotiation**: `webrtc-manager.js` sets `polite = true` for Web Dashboard; `WebRtcEngine.kt` operates as impolite peer (`polite = false`).
-- **Session Lifecycle**: `REQUESTED` -> `ACCEPTED` -> `OFFER` -> `ANSWER` -> `CANDIDATES` -> `CONNECTED` -> `TERMINATED`.
-- **Processed Flag Locks**: `offerProcessed`, `answerProcessed`, and candidate `processed: true` flags eliminate infinite negotiation loops.
+### 12. ICE & TURN Relay Infrastructure
+- **STUN Servers**: `stun:stun.l.google.com:19302`, `stun:stun1.l.google.com:19302`, `stun:stun2.l.google.com:19302` for direct NAT candidate discovery.
+- **TURN Relay Fallback**: Configured relay infrastructure (`stun.relay.metered.ca:80`) for traversal across strict Symmetric NATs, CGNAT, and corporate firewalls.
 
 ---
 
