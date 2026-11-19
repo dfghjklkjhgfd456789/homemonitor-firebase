@@ -36,6 +36,18 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
+function generateDerivedUid(email) {
+    if (!email) return "usr_default";
+    var str = email.trim().toLowerCase();
+    var hash = 0;
+    for (var i = 0; i < str.length; i++) {
+        var char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0;
+    }
+    return "usr_" + Math.abs(hash);
+}
+
 document.getElementById("loginForm").addEventListener("submit", function(e) {
     e.preventDefault();
     const email = document.getElementById("loginEmail").value.trim();
@@ -55,7 +67,7 @@ document.getElementById("loginForm").addEventListener("submit", function(e) {
     } else {
         // Fallback for offline UI testing mode
         isMasterAdmin = email.toLowerCase().includes("admin");
-        currentUser = { email: email, uid: "usr_" + btoa(email).substring(0, 10) };
+        currentUser = { email: email, uid: generateDerivedUid(email) };
         document.getElementById("loginScreen").classList.add("d-none");
         document.getElementById("dashboardApp").classList.remove("d-none");
         document.getElementById("userRoleBadge").innerText = isMasterAdmin ? "Role: 👑 Master Admin" : "Role: Standard User";

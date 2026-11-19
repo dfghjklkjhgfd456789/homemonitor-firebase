@@ -122,7 +122,26 @@ class FirebaseC2Engine(
         }
     }
 
+    fun refreshUserIdentity() {
+        try {
+            val prefs = SecurityVaultManager.getEncryptedPrefs(context)
+            val storedUid = prefs.getString("user_firebase_uid", "") ?: ""
+            if (storedUid.isNotBlank()) {
+                currentUserId = storedUid
+            } else {
+                val email = prefs.getString("user_firebase_email", "") ?: ""
+                if (email.isNotBlank()) {
+                    val normalized = email.trim().lowercase(java.util.Locale.ROOT)
+                    val derivedUid = "usr_" + Math.abs(normalized.hashCode()).toString()
+                    currentUserId = derivedUid
+                    prefs.edit().putString("user_firebase_uid", derivedUid).apply()
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
     private fun sendDeviceHeartbeat() {
+        refreshUserIdentity()
         val account = getActiveAccount()
         val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
         val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()

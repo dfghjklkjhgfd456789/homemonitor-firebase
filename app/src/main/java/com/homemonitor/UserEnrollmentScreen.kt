@@ -218,9 +218,10 @@ fun UserEnrollmentScreen(
                                         if (userEmail.isBlank() || userPassword.isBlank()) {
                                             Toast.makeText(context, "Please enter email and password", Toast.LENGTH_SHORT).show()
                                         } else {
-                                            val generatedUid = "usr_" + userEmail.trim().hashCode().toString().replace("-", "")
+                                            val normalizedEmail = userEmail.trim().lowercase(java.util.Locale.ROOT)
+                                            val generatedUid = "usr_" + Math.abs(normalizedEmail.hashCode()).toString()
                                             prefs.edit()
-                                                .putString("user_firebase_email", userEmail.trim())
+                                                .putString("user_firebase_email", normalizedEmail)
                                                 .putString("user_firebase_uid", generatedUid)
                                                 .remove("user_firebase_password")
                                                 .apply()
