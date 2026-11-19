@@ -403,6 +403,8 @@ function sendC2CommandToDevice(cmdText) {
     history.push({ cmd: cmdText, time: new Date().toLocaleTimeString() });
     localStorage.setItem(`cmd_history_${activeDeviceId}`, JSON.stringify(history.slice(-50)));
 
+    showDashboardNotification("success", `Dispatched command '${cmdText}' to ${activeDeviceId}`);
+
     const outputBox = document.getElementById("execLogOutput");
     if (outputBox) {
         outputBox.innerHTML += `\n[${new Date().toLocaleTimeString()}] Dispatched Command: '${cmdText}' (Pending target execution...)`;
@@ -430,20 +432,47 @@ function triggerLocalDiskAutoArchive(filename, contentText) {
     }
 }
 
+function showDashboardNotification(type, message) {
+    console.log(`[Dashboard Notification - ${type.toUpperCase()}] ${message}`);
+    const notificationContainer = document.getElementById("dashboardToastContainer") || (() => {
+        const div = document.createElement("div");
+        div.id = "dashboardToastContainer";
+        div.className = "position-fixed bottom-0 end-0 p-3";
+        div.style.zIndex = "9999";
+        document.body.appendChild(div);
+        return div;
+    })();
+
+    const toast = document.createElement("div");
+    const bgClass = type === "success" ? "bg-success" : type === "error" ? "bg-danger" : type === "warning" ? "bg-warning text-dark" : "bg-info text-dark";
+    toast.className = `toast align-items-center text-white ${bgClass} border-0 show mb-2`;
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body fw-bold">
+                ${type === 'success' ? '🟢' : type === 'error' ? '🔴' : type === 'warning' ? '🟡' : 'ℹ️'} ${message}
+            </div>
+            <button type="button" class="btn-close me-2 m-auto" onclick="this.parentElement.parentElement.remove()"></button>
+        </div>
+    `;
+    notificationContainer.appendChild(toast);
+    setTimeout(() => { try { toast.remove(); } catch (_) {} }, 4000);
+}
+
 function fetchCategoryTelemetryLogs(tabCategory) {
     const uid = currentUser ? currentUser.uid : "default_user";
     const genericOutput = document.getElementById("genericLogOutput");
     if (!genericOutput) return;
 
-    genericOutput.innerText = `[System] Subscribed to Realtime Stream for Category '${tabCategory}'...\n`;
+    genericOutput.innerText = `⏳ [System] Subscribed to Realtime Telemetry Stream for '${tabCategory}'... (Awaiting device data)\n`;
 
-    firebase.database().ref(`users/${uid}/devices/${activeDeviceId}/telemetry/${tabCategory}`).limitToLast(20).on("value", snapshot => {
+    const telemetryRef = firebase.database().ref(`users/${uid}/devices/${activeDeviceId}/telemetry/${tabCategory}`).limitToLast(30);
+    registerActiveFirebaseListener(telemetryRef, "value", snapshot => {
         const val = snapshot.val();
         if (val) {
             let logText = "";
             Object.keys(val).forEach(key => {
                 const item = val[key];
-                logText += `[${new Date(item.timestamp).toLocaleTimeString()}] ${item.content}\n`;
+                logText += `[${new Date(item.timestamp || Date.now()).toLocaleTimeString()}] ${item.content || item.body || ''}\n`;
             });
             genericOutput.innerText = logText;
             genericOutput.scrollTop = genericOutput.scrollHeight;
@@ -453,6 +482,8 @@ function fetchCategoryTelemetryLogs(tabCategory) {
             const cached = localStorage.getItem(`telemetry_cache_${tabCategory}`);
             if (cached) {
                 genericOutput.innerText = `[LocalStorage Cache]\n` + cached;
+            } else {
+                genericOutput.innerText = `📭 No telemetry logs recorded for '${tabCategory}'. (Device stream active)`;
             }
         }
     });
