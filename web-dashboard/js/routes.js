@@ -105,6 +105,10 @@ function navigateToRoute(routePath, updateHash = true) {
     const targetPanel = document.getElementById(route.tabId);
     if (targetPanel) {
         targetPanel.classList.remove("d-none");
+        const categoryKey = route.tabId.replace("tab-", "").replace("-", "_");
+        if (typeof fetchCategoryTelemetryLogs === "function" && route.tabId !== "tab-dashboard-overview" && route.tabId !== "tab-master-admin") {
+            fetchCategoryTelemetryLogs(categoryKey);
+        }
     } else {
         const genericPanel = document.getElementById("tab-generic");
         if (genericPanel) {
