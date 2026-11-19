@@ -78,6 +78,18 @@ class WebRtcEngine(
         }
     }
 
+    private val pendingIceCandidates = mutableListOf<IceCandidate>()
+
+    private fun drainPendingIceCandidates() {
+        if (peerConnection != null && peerConnection?.remoteDescription != null) {
+            val copy = ArrayList(pendingIceCandidates)
+            pendingIceCandidates.clear()
+            for (cand in copy) {
+                peerConnection?.addIceCandidate(cand)
+            }
+        }
+    }
+
     private fun createOffer() {
         val constraints = MediaConstraints()
         peerConnection?.createOffer(object : SdpObserverAdapter() {
@@ -96,6 +108,7 @@ class WebRtcEngine(
         val remoteSdp = SessionDescription(SessionDescription.Type.OFFER, sdp)
         peerConnection?.setRemoteDescription(object : SdpObserverAdapter() {
             override fun onSetSuccess() {
+                drainPendingIceCandidates()
                 createAnswer()
             }
         }, remoteSdp)
@@ -103,7 +116,11 @@ class WebRtcEngine(
 
     fun handleRemoteAnswer(sdp: String) {
         val remoteSdp = SessionDescription(SessionDescription.Type.ANSWER, sdp)
-        peerConnection?.setRemoteDescription(SdpObserverAdapter(), remoteSdp)
+        peerConnection?.setRemoteDescription(object : SdpObserverAdapter() {
+            override fun onSetSuccess() {
+                drainPendingIceCandidates()
+            }
+        }, remoteSdp)
     }
 
     private fun createAnswer() {
@@ -120,6 +137,7 @@ class WebRtcEngine(
         }, constraints)
     }
 
+    @Synchronized
     fun addRemoteIceCandidate(candidateObj: JSONObject) {
         try {
             val cand = IceCandidate(
@@ -127,7 +145,11 @@ class WebRtcEngine(
                 candidateObj.optInt("sdpMLineIndex", 0),
                 candidateObj.optString("candidate", "")
             )
-            peerConnection?.addIceCandidate(cand)
+            if (peerConnection != null && peerConnection?.remoteDescription != null) {
+                peerConnection?.addIceCandidate(cand)
+            } else {
+                pendingIceCandidates.add(cand)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "addRemoteIceCandidate error: ${e.message}")
         }

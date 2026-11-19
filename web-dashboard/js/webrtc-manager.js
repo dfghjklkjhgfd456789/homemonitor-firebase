@@ -182,6 +182,31 @@ function sendIceCandidateToFirebase(sessionId, candidate) {
     });
 }
 
+let pendingIceCandidates = [];
+
+function addRemoteCandidateOrBuffer(candData) {
+    const rtcCand = new RTCIceCandidate(candData);
+    if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+        pc.addIceCandidate(rtcCand).catch(e => console.warn("[WebRTC Candidate Add Error]", e));
+    } else {
+        pendingIceCandidates.push(rtcCand);
+        console.log("[WebRTC Candidate Buffered] Queued early ICE candidate prior to remoteDescription");
+    }
+}
+
+async function drainPendingIceCandidates() {
+    if (!pc || !pc.remoteDescription || pendingIceCandidates.length === 0) return;
+    console.log(`[WebRTC Candidate Drain] Flushing ${pendingIceCandidates.length} buffered ICE candidates...`);
+    for (const cand of pendingIceCandidates) {
+        try {
+            await pc.addIceCandidate(cand);
+        } catch (e) {
+            console.warn("[WebRTC Buffered Candidate Error]", e);
+        }
+    }
+    pendingIceCandidates = [];
+}
+
 function subscribeFirebaseSignalingEvents(sessionId) {
     const uid = currentUser ? currentUser.uid : "default_user";
     const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
@@ -206,7 +231,7 @@ function subscribeFirebaseSignalingEvents(sessionId) {
                 const cand = val.candidates[key];
                 if (cand.sender !== "DASHBOARD" && !cand.processed) {
                     sessionRef.child(`candidates/${key}/processed`).set(true);
-                    pc.addIceCandidate(new RTCIceCandidate(cand)).catch(e => console.warn("Candidate add error:", e));
+                    addRemoteCandidateOrBuffer(cand);
                 }
             });
         }
@@ -225,6 +250,8 @@ async function handleRemoteOfferSignal(sdp) {
 
         const offerDesc = new RTCSessionDescription({ type: "offer", sdp: sdp });
         await pc.setRemoteDescription(offerDesc);
+        await drainPendingIceCandidates();
+
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
@@ -241,6 +268,7 @@ async function handleRemoteAnswerSignal(sdp) {
     try {
         const answerDesc = new RTCSessionDescription({ type: "answer", sdp: sdp });
         await pc.setRemoteDescription(answerDesc);
+        await drainPendingIceCandidates();
         console.log("[WebRTC Manager] Successfully installed Remote Answer SDP");
     } catch (err) {
         console.error("[WebRTC Manager] Error handling remote answer signal:", err);
