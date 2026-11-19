@@ -19,10 +19,17 @@
 - Supported Capabilities: `VIDEO`, `AUDIO`, `SCREEN_SHARE`, `DATA_CHANNEL`, `COMBINED_MEDIA`.
 - Dynamic Negotiation: Negotiated capabilities are validated against runtime permissions (Camera, Mic, MediaProjection) and hardware availability on Android before session confirmation.
 
-### 3. Signaling Infrastructure & Firebase Authorization Security Rules
-- **Path**: `/users/{uid}/devices/{deviceId}/webrtc_signaling/sessions/{sessionId}`
-- **Schema**: Scoped session node containing `sessionId`, `initiatorId`, `initiatorPlatform`, `targetDeviceId`, `requestedCapabilities`, `negotiatedCapabilities`, `status`, `politePeer`, `createdAt`, `expiresAt`, `offer`, `answer`, `candidates`.
-- **Security Rules**: Authoritative `database.rules.json` enforces authenticated user isolation (`auth != null && auth.uid == $uid`) across all `/users/$uid/devices/$deviceId` nodes, including `status`, `commands`, `response`, `telemetry`, `social`, and `webrtc_signaling` with `.indexOn` indexing for performance optimization.
+### 3. Signaling Infrastructure & Firebase Database Schema Contract
+- **Root Authorization Path**: `/users/{uid}/devices/{deviceId}`
+- **Security Rules**: Authoritative `database.rules.json` enforces authenticated user isolation (`auth != null && auth.uid == $uid`) across all device nodes.
+- **Audited Schema Nodes**:
+  - `status`: `{ deviceId, model, androidVersion, sdkInt, lastSeen, battery, online }`
+  - `feature_flags`: `{ camera_enabled, mic_enabled, location_enabled, screen_record_enabled, termux_enabled, sms_calls_enabled, files_enabled, mdm_wipe_enabled }`
+  - `commands`: Pushed `{ text, status, timestamp }`
+  - `response`: Console execution output string
+  - `telemetry/{category}`: Log items `{ category, content, timestamp }`
+  - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
+  - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
 
 ### 4. Transport & Media Layer
 - **Media**: CameraX (Video), AudioTrack/Record (Audio), MediaProjection (Screen Share).

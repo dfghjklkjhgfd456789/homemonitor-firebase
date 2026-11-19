@@ -222,7 +222,6 @@ function startRealtimeDeviceListener(deviceId) {
         }
     };
     db.ref(`users/${uid}/devices/${deviceId}/response`).on("value", responseHandler);
-    db.ref(`users/default_user/devices/${deviceId}/response`).on("value", responseHandler);
 
     loadMasterAdminPermissionMatrix(uid, deviceId);
 }
