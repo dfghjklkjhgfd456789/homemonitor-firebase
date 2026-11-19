@@ -32,10 +32,10 @@
   - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
   - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
 
-### 9. Connection Status & Reconnection Handling Pipeline
-- **Android Failover Pool**: `FirebaseC2Engine.rotateToNextFallbackAccount()` seamlessly rotates across 6 Firebase instances (1 Primary + 5 Fallbacks) on HTTP 429 quota limits or network errors.
-- **Web Dashboard RTDB Monitor**: `app.js` listens on `.info/connected` to render `#rtdbConnBadge` (`🟢 Sync Active` vs `🔴 Offline / Reconnecting...`).
-- **WebRTC P2P ICE Restart**: `webrtc-manager.js` and `WebRtcEngine.kt` automatically trigger `restartIce()` when P2P connection states transition to `disconnected` or `failed`.
+### 10. Android Background Service & WorkManager Watchdog Pipeline
+- **Foreground Service Lifecycle**: `MonitorService` extends Jetpack `LifecycleService` and runs with foreground notification.
+- **System Broadcast Resumption**: `BootReceiver` handles `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `POWER_CONNECTED`, and `USER_UNLOCKED` system broadcasts.
+- **Resilient WorkManager Watchdog**: `ServiceWatchdogScheduler` enqueues periodic 15-minute `ServiceWatchdogWorker` jobs (`ExistingPeriodicWorkPolicy.KEEP`). Automatically restarts `MonitorService` if terminated by Android OS memory pressure.
 
 ---
 
