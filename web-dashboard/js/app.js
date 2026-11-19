@@ -44,6 +44,14 @@ document.addEventListener("click", function(e) {
         }
     }
 
+    const connBadge = e.target.closest("#connectionModeBadge");
+    if (connBadge) {
+        showDashboardNotification("info", "📡 Negotiating WebRTC P2P Direct Tunnel...");
+        if (typeof connectP2pWebRtcTunnel === "function") {
+            connectP2pWebRtcTunnel();
+        }
+    }
+
     const termuxBtn = e.target.closest(".termux-quick");
     if (termuxBtn) {
         const sh = termuxBtn.getAttribute("data-sh");
