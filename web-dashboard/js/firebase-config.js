@@ -46,5 +46,45 @@ function initActiveFirebaseInstance() {
     console.log(`[Firebase C2] Active Instance: ${config.name} (${config.databaseURL})`);
 }
 
+function switchActiveFirebaseAccount(index) {
+    if (index >= 0 && index < firebaseAccountPool.length) {
+        activeFirebaseIndex = index;
+        initActiveFirebaseInstance();
+        renderFirebaseAccountPoolCards();
+        if (typeof activeDeviceId !== "undefined" && activeDeviceId && typeof startRealtimeDeviceListener === "function") {
+            startRealtimeDeviceListener(activeDeviceId);
+        }
+    }
+}
+
+function renderFirebaseAccountPoolCards() {
+    const container = document.getElementById("firebaseAccountCardsContainer");
+    if (!container) return;
+
+    container.innerHTML = "";
+    firebaseAccountPool.forEach((acc, idx) => {
+        const col = document.createElement("div");
+        col.className = "col-md-4";
+
+        const isActive = (idx === activeFirebaseIndex);
+        const card = document.createElement("div");
+        card.className = `p-3 rounded border cursor-pointer ${isActive ? 'bg-dark text-light border-danger' : 'bg-light border-secondary'}`;
+        card.onclick = function() { switchActiveFirebaseAccount(idx); };
+
+        card.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-1">${acc.name}</h6>
+                <span class="badge ${isActive ? 'bg-danger' : 'bg-secondary'}">${isActive ? 'ACTIVE 🟢' : 'READY'}</span>
+            </div>
+            <p class="extra-small text-muted mb-0 text-truncate">${acc.databaseURL}</p>
+        `;
+        col.appendChild(card);
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    renderFirebaseAccountPoolCards();
+});
+
 // Initializing Primary Account
 initActiveFirebaseInstance();
