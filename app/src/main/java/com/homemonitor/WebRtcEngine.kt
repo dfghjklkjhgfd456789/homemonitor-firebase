@@ -176,6 +176,12 @@ class WebRtcEngine(
 
     fun sendScreenFrame(base64Jpeg: String) {
         if (base64Jpeg.isBlank()) return
+        // Backpressure check: Drop frame if queued buffer exceeds 128 KB
+        val buffered = dataChannel?.bufferedAmount() ?: 0L
+        if (buffered > 131_072L) {
+            Log.w(TAG, "DataChannel backpressure threshold exceeded ($buffered bytes). Dropping frame.")
+            return
+        }
         val payload = JSONObject().apply {
             put("frame", base64Jpeg)
         }

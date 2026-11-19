@@ -76,6 +76,10 @@ function initWebRtcSession(sessionId, isInitiator) {
 }
 
 function setupDataChannelEvents(channel) {
+    try {
+        channel.bufferedAmountLowThreshold = 131072;
+    } catch (_) {}
+
     channel.onopen = () => {
         console.log("[WebRTC Manager] P2P RTCDataChannel OPEN 🟢");
         const statusBadge = document.getElementById("p2pStatusBadge");
