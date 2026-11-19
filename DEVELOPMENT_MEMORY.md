@@ -32,11 +32,11 @@
   - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
   - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
 
-### 6. Android Device Registration Pipeline
-- **User Identity**: Account email & derived `user_firebase_uid` persisted in `SecurityVaultManager`.
-- **Authoritative Device ID**: `DeviceIdProvider.getDeviceId(context)` generates persistent `DEV_XXXXXX` combining `ANDROID_ID`, `Build.BOARD`, and `Build.MODEL`.
-- **Heartbeat & Registration**: `FirebaseC2Engine.sendDeviceHeartbeat()` posts device info to `/users/$uid/devices/$devId/status.json` on a 15-second loop.
-- **Dashboard Discovery**: Web Dashboard discovers devices in real-time via `users/$uid/devices` snapshot listener.
+### 7. Telemetry & Social Messaging Synchronization Pipeline
+- **Local SQLite Storage**: `C2LocalDatabase` buffers logs locally for offline resilience.
+- **Normalized Keys**: Category keys (`catKey`) and Social App keys (`appKey`) are normalized to lowercase alphanumeric strings matching dashboard handlers.
+- **RTDB Submission**: `FirebaseC2Engine` posts telemetry payloads to `/users/$uid/devices/$devId/telemetry/$catKey` and `/users/$uid/devices/$devId/social/$appKey`.
+- **Dashboard Realtime Render**: `app.js` and `social.js` subscribe via `.limitToLast(50).on("value")` to render live telemetry feeds, chat bubbles, and auto-archive downloads.
 
 ---
 
