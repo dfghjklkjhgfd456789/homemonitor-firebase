@@ -355,10 +355,8 @@ function sendC2CommandToDevice(cmdText) {
         timestamp: Date.now()
     };
 
-    // Push command payload to all device target paths
+    // Push command payload to authorized device target path
     db.ref(`users/${uid}/devices/${activeDeviceId}/commands`).push().set(cmdPayload);
-    db.ref(`users/default_user/devices/${activeDeviceId}/commands`).push().set(cmdPayload);
-    db.ref(`users/default_user/devices/DEV_810856/commands`).push().set(cmdPayload);
 
     // Cache sent command locally in localStorage
     const history = JSON.parse(localStorage.getItem(`cmd_history_${activeDeviceId}`) || "[]");
