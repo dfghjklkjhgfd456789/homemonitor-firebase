@@ -45,8 +45,25 @@ document.addEventListener("click", function(e) {
     }
 });
 
+function setupFirebaseConnectionMonitor() {
+    if (typeof firebase === "undefined" || !firebase.database) return;
+    const badge = document.getElementById("rtdbConnBadge");
+    if (!badge) return;
+
+    firebase.database().ref(".info/connected").on("value", snapshot => {
+        if (snapshot.val() === true) {
+            badge.className = "badge bg-success extra-small mt-1 d-inline-block";
+            badge.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i>Sync Active 🟢`;
+        } else {
+            badge.className = "badge bg-danger extra-small mt-1 d-inline-block";
+            badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i>Offline / Reconnecting...`;
+        }
+    });
+}
+
 document.addEventListener("DOMContentLoaded", function() {
     detectClientOperatingSystem();
+    setupFirebaseConnectionMonitor();
     if (typeof loadEnrolledDevicesList === "function") {
         loadEnrolledDevicesList();
     }
@@ -186,8 +203,13 @@ function startRealtimeDeviceListener(deviceId) {
             if (specOs) specOs.innerText = `Android ${val.androidVersion || '14'} (SDK ${val.sdkInt || '35'})`;
             const specBattery = document.getElementById("specBattery");
             if (specBattery) specBattery.innerText = `${val.battery ?? val.batteryLevel ?? '85'}% (Good)`;
+            const lastSeenMs = val.lastSeen || 0;
+            const nowMs = Date.now();
+            const isFresh = lastSeenMs > 0 && (nowMs - lastSeenMs < 45000);
+            const statusLabel = isFresh ? "Online 🟢" : `Offline (Last seen ${Math.round((nowMs - lastSeenMs)/60000)}m ago) 🟡`;
+
             const specIp = document.getElementById("specIp");
-            if (specIp) specIp.innerText = val.activeAccount || "Connected (RTDB)";
+            if (specIp) specIp.innerText = `${val.activeAccount || 'RTDB'} | Status: ${statusLabel}`;
         }
     };
 
