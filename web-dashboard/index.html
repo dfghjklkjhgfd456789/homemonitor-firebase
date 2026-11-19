@@ -340,8 +340,7 @@
                             <table class="table table-hover align-middle">
                                 <thead><tr><th>Name</th><th>Phone Number</th><th>Type</th><th>Actions</th></tr></thead>
                                 <tbody id="contactsTableBody">
-                                    <tr><td>John Doe</td><td>+1 (555) 019-2834</td><td>Mobile</td><td><button class="btn btn-sm btn-outline-success">Call</button> <button class="btn btn-sm btn-outline-info">SMS</button></td></tr>
-                                    <tr><td>Jane Smith</td><td>+1 (555) 012-9981</td><td>Work</td><td><button class="btn btn-sm btn-outline-success">Call</button> <button class="btn btn-sm btn-outline-info">SMS</button></td></tr>
+                                    <tr><td colspan="4" class="text-center text-muted py-3">📭 Awaiting contacts stream from device...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -358,9 +357,8 @@
                         <div class="table-responsive mb-4">
                             <table class="table table-hover align-middle">
                                 <thead><tr><th>Contact</th><th>Number</th><th>Type</th><th>Duration</th><th>Timestamp</th></tr></thead>
-                                <tbody>
-                                    <tr><td>John Doe</td><td>+1 (555) 019-2834</td><td><span class="badge bg-success">Incoming</span></td><td>3m 12s</td><td>Today, 10:14 AM</td></tr>
-                                    <tr><td>Unknown</td><td>+1 (555) 088-1122</td><td><span class="badge bg-danger">Missed</span></td><td>0s</td><td>Today, 09:30 AM</td></tr>
+                                <tbody id="callsTableBody">
+                                    <tr><td colspan="5" class="text-center text-muted py-3">📭 Awaiting call logs stream from device...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -403,8 +401,8 @@
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead><tr><th>Timestamp</th><th>Latitude / Longitude</th><th>Accuracy</th><th>Address / Place</th></tr></thead>
-                                <tbody>
-                                    <tr><td>Today, 10:30 AM</td><td>27.7172° N, 85.3240° E</td><td>12m</td><td>Central District, Sector 4</td></tr>
+                                <tbody id="gpsTableBody">
+                                    <tr><td colspan="4" class="text-center text-muted py-3">📭 Awaiting GPS location telemetry from device...</td></tr>
                                 </tbody>
                             </table>
                         </div>
