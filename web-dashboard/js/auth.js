@@ -31,10 +31,8 @@ document.getElementById("loginForm").addEventListener("submit", function(e) {
 });
 
 document.addEventListener("DOMContentLoaded", function() {
-    currentUser = { email: "admin@homemonitor.com", uid: "usr_" + btoa("admin@homemonitor.com").substring(0, 10) };
-    if (typeof loadEnrolledDevicesList === "function") {
-        loadEnrolledDevicesList();
-    }
+    currentUser = null;
+    isMasterAdmin = false;
 });
 
 document.getElementById("logoutBtn").addEventListener("click", function() {

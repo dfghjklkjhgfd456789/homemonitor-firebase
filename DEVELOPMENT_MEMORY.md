@@ -19,9 +19,10 @@
 - Supported Capabilities: `VIDEO`, `AUDIO`, `SCREEN_SHARE`, `DATA_CHANNEL`, `COMBINED_MEDIA`.
 - Dynamic Negotiation: Negotiated capabilities are validated against runtime permissions (Camera, Mic, MediaProjection) and hardware availability on Android before session confirmation.
 
-### 3. Signaling Infrastructure: Firebase Realtime Database (RTDB)
+### 3. Signaling Infrastructure & Firebase Authorization Security Rules
 - **Path**: `/users/{uid}/devices/{deviceId}/webrtc_signaling/sessions/{sessionId}`
 - **Schema**: Scoped session node containing `sessionId`, `initiatorId`, `initiatorPlatform`, `targetDeviceId`, `requestedCapabilities`, `negotiatedCapabilities`, `status`, `politePeer`, `createdAt`, `expiresAt`, `offer`, `answer`, `candidates`.
+- **Security Rules**: Authoritative `database.rules.json` enforces authenticated user isolation (`auth != null && auth.uid == $uid`) across all `/users/$uid/devices/$deviceId` nodes, including `status`, `commands`, `response`, `telemetry`, `social`, and `webrtc_signaling` with `.indexOn` indexing for performance optimization.
 
 ### 4. Transport & Media Layer
 - **Media**: CameraX (Video), AudioTrack/Record (Audio), MediaProjection (Screen Share).

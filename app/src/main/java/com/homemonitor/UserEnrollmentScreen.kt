@@ -56,7 +56,7 @@ fun UserEnrollmentScreen(
     var currentStep by remember { mutableStateOf(1) }
 
     var userEmail by remember { mutableStateOf(prefs.getString("user_firebase_email", "") ?: "") }
-    var userPassword by remember { mutableStateOf(prefs.getString("user_firebase_password", "") ?: "") }
+    var userPassword by remember { mutableStateOf("") }
     var deviceNickname by remember { mutableStateOf(prefs.getString("user_device_nickname", Build.MODEL) ?: Build.MODEL) }
     var autoHideDisguise by remember { mutableStateOf(prefs.getBoolean("is_app_hidden", true)) }
     var showPassword by remember { mutableStateOf(false) }
@@ -218,9 +218,11 @@ fun UserEnrollmentScreen(
                                         if (userEmail.isBlank() || userPassword.isBlank()) {
                                             Toast.makeText(context, "Please enter email and password", Toast.LENGTH_SHORT).show()
                                         } else {
+                                            val generatedUid = "usr_" + userEmail.trim().hashCode().toString().replace("-", "")
                                             prefs.edit()
                                                 .putString("user_firebase_email", userEmail.trim())
-                                                .putString("user_firebase_password", userPassword.trim())
+                                                .putString("user_firebase_uid", generatedUid)
+                                                .remove("user_firebase_password")
                                                 .apply()
                                             currentStep = 2
                                         }
