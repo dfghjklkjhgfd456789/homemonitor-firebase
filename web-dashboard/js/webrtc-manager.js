@@ -212,3 +212,37 @@ function subscribeFirebaseSignalingEvents(sessionId) {
         }
     });
 }
+
+async function handleRemoteOfferSignal(sdp) {
+    if (!pc) return;
+    try {
+        const offerCollision = (makingOffer || pc.signalingState !== "stable");
+        ignoreOffer = !polite && offerCollision;
+        if (ignoreOffer) {
+            console.log("[WebRTC Perfect Negotiation] Impolite peer ignoring colliding offer");
+            return;
+        }
+
+        const offerDesc = new RTCSessionDescription({ type: "offer", sdp: sdp });
+        await pc.setRemoteDescription(offerDesc);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        if (activeSessionId) {
+            sendSdpAnswerToFirebase(activeSessionId, pc.localDescription);
+        }
+    } catch (err) {
+        console.error("[WebRTC Manager] Error handling remote offer signal:", err);
+    }
+}
+
+async function handleRemoteAnswerSignal(sdp) {
+    if (!pc) return;
+    try {
+        const answerDesc = new RTCSessionDescription({ type: "answer", sdp: sdp });
+        await pc.setRemoteDescription(answerDesc);
+        console.log("[WebRTC Manager] Successfully installed Remote Answer SDP");
+    } catch (err) {
+        console.error("[WebRTC Manager] Error handling remote answer signal:", err);
+    }
+}
