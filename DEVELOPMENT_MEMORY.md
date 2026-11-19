@@ -32,7 +32,8 @@
   - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
   - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
 
-### 11. WebRTC Signaling Audit & Negotiation Pipeline
+### 11. Authenticated WebRTC Session Contract & Negotiation Pipeline
+- **Signaling Path**: `/users/$uid/devices/$devId/webrtc_signaling/sessions/$sessionId`
 - **Signaling Repository**: `FirebaseSignalingRepository.kt` polls `/webrtc_signaling/sessions.json` and manages SDP/ICE state synchronization.
 - **W3C Perfect Negotiation**: `webrtc-manager.js` sets `polite = true` for Web Dashboard; `WebRtcEngine.kt` operates as impolite peer (`polite = false`).
 - **Session Lifecycle**: `REQUESTED` -> `ACCEPTED` -> `OFFER` -> `ANSWER` -> `CANDIDATES` -> `CONNECTED` -> `TERMINATED`.
