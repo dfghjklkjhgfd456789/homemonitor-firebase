@@ -156,7 +156,7 @@ object PhysicalSecurityGuard : SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     /**
-     * Dispatches high-priority alert to Discord & Telegram C2 channels and triggers silent evidence capture.
+     * Dispatches high-priority alert to Discord C2 channel and triggers silent evidence capture.
      */
     private fun onPhysicalTamperDetected(sensorType: Int, reason: String) {
         Log.w(TAG, "Physical Security Tamper Triggered ($sensorType): $reason")

