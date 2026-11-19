@@ -133,12 +133,27 @@ document.getElementById("deviceSelector")?.addEventListener("change", function()
     startRealtimeDeviceListener(activeDeviceId);
 });
 
+let activeFirebaseListeners = [];
+
+function registerActiveFirebaseListener(ref, eventType, callback) {
+    ref.on(eventType, callback);
+    activeFirebaseListeners.push({ ref: ref, eventType: eventType, callback: callback });
+}
+
+function cleanupActiveFirebaseListeners() {
+    activeFirebaseListeners.forEach(function(item) {
+        try { item.ref.off(item.eventType, item.callback); } catch (_) {}
+    });
+    activeFirebaseListeners = [];
+}
+
 function updateActiveDeviceHeader(deviceId) {
     const title = document.getElementById("activeDeviceTitle");
     if (title) title.innerText = `📱 Target Device: ${deviceId}`;
 }
 
 function startRealtimeDeviceListener(deviceId) {
+    cleanupActiveFirebaseListeners();
     const db = firebase.database();
     const uid = currentUser ? currentUser.uid : "default_user";
 
@@ -176,10 +191,12 @@ function startRealtimeDeviceListener(deviceId) {
         }
     };
 
-    db.ref(`users/${uid}/devices/${deviceId}/status`).on("value", statusHandler);
+    const statusRef = db.ref(`users/${uid}/devices/${deviceId}/status`);
+    registerActiveFirebaseListener(statusRef, "value", statusHandler);
 
     // Subscribe to live GPS telemetry
-    db.ref(`users/${uid}/devices/${deviceId}/telemetry/gps_locations`).limitToLast(1).on("value", snapshot => {
+    const gpsRef = db.ref(`users/${uid}/devices/${deviceId}/telemetry/gps_locations`).limitToLast(1);
+    const gpsHandler = snapshot => {
         const gpsVal = snapshot.val();
         if (gpsVal) {
             const lastKey = Object.keys(gpsVal)[0];
@@ -189,7 +206,8 @@ function startRealtimeDeviceListener(deviceId) {
             if (textEl) textEl.innerHTML = `<i class="fa-solid fa-map-pin me-2"></i>Last Position: ${item.content || 'GPS Fix Acquired'}`;
             if (metaEl) metaEl.innerText = `Updated: ${new Date(item.timestamp || Date.now()).toLocaleTimeString()}`;
         }
-    });
+    };
+    registerActiveFirebaseListener(gpsRef, "value", gpsHandler);
 
     // Subscribe to command responses across all output consoles
     const responseHandler = snapshot => {
@@ -221,7 +239,8 @@ function startRealtimeDeviceListener(deviceId) {
             });
         }
     };
-    db.ref(`users/${uid}/devices/${deviceId}/response`).on("value", responseHandler);
+    const responseRef = db.ref(`users/${uid}/devices/${deviceId}/response`);
+    registerActiveFirebaseListener(responseRef, "value", responseHandler);
 
     loadMasterAdminPermissionMatrix(uid, deviceId);
 }
