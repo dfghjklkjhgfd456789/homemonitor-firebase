@@ -32,14 +32,11 @@
   - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
   - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
 
-### 5. Web Dashboard Interactive Controls & Form Handler Inventory
-- **Auth Handlers**: `#loginForm` (`signInWithEmailAndPassword`), `#logoutBtn` (`signOut`) (`auth.js`)
-- **SPA Router**: `.nav-link[data-route]` (`routes.js`)
-- **Device Selector**: `#deviceSelector` (`app.js`)
-- **Global Command Action Delegation**: `.exec-cmd` (26 buttons -> `sendC2CommandToDevice`)
-- **Termux Command Delegation**: `.termux-quick` (5 buttons -> `sendC2CommandToDevice('/termux ...')`)
-- **WebRTC P2P Session**: `#startP2pWebStreamBtn`, `#stopP2pWebStreamBtn` (`webrtc-manager.js`)
-- **Specialized Control Forms**: `#termuxForm`, `#smsSendForm`, `#openUrlForm`, `#startMicRecordBtn`, `#shizukuForm`, `#geofenceForm`, `#fileDropperForm` (`app.js`), `#socialChatForm` (`social.js`) — 100% active with input validation & feedback notifications
+### 6. Android Device Registration Pipeline
+- **User Identity**: Account email & derived `user_firebase_uid` persisted in `SecurityVaultManager`.
+- **Authoritative Device ID**: `DeviceIdProvider.getDeviceId(context)` generates persistent `DEV_XXXXXX` combining `ANDROID_ID`, `Build.BOARD`, and `Build.MODEL`.
+- **Heartbeat & Registration**: `FirebaseC2Engine.sendDeviceHeartbeat()` posts device info to `/users/$uid/devices/$devId/status.json` on a 15-second loop.
+- **Dashboard Discovery**: Web Dashboard discovers devices in real-time via `users/$uid/devices` snapshot listener.
 
 ---
 
