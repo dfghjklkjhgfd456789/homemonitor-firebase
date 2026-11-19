@@ -32,9 +32,10 @@
   - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
   - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
 
-### 12. ICE & TURN Relay Infrastructure
-- **STUN Servers**: `stun:stun.l.google.com:19302`, `stun:stun1.l.google.com:19302`, `stun:stun2.l.google.com:19302` for direct NAT candidate discovery.
-- **TURN Relay Fallback**: Configured relay infrastructure (`stun.relay.metered.ca:80`) for traversal across strict Symmetric NATs, CGNAT, and corporate firewalls.
+### 13. Remote-Support Media Session Pipeline
+- **Capabilities Negotiation**: `requestedCapabilities` (`VIDEO`, `AUDIO`, `SCREEN_SHARE`, `DATA_CHANNEL`) validated against Android system permissions (Camera, Mic, MediaProjection).
+- **Session Lifecycle**: Status transitions `REQUESTED` -> `ACCEPTED` -> `CONNECTED` -> `TERMINATED` managed via `FirebaseSignalingRepository.kt` and `webrtc-manager.js`.
+- **Media Projection Integration**: Screen recording and live streaming sessions backed by `ScreenRecordingService` foreground service.
 
 ---
 
