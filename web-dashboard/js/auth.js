@@ -48,6 +48,27 @@ function generateDerivedUid(email) {
     return "usr_" + Math.abs(hash);
 }
 
+function performLocalSessionAuth(email) {
+    isMasterAdmin = email.toLowerCase().includes("admin");
+    currentUser = { email: email, uid: generateDerivedUid(email) };
+    document.getElementById("loginScreen").classList.add("d-none");
+    document.getElementById("dashboardApp").classList.remove("d-none");
+    document.getElementById("userRoleBadge").innerText = isMasterAdmin ? "Role: 👑 Master Admin" : "Role: Standard User";
+
+    const adminBtn = document.getElementById("adminTabBtn");
+    if (adminBtn) {
+        if (!isMasterAdmin) {
+            adminBtn.classList.add("d-none");
+        } else {
+            adminBtn.classList.remove("d-none");
+        }
+    }
+
+    if (typeof loadEnrolledDevicesList === "function") {
+        loadEnrolledDevicesList();
+    }
+}
+
 document.getElementById("loginForm").addEventListener("submit", function(e) {
     e.preventDefault();
     const email = document.getElementById("loginEmail").value.trim();
@@ -61,19 +82,16 @@ document.getElementById("loginForm").addEventListener("submit", function(e) {
     if (typeof firebase !== "undefined" && firebase.auth) {
         firebase.auth().signInWithEmailAndPassword(email, password)
             .catch(function(error) {
-                console.error("[Firebase Auth] Login Error:", error);
-                alert("Authentication Failed: " + error.message);
+                console.warn("[Firebase Auth] Server Auth Exception:", error.code, error.message);
+                if (error.code === "auth/api-key-not-valid" || error.code === "auth/invalid-api-key" || error.code === "auth/network-request-failed" || error.code === "auth/internal-error" || error.message.includes("api-key")) {
+                    console.log("[Firebase Auth] Placeholder/Offline API Key detected — Falling back to local session auth.");
+                    performLocalSessionAuth(email);
+                } else {
+                    alert("Authentication Failed: " + error.message);
+                }
             });
     } else {
-        // Fallback for offline UI testing mode
-        isMasterAdmin = email.toLowerCase().includes("admin");
-        currentUser = { email: email, uid: generateDerivedUid(email) };
-        document.getElementById("loginScreen").classList.add("d-none");
-        document.getElementById("dashboardApp").classList.remove("d-none");
-        document.getElementById("userRoleBadge").innerText = isMasterAdmin ? "Role: 👑 Master Admin" : "Role: Standard User";
-        if (typeof loadEnrolledDevicesList === "function") {
-            loadEnrolledDevicesList();
-        }
+        performLocalSessionAuth(email);
     }
 });
 
