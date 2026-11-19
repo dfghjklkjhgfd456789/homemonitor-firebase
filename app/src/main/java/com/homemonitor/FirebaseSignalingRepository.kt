@@ -43,6 +43,14 @@ class FirebaseSignalingRepository(
         this.callback = cb
     }
 
+    fun stopListening() {
+        try {
+            signalingJob?.cancel()
+            signalingJob = null
+            Log.i(TAG, "WebRTC Signaling Listener Stopped.")
+        } catch (_: Exception) {}
+    }
+
     fun startListeningForSessionRequests() {
         signalingJob?.cancel()
         signalingJob = scope.launch {

