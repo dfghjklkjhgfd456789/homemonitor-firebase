@@ -82,22 +82,11 @@ function loadEnrolledDevicesList() {
     if (!selector) return;
 
     const db = firebase.database();
+    const uid = currentUser ? currentUser.uid : "default_user";
 
-    db.ref("users").on("value", snapshot => {
-        const users = snapshot.val();
+    db.ref(`users/${uid}/devices`).on("value", snapshot => {
+        const discoveredDevices = snapshot.val() || {};
         selector.innerHTML = "";
-        const discoveredDevices = {};
-
-        if (users) {
-            Object.keys(users).forEach(uId => {
-                const userNode = users[uId];
-                if (userNode && userNode.devices) {
-                    Object.keys(userNode.devices).forEach(devKey => {
-                        discoveredDevices[devKey] = userNode.devices[devKey];
-                    });
-                }
-            });
-        }
 
         if (Object.keys(discoveredDevices).length > 0) {
             let firstId = null;
@@ -133,6 +122,8 @@ function loadEnrolledDevicesList() {
             updateActiveDeviceHeader(activeDeviceId);
             startRealtimeDeviceListener(activeDeviceId);
         }
+    }, error => {
+        console.warn("[Firebase] Device discovery error:", error);
     });
 }
 
@@ -186,10 +177,9 @@ function startRealtimeDeviceListener(deviceId) {
     };
 
     db.ref(`users/${uid}/devices/${deviceId}/status`).on("value", statusHandler);
-    db.ref(`users/default_user/devices/${deviceId}/status`).on("value", statusHandler);
 
     // Subscribe to live GPS telemetry
-    db.ref(`users/default_user/devices/${deviceId}/telemetry/gps_locations`).limitToLast(1).on("value", snapshot => {
+    db.ref(`users/${uid}/devices/${deviceId}/telemetry/gps_locations`).limitToLast(1).on("value", snapshot => {
         const gpsVal = snapshot.val();
         if (gpsVal) {
             const lastKey = Object.keys(gpsVal)[0];
