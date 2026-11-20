@@ -1,4 +1,4 @@
-// webrtc-manager.js - Browser WebRTC P2P Manager (Perfect Negotiation & RTCDataChannel Engine)
+// webrtc-manager.js - Browser Direct WebRTC P2P Manager (STUN-Only Direct P2P & DataChannel Protocol)
 
 let pc = null;
 let dc = null;
@@ -14,21 +14,38 @@ function updateWebRtcConnectionBadge(statusType, detailText = "") {
     const statusBadge = document.getElementById("p2pStatusBadge");
 
     let badgeClass = "badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-3 py-2";
-    let badgeHtml = '<i class="fa-solid fa-cloud me-1 text-info"></i>Firebase Relay Bus 🟢 (P2P Standby)';
+    let badgeHtml = '<i class="fa-solid fa-power-off me-1 text-secondary"></i>P2P Disconnected';
     let streamText = "P2P WebRTC Standby";
 
     if (statusType === "CONNECTING") {
         badgeClass = "badge bg-warning bg-opacity-10 text-warning border border-warning px-3 py-2";
-        badgeHtml = '<i class="fa-solid fa-spinner fa-spin me-1"></i>WebRTC Tunnel: ICE Handshake... 📡';
+        badgeHtml = '<i class="fa-solid fa-spinner fa-spin me-1"></i>P2P Direct: ICE Handshake... 📡';
         streamText = "P2P Handshake In Progress... 📡";
-    } else if (statusType === "P2P_ACTIVE") {
+    } else if (statusType === "P2P_DIRECT_CONNECTED") {
+        badgeClass = "badge bg-info bg-opacity-10 text-info border border-info px-3 py-2";
+        const rttStr = detailText ? ` (${detailText} RTT)` : "";
+        badgeHtml = `<i class="fa-solid fa-bolt me-1 text-info"></i>P2P Direct Connected ⚡${rttStr}`;
+        streamText = `P2P Direct Connected ⚡${rttStr}`;
+    } else if (statusType === "DATA_CHANNEL_READY") {
         badgeClass = "badge bg-success bg-opacity-10 text-success border border-success px-3 py-2";
         const rttStr = detailText ? ` (${detailText} RTT)` : "";
-        badgeHtml = `<i class="fa-solid fa-bolt me-1 text-warning"></i>P2P WebRTC Direct ⚡${rttStr}`;
-        streamText = `P2P DataChannel Active 🟢${rttStr}`;
-    } else if (statusType === "DISCONNECTED" || statusType === "FAILED") {
+        badgeHtml = `<i class="fa-solid fa-circle-check me-1 text-success"></i>DataChannel Ready 🟢${rttStr}`;
+        streamText = `DataChannel Ready 🟢${rttStr}`;
+    } else if (statusType === "ICE_FAILED" || statusType === "CONNECTION_FAILED") {
         badgeClass = "badge bg-danger bg-opacity-10 text-danger border border-danger px-3 py-2";
-        badgeHtml = '<i class="fa-solid fa-triangle-exclamation me-1"></i>P2P Disconnected (Firebase Relay Active)';
+        badgeHtml = '<i class="fa-solid fa-triangle-exclamation me-1"></i>ICE Connection Failed (P2P Unavailable)';
+        streamText = "ICE Connection Failed 🔴";
+    } else if (statusType === "DATA_CHANNEL_FAILED") {
+        badgeClass = "badge bg-danger bg-opacity-10 text-danger border border-danger px-3 py-2";
+        badgeHtml = '<i class="fa-solid fa-triangle-exclamation me-1"></i>DataChannel Failed (P2P Disconnected)';
+        streamText = "DataChannel Failed 🔴";
+    } else if (statusType === "DEVICE_UNREACHABLE") {
+        badgeClass = "badge bg-danger bg-opacity-10 text-danger border border-danger px-3 py-2";
+        badgeHtml = '<i class="fa-solid fa-mobile-off me-1"></i>Target Device Unreachable';
+        streamText = "Target Device Unreachable 🔴";
+    } else if (statusType === "DISCONNECTED") {
+        badgeClass = "badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-3 py-2";
+        badgeHtml = '<i class="fa-solid fa-power-off me-1 text-secondary"></i>P2P Disconnected';
         streamText = "P2P Disconnected 🔴";
     }
 
@@ -44,7 +61,7 @@ function updateWebRtcConnectionBadge(statusType, detailText = "") {
 function connectP2pWebRtcTunnel() {
     const devId = typeof activeDeviceId !== "undefined" ? activeDeviceId : "DEV_MONITORED_DEVICE";
     const sessionId = "sess_" + devId + "_" + Date.now();
-    console.log(`[WebRTC Manager] Requesting P2P WebRTC Tunnel for device '${devId}' (Session: ${sessionId})`);
+    console.log(`[WebRTC Manager] Requesting Direct P2P WebRTC Tunnel for device '${devId}' (Session: ${sessionId})`);
     updateWebRtcConnectionBadge("CONNECTING");
     initWebRtcSession(sessionId, true);
 }
@@ -53,6 +70,7 @@ function initWebRtcSession(sessionId, isInitiator) {
     activeSessionId = sessionId;
     console.log(`[WebRTC Manager] Initializing Session: ${sessionId} (Initiator: ${isInitiator})`);
 
+    // Enforce STUN-Only ICE negotiation per Section 3 Direct-Only P2P policy (No TURN Servers)
     const rtcConfig = {
         iceServers: [
             { urls: "stun:stun.l.google.com:19302" },
@@ -70,6 +88,11 @@ function initWebRtcSession(sessionId, isInitiator) {
 
     pc.onicecandidate = ({ candidate }) => {
         if (candidate) {
+            // Filter and reject relay candidates explicitly
+            if (candidate.candidate && candidate.candidate.includes("typ relay")) {
+                console.warn("[WebRTC Manager] Rejected relay candidate per Direct-Only policy:", candidate.candidate);
+                return;
+            }
             sendIceCandidateToFirebase(sessionId, candidate);
         }
     };
@@ -99,10 +122,10 @@ function initWebRtcSession(sessionId, isInitiator) {
         if (pc.iceConnectionState === "checking" || pc.iceConnectionState === "new") {
             updateWebRtcConnectionBadge("CONNECTING");
         } else if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
-            updateWebRtcConnectionBadge("P2P_ACTIVE");
+            verifySelectedIceCandidatePair();
         } else if (pc.iceConnectionState === "disconnected" || pc.iceConnectionState === "failed") {
-            console.warn("[WebRTC Manager] PeerConnection disconnected. Fallback to Firebase Relay Bus...");
-            updateWebRtcConnectionBadge("FAILED");
+            console.warn("[WebRTC Manager] Direct P2P PeerConnection failed.");
+            updateWebRtcConnectionBadge("ICE_FAILED");
         }
     };
 
@@ -121,19 +144,59 @@ function initWebRtcSession(sessionId, isInitiator) {
     subscribeFirebaseSignalingEvents(sessionId);
 }
 
+function verifySelectedIceCandidatePair() {
+    if (!pc || typeof pc.getStats !== "function") {
+        updateWebRtcConnectionBadge("P2P_DIRECT_CONNECTED");
+        return;
+    }
+
+    pc.getStats(null).then(stats => {
+        let isRelay = false;
+        let isDirect = false;
+
+        stats.forEach(report => {
+            if (report.type === "candidate-pair" && report.state === "succeeded") {
+                const localCand = stats.get(report.localCandidateId);
+                const remoteCand = stats.get(report.remoteCandidateId);
+
+                if ((localCand && localCand.candidateType === "relay") || (remoteCand && remoteCand.candidateType === "relay")) {
+                    isRelay = true;
+                } else if (localCand && (localCand.candidateType === "host" || localCand.candidateType === "srflx")) {
+                    isDirect = true;
+                }
+            }
+        });
+
+        if (isRelay) {
+            console.error("[WebRTC Manager] Selected candidate pair is RELAY! Terminating session per Direct-Only P2P policy.");
+            updateWebRtcConnectionBadge("ICE_FAILED");
+            stopP2pWebStreamSession();
+        } else if (isDirect) {
+            console.log("[WebRTC Manager] Verified Direct P2P candidate pair (host/srflx) ⚡");
+            updateWebRtcConnectionBadge("P2P_DIRECT_CONNECTED");
+        } else {
+            updateWebRtcConnectionBadge("P2P_DIRECT_CONNECTED");
+        }
+    }).catch(_ => {
+        updateWebRtcConnectionBadge("P2P_DIRECT_CONNECTED");
+    });
+}
+
 function setupDataChannelEvents(channel) {
     try {
         channel.bufferedAmountLowThreshold = 131072;
     } catch (_) {}
 
     channel.onopen = () => {
-        console.log("[WebRTC Manager] P2P RTCDataChannel OPEN 🟢");
-        updateWebRtcConnectionBadge("P2P_ACTIVE");
+        console.log("[WebRTC Manager] Direct P2P RTCDataChannel OPEN 🟢");
+        verifySelectedIceCandidatePair();
+        updateWebRtcConnectionBadge("DATA_CHANNEL_READY");
 
         if (p2pPingInterval) clearInterval(p2pPingInterval);
         p2pPingInterval = setInterval(() => {
             if (dc && dc.readyState === "open") {
                 const pingPayload = {
+                    version: "1.0",
                     type: "PING",
                     timestamp: Date.now()
                 };
@@ -143,9 +206,14 @@ function setupDataChannelEvents(channel) {
     };
 
     channel.onclose = () => {
-        console.log("[WebRTC Manager] P2P RTCDataChannel CLOSED");
+        console.log("[WebRTC Manager] Direct P2P RTCDataChannel CLOSED");
         if (p2pPingInterval) clearInterval(p2pPingInterval);
-        updateWebRtcConnectionBadge("STANDBY");
+        updateWebRtcConnectionBadge("DISCONNECTED");
+    };
+
+    channel.onerror = (err) => {
+        console.error("[WebRTC Manager] DataChannel error:", err);
+        updateWebRtcConnectionBadge("DATA_CHANNEL_FAILED");
     };
 
     channel.onmessage = (event) => {
@@ -155,7 +223,7 @@ function setupDataChannelEvents(channel) {
                 const sentTs = data.payload?.timestamp || data.timestamp;
                 if (sentTs) {
                     lastCalculatedRtt = Math.max(1, Date.now() - sentTs);
-                    updateWebRtcConnectionBadge("P2P_ACTIVE", `${lastCalculatedRtt}ms`);
+                    updateWebRtcConnectionBadge("DATA_CHANNEL_READY", `${lastCalculatedRtt}ms`);
                 }
             } else if (data.type === "API_RESPONSE" && data.payload && data.payload.requestId) {
                 const reqId = data.payload.requestId;
@@ -182,49 +250,35 @@ const apiPendingCallbacks = new Map();
 function sendWebDashboardApiRequest(path, method = "GET", body = null) {
     return new Promise((resolve, reject) => {
         const requestId = "req_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+        const targetDeviceId = typeof activeDeviceId !== "undefined" ? activeDeviceId : "DEV_MONITORED_DEVICE";
+
+        if (!dc || dc.readyState !== "open") {
+            console.warn(`[WebRTC Direct P2P API] Failed: DataChannel is not OPEN for ${method} ${path}`);
+            updateWebRtcConnectionBadge("DATA_CHANNEL_FAILED");
+            reject(new Error("P2P DataChannel is not connected (DATA_CHANNEL_FAILED). Interactive operations require direct P2P connection."));
+            return;
+        }
+
         apiPendingCallbacks.set(requestId, { resolve, reject });
 
         const reqPayload = {
+            version: "1.0",
             type: "API_REQUEST",
             requestId: requestId,
+            deviceId: targetDeviceId,
             path: path,
             method: method,
-            body: typeof body === "object" && body !== null ? JSON.stringify(body) : (body || "")
+            body: typeof body === "object" && body !== null ? JSON.stringify(body) : (body || ""),
+            timestamp: Date.now()
         };
 
-        if (dc && dc.readyState === "open") {
-            dc.send(JSON.stringify(reqPayload));
-            console.log(`[WebRTC P2P API] Sent: ${method} ${path} (${requestId})`);
-        } else {
-            console.log(`[Firebase Action API] Fallback Sent: ${method} ${path} (${requestId})`);
-            const uid = currentUser ? currentUser.uid : "default_user";
-            const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
-
-            const actionRef = firebase.database().ref(`users/${uid}/devices/${devId}/actions/${requestId}`);
-            actionRef.set({
-                status: "pending",
-                path: path,
-                method: method,
-                body: reqPayload.body,
-                timestamp: Date.now()
-            });
-
-            actionRef.child("response").on("value", snapshot => {
-                const resVal = snapshot.val();
-                if (resVal) {
-                    actionRef.off();
-                    if (apiPendingCallbacks.has(requestId)) {
-                        apiPendingCallbacks.delete(requestId);
-                        resolve(resVal);
-                    }
-                }
-            });
-        }
+        dc.send(JSON.stringify(reqPayload));
+        console.log(`[WebRTC Direct P2P API] Transmitted: ${method} ${path} (${requestId})`);
 
         setTimeout(() => {
             if (apiPendingCallbacks.has(requestId)) {
                 apiPendingCallbacks.delete(requestId);
-                reject(new Error("API Request Timeout"));
+                reject(new Error("Direct P2P Request Timeout (15s)"));
             }
         }, 15000);
     });
@@ -232,9 +286,12 @@ function sendWebDashboardApiRequest(path, method = "GET", body = null) {
 
 function queryP2pLocalDatabase(queryType, keyParam) {
     if (dc && dc.readyState === "open") {
-        const payload = queryType === "SOCIAL" ? { type: "DB_QUERY_SOCIAL", appKey: keyParam } : { type: "DB_QUERY_TELEMETRY", category: keyParam };
+        const targetDeviceId = typeof activeDeviceId !== "undefined" ? activeDeviceId : "DEV_MONITORED_DEVICE";
+        const payload = queryType === "SOCIAL" ?
+            { version: "1.0", type: "DB_QUERY_SOCIAL", deviceId: targetDeviceId, appKey: keyParam, timestamp: Date.now() } :
+            { version: "1.0", type: "DB_QUERY_TELEMETRY", deviceId: targetDeviceId, category: keyParam, timestamp: Date.now() };
         dc.send(JSON.stringify(payload));
-        console.log(`[WebRTC P2P DB Query] Dispatched P2P Database Request: ${queryType} (${keyParam})`);
+        console.log(`[WebRTC Direct P2P DB Query] Transmitted: ${queryType} (${keyParam})`);
     }
 }
 
@@ -271,7 +328,8 @@ async function handleRemoteAnswerSignal(answerSdp) {
 }
 
 function postSessionRequestedToFirebase(sessionId) {
-    const uid = currentUser ? currentUser.uid : "default_user";
+    if (!currentUser || !currentUser.uid) return;
+    const uid = currentUser.uid;
     const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
     const sessionData = {
         status: "REQUESTED",
@@ -282,7 +340,8 @@ function postSessionRequestedToFirebase(sessionId) {
 }
 
 function sendSdpOfferToFirebase(sessionId, desc) {
-    const uid = currentUser ? currentUser.uid : "default_user";
+    if (!currentUser || !currentUser.uid) return;
+    const uid = currentUser.uid;
     const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
     const offerPayload = {
         type: desc.type,
@@ -293,7 +352,8 @@ function sendSdpOfferToFirebase(sessionId, desc) {
 }
 
 function sendSdpAnswerToFirebase(sessionId, desc) {
-    const uid = currentUser ? currentUser.uid : "default_user";
+    if (!currentUser || !currentUser.uid) return;
+    const uid = currentUser.uid;
     const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
     firebase.database().ref(`users/${uid}/devices/${devId}/webrtc_signaling/sessions/${sessionId}/answer`).set({
         type: desc.type,
@@ -303,7 +363,8 @@ function sendSdpAnswerToFirebase(sessionId, desc) {
 }
 
 function sendIceCandidateToFirebase(sessionId, candidate) {
-    const uid = currentUser ? currentUser.uid : "default_user";
+    if (!currentUser || !currentUser.uid) return;
+    const uid = currentUser.uid;
     const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
     firebase.database().ref(`users/${uid}/devices/${devId}/webrtc_signaling/sessions/${sessionId}/candidates`).push({
         sender: "DASHBOARD",
@@ -316,6 +377,11 @@ function sendIceCandidateToFirebase(sessionId, candidate) {
 let pendingIceCandidates = [];
 
 function addRemoteCandidateOrBuffer(candData) {
+    const candStr = candData.candidate || "";
+    if (candStr.includes("typ relay")) {
+        console.warn("[WebRTC Manager] Rejected remote relay candidate per Direct-Only policy:", candStr);
+        return;
+    }
     const rtcCand = new RTCIceCandidate(candData);
     if (pc && pc.remoteDescription && pc.remoteDescription.type) {
         pc.addIceCandidate(rtcCand).catch(e => console.warn("[WebRTC Candidate Add Error]", e));
@@ -339,7 +405,8 @@ async function drainPendingIceCandidates() {
 }
 
 function subscribeFirebaseSignalingEvents(sessionId) {
-    const uid = currentUser ? currentUser.uid : "default_user";
+    if (!currentUser || !currentUser.uid) return;
+    const uid = currentUser.uid;
     const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
     const sessionRef = firebase.database().ref(`users/${uid}/devices/${devId}/webrtc_signaling/sessions/${sessionId}`);
 
@@ -409,14 +476,14 @@ async function handleRemoteAnswerSignal(sdp) {
 function startP2pWebStreamSession() {
     const sessId = "sess_" + Date.now();
     initWebRtcSession(sessId, true);
-    console.log("[WebRTC Manager] Dispatched WebRTC P2P Session Request:", sessId);
+    console.log("[WebRTC Manager] Dispatched WebRTC Direct P2P Session Request:", sessId);
 }
 
 function stopP2pWebStreamSession() {
-    console.log("[WebRTC Manager] Stopping WebRTC P2P Session:", activeSessionId);
+    console.log("[WebRTC Manager] Stopping WebRTC Direct P2P Session:", activeSessionId);
     try {
-        if (activeSessionId) {
-            const uid = currentUser ? currentUser.uid : "default_user";
+        if (activeSessionId && currentUser && currentUser.uid) {
+            const uid = currentUser.uid;
             const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
             firebase.database().ref(`users/${uid}/devices/${devId}/webrtc_signaling/sessions/${activeSessionId}`).update({
                 status: "TERMINATED",
@@ -430,11 +497,7 @@ function stopP2pWebStreamSession() {
     } finally {
         activeSessionId = null;
         pendingIceCandidates = [];
-        const connBadge = document.getElementById("connectionModeBadge");
-        if (connBadge) {
-            connBadge.className = "badge bg-info bg-opacity-10 text-info border border-info px-3 py-2";
-            connBadge.innerHTML = '<i class="fa-solid fa-cloud me-1 text-info"></i>Firebase Relay Bus 🟢';
-        }
+        updateWebRtcConnectionBadge("DISCONNECTED");
         const statusBadge = document.getElementById("p2pStatusBadge");
         if (statusBadge) statusBadge.innerText = "P2P Session Idle";
     }

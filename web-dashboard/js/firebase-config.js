@@ -1,9 +1,9 @@
-// firebase-config.js - Primary + 5 Fallback Firebase Account Pool Config
+// firebase-config.js - Primary + Fallback Firebase Account Pool Config
 const firebaseAccountPool = [
     {
-        name: "Primary Account",
+        name: "Primary Account (homemonitor-db)",
         databaseURL: "https://homemonitor-db-default-rtdb.asia-southeast1.firebasedatabase.app",
-        apiKey: "AIzaSyPrimaryDefaultKey12345"
+        apiKey: "AIzaSyByPqeoxKXhYxqy88pcep5FYzfTZEDhK8g"
     },
     {
         name: "Fallback Account #1",
@@ -34,7 +34,20 @@ const firebaseAccountPool = [
 
 let activeFirebaseIndex = 0;
 
+function loadStoredFirebaseKeys() {
+    const savedApiKey = localStorage.getItem("firebase_custom_api_key");
+    const savedDbUrl = localStorage.getItem("firebase_custom_db_url");
+
+    if (savedApiKey && savedApiKey.trim()) {
+        firebaseAccountPool[0].apiKey = savedApiKey.trim();
+    }
+    if (savedDbUrl && savedDbUrl.trim()) {
+        firebaseAccountPool[0].databaseURL = savedDbUrl.trim();
+    }
+}
+
 function initActiveFirebaseInstance() {
+    loadStoredFirebaseKeys();
     const config = firebaseAccountPool[activeFirebaseIndex];
     if (firebase.apps.length > 0) {
         firebase.app().delete();
@@ -84,6 +97,33 @@ function renderFirebaseAccountPoolCards() {
 
 document.addEventListener("DOMContentLoaded", function() {
     renderFirebaseAccountPoolCards();
+
+    const apiKeyInput = document.getElementById("customApiKeyInput");
+    const dbUrlInput = document.getElementById("customDbUrlInput");
+    const saveBtn = document.getElementById("saveCustomFirebaseKeysBtn");
+
+    if (apiKeyInput) {
+        apiKeyInput.value = localStorage.getItem("firebase_custom_api_key") || firebaseAccountPool[0].apiKey;
+    }
+    if (dbUrlInput) {
+        dbUrlInput.value = localStorage.getItem("firebase_custom_db_url") || firebaseAccountPool[0].databaseURL;
+    }
+
+    if (saveBtn) {
+        saveBtn.addEventListener("click", function() {
+            const keyVal = apiKeyInput ? apiKeyInput.value.trim() : "";
+            const urlVal = dbUrlInput ? dbUrlInput.value.trim() : "";
+
+            if (keyVal) localStorage.setItem("firebase_custom_api_key", keyVal);
+            if (urlVal) localStorage.setItem("firebase_custom_db_url", urlVal);
+
+            initActiveFirebaseInstance();
+            alert("✅ Custom Firebase Credentials Saved and Applied!");
+            if (typeof setAuthState === "function" && typeof AUTH_STATES !== "undefined") {
+                setAuthState(AUTH_STATES.UNAUTHENTICATED);
+            }
+        });
+    }
 });
 
 // Initializing Primary Account

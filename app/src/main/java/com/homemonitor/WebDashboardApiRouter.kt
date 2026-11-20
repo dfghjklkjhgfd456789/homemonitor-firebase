@@ -719,7 +719,7 @@ object WebDashboardApiRouter {
         return try {
             val json = JSONObject(bodyString)
             val durationMs = json.optInt("durationMs", 500)
-            MonitorService.activeInstance?.handleVibratePublic(durationMs) ?: run {
+            MonitorService.activeInstance?.handleVibratePublic(durationMs.toLong()) ?: run {
                 val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     vibrator?.vibrate(android.os.VibrationEffect.createOneShot(durationMs.toLong(), android.os.VibrationEffect.DEFAULT_AMPLITUDE))

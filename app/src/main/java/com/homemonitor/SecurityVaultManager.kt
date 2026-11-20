@@ -15,7 +15,8 @@ import androidx.security.crypto.MasterKey
  * - Performs transparent automatic migration of legacy unencrypted keys on first access.
  * - Prevents static reverse engineering and filesystem extraction of C2 bot tokens & passcodes.
  */
-object SecurityVaultManager {
+object
+SecurityVaultManager {
 
     private const val TAG = "SecurityVaultManager"
 

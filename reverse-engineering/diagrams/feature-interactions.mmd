@@ -1,0 +1,13 @@
+graph TD
+    Calls[Phone Calls Broadcast] -->|OFFHOOK| RecordingService[CallRecordingService]
+    Notifications[System Notifications] -->|POSTED| Listener[NotificationListener]
+    Input[Accessibility Events] -->|TEXT_CHANGED| Keylogger[AccessService]
+    Location[Fused Location API] -->|POLL| LocationService[LocationTrackerService]
+
+    RecordingService --> LocalStorage[Internal Files / DB]
+    Listener --> LocalStorage
+    Keylogger --> LocalStorage
+    LocationService --> LocalStorage
+
+    LocalStorage -->|Sync Trigger| DataSync[DataSyncJob / DataPushWorker]
+    DataSync -->|HTTP Upload| RemoteServer[Remote Server]

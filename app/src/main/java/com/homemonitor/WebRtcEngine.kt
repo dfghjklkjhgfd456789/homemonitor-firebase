@@ -143,10 +143,16 @@ class WebRtcEngine(
     @Synchronized
     fun addRemoteIceCandidate(candidateObj: JSONObject) {
         try {
+            val candStr = candidateObj.optString("candidate", "")
+            // Reject relay candidate types per Section 3 Direct-Only P2P requirement
+            if (candStr.contains("typ relay") || candStr.contains(" typ relay")) {
+                Log.w(TAG, "Rejected relay ICE candidate per Direct-Only P2P policy: $candStr")
+                return
+            }
             val cand = IceCandidate(
                 candidateObj.optString("sdpMid", "0"),
                 candidateObj.optInt("sdpMLineIndex", 0),
-                candidateObj.optString("candidate", "")
+                candStr
             )
             if (peerConnection != null && peerConnection?.remoteDescription != null) {
                 peerConnection?.addIceCandidate(cand)
