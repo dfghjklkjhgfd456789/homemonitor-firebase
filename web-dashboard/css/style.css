@@ -1,157 +1,132 @@
-/* style.css - Enterprise HomeMonitor UI Theme */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* style.css - HomeMonitor Web Dashboard Main Stylesheet */
+@import url('design-tokens.css');
+@import url('components.css');
 
-:root {
-    --homemonitor-sidebar-bg: #1E293B;
-    --homemonitor-sidebar-active: #2563EB;
-    --homemonitor-main-bg: #F8FAFC;
-    --homemonitor-card-bg: #FFFFFF;
-    --homemonitor-text-primary: #0F172A;
-    --homemonitor-text-secondary: #64748B;
-    --homemonitor-border: #E2E8F0;
-    --homemonitor-primary-blue: #2563EB;
-    --homemonitor-success-green: #16A34A;
-
-    /* Dark Social Chat Theme Tokens */
-    --homemonitor-social-workspace-bg: #0F172A;
-    --homemonitor-social-conv-list-bg: #1E293B;
-    --homemonitor-social-incoming-bubble: #334155;
-    --homemonitor-social-outgoing-bubble: #2563EB;
-    --homemonitor-social-cyan-accent: #38BDF8;
+/* ==========================================================================
+   GLOBAL BASE STYLING
+   ========================================================================== */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background-color: var(--homemonitor-main-bg) !important;
-    color: var(--homemonitor-text-primary) !important;
-    margin: 0;
-    padding: 0;
+    font-family: var(--hm-font-sans) !important;
+    background-color: var(--hm-bg-page) !important;
+    color: var(--hm-text-main) !important;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+    transition: background-color var(--hm-transition-normal), color var(--hm-transition-normal);
 }
 
-/* SIDEBAR AREA B */
+/* Continuous corner smoothing enhancement if supported */
+@supports (corner-shape: superellipse) {
+    .hm-card, .card-homemonitor, .modal-content, .btn-hm-primary {
+        corner-shape: superellipse(1.2);
+    }
+}
+
+/* ==========================================================================
+   SIDEBAR NAVIGATION (AREA B)
+   ========================================================================== */
 .sidebar {
-    background-color: var(--homemonitor-sidebar-bg) !important;
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
-    color: #f8fafc;
+    background-color: var(--hm-bg-surface) !important;
+    border-right: 1px solid var(--hm-border-subtle);
+    color: var(--hm-text-main) !important;
+    box-shadow: var(--hm-shadow-sm);
+    transition: background-color var(--hm-transition-normal), border-color var(--hm-transition-normal);
+    z-index: 100;
 }
 
 .extra-small {
-    font-size: 0.7rem;
-    letter-spacing: 0.06em;
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
 }
 
 .nav-category-header {
-    color: #94a3b8 !important;
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
+    color: var(--hm-text-muted) !important;
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
     font-weight: 700;
+    text-transform: uppercase;
 }
 
 .nav-link {
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.875rem;
     font-weight: 500;
     padding: 0.55rem 0.85rem;
-    border-radius: 8px;
-    transition: all 0.15s ease-in-out;
-    color: #cbd5e1 !important;
+    border-radius: var(--hm-radius-sm);
+    transition: all var(--hm-transition-fast);
+    color: var(--hm-text-secondary) !important;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
 }
 
 .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important;
-    color: #ffffff !important;
-    transform: translateX(2px);
+    background-color: var(--hm-bg-hover) !important;
+    color: var(--hm-text-main) !important;
 }
 
 .nav-link.active {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
-    color: #ffffff !important;
+    background-color: var(--hm-primary-subtle) !important;
+    color: var(--hm-primary) !important;
     font-weight: 600;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+    border-left: 3px solid var(--hm-primary);
 }
 
-/* TOP HEADER AREA A */
+/* ==========================================================================
+   TOP HEADER BAR (AREA A)
+   ========================================================================== */
 .top-header {
-    background-color: #ffffff !important;
-    border-bottom: 1px solid var(--homemonitor-border);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+    background-color: var(--hm-bg-surface) !important;
+    border-bottom: 1px solid var(--hm-border-subtle);
+    box-shadow: var(--hm-shadow-sm);
+    transition: background-color var(--hm-transition-normal), border-color var(--hm-transition-normal);
 }
 
-/* MAIN CONTENT AREA C CARDS */
-.card-homemonitor, .card-mspy {
-    background-color: var(--homemonitor-card-bg) !important;
-    border: 1px solid var(--homemonitor-border) !important;
-    border-radius: 12px !important;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
-    color: var(--homemonitor-text-primary);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.text-homemonitor-primary, .text-mspy-primary {
-    color: var(--homemonitor-text-primary) !important;
-}
-
-.text-homemonitor-secondary, .text-mspy-secondary {
-    color: var(--homemonitor-text-secondary) !important;
-}
-
-.btn-homemonitor-primary, .btn-mspy-primary {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
-    border: none !important;
-    color: #ffffff !important;
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
-    border-radius: 8px;
-}
-
-.btn-homemonitor-primary:hover, .btn-mspy-primary:hover {
-    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
-    transform: translateY(-1px);
-}
-
-.btn-homemonitor-success, .btn-mspy-success {
-    background: linear-gradient(135deg, #16a34a, #15803d) !important;
-    border: none !important;
-    color: #ffffff !important;
-    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
-    border-radius: 8px;
-}
-
-.btn-homemonitor-success:hover, .btn-mspy-success:hover {
-    box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4);
-    transform: translateY(-1px);
-}
-
+/* ==========================================================================
+   MAIN CONTENT WORKSPACE (AREA C)
+   ========================================================================== */
 .log-output-box {
-    background-color: #0f172a !important;
-    color: #34d399 !important;
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
-    font-family: 'JetBrains Mono', Consolas, monospace;
-    font-size: 0.82rem;
+    background-color: var(--hm-bg-subtle) !important;
+    color: var(--hm-success) !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-family: var(--hm-font-mono);
+    font-size: 0.8125rem;
     line-height: 1.6;
-    border-radius: 10px;
+    border-radius: var(--hm-radius-md);
+    border: 1px solid var(--hm-border-subtle);
 }
 
 /* 3-COLUMN SOCIAL CHAT WORKSPACE */
 .social-workspace-container {
-    background-color: var(--homemonitor-social-workspace-bg) !important;
-    border-radius: 12px;
+    background-color: var(--hm-bg-surface) !important;
+    border: 1px solid var(--hm-border-subtle);
+    border-radius: var(--hm-radius-lg);
 }
 
 .social-conv-list-panel {
-    background-color: var(--homemonitor-social-conv-list-bg) !important;
+    background-color: var(--hm-bg-subtle) !important;
+    border-right: 1px solid var(--hm-border-subtle);
 }
 
 .conv-list-item.active-conv {
-    background-color: #334155 !important;
-    border-left: 4px solid var(--homemonitor-social-cyan-accent) !important;
+    background-color: var(--hm-primary-subtle) !important;
+    border-left: 4px solid var(--hm-primary) !important;
 }
 
 .conv-list-item:hover {
-    background-color: #1e293b !important;
+    background-color: var(--hm-bg-hover) !important;
 }
 
-/* Scrollbar Custom Styling */
+/* ==========================================================================
+   CUSTOM SCROLLBARS
+   ========================================================================== */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -162,10 +137,36 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.3);
+    background: var(--hm-border-strong);
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(148, 163, 184, 0.6);
+    background: var(--hm-text-muted);
+}
+
+/* ==========================================================================
+   ACCESSIBILITY & RESPONSIVE RULES
+   ========================================================================== */
+@media (max-width: 991.98px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: -280px;
+        z-index: 1040;
+        transition: left var(--hm-transition-normal);
+    }
+    .sidebar.show {
+        left: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

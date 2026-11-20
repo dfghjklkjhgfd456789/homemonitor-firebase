@@ -13,6 +13,42 @@ let isMasterAdmin = false;
 let activeAuthMode = "signin"; // "signin" | "signup"
 let onboardingCurrentStep = 1;
 
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function initThemeSwitcher() {
+    const themeBtn = document.getElementById("themeToggleBtn");
+    const themeIcon = document.getElementById("themeToggleIcon");
+    const themeText = document.getElementById("themeToggleText");
+    const savedTheme = localStorage.getItem("homemonitor_theme") || "light";
+
+    function applyTheme(theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        localStorage.setItem("homemonitor_theme", theme);
+        if (themeIcon && themeText) {
+            if (theme === "dark") {
+                themeIcon.className = "fa-solid fa-sun me-1 text-warning";
+                themeText.innerText = "Light Mode";
+            } else {
+                themeIcon.className = "fa-solid fa-moon me-1";
+                themeText.innerText = "Dark Mode";
+            }
+        }
+    }
+
+    applyTheme(savedTheme);
+
+    if (themeBtn) {
+        themeBtn.addEventListener("click", function() {
+            const current = document.documentElement.getAttribute("data-theme") || "light";
+            const next = current === "dark" ? "light" : "dark";
+            applyTheme(next);
+        });
+    }
+}
+
 function updateAdminUiState() {
     const roleBadge = document.getElementById("userRoleBadge");
     if (roleBadge) {
@@ -209,6 +245,7 @@ function setAuthState(state, payload = null) {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
+    initThemeSwitcher();
     setAuthState(AUTH_STATES.INITIALIZING);
 
     // Setup Auth Mode Toggle (Sign In vs Create Account)
@@ -221,10 +258,10 @@ document.addEventListener("DOMContentLoaded", function() {
     if (signInTabBtn && signUpTabBtn) {
         signInTabBtn.addEventListener("click", function() {
             activeAuthMode = "signin";
-            signInTabBtn.classList.add("active", "btn-outline-success");
-            signInTabBtn.classList.remove("btn-outline-secondary");
-            signUpTabBtn.classList.remove("active", "btn-outline-success");
-            signUpTabBtn.classList.add("btn-outline-secondary");
+            signInTabBtn.classList.add("active", "btn-hm-primary");
+            signInTabBtn.classList.remove("btn-hm-secondary");
+            signUpTabBtn.classList.remove("active", "btn-hm-primary");
+            signUpTabBtn.classList.add("btn-hm-secondary");
             if (loginForm) loginForm.classList.remove("d-none");
             if (signupForm) signupForm.classList.add("d-none");
             if (emailVerifyScreen) emailVerifyScreen.classList.add("d-none");
@@ -234,10 +271,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
         signUpTabBtn.addEventListener("click", function() {
             activeAuthMode = "signup";
-            signUpTabBtn.classList.add("active", "btn-outline-success");
-            signUpTabBtn.classList.remove("btn-outline-secondary");
-            signInTabBtn.classList.remove("active", "btn-outline-success");
-            signInTabBtn.classList.add("btn-outline-secondary");
+            signUpTabBtn.classList.add("active", "btn-hm-primary");
+            signUpTabBtn.classList.remove("btn-hm-secondary");
+            signInTabBtn.classList.remove("active", "btn-hm-primary");
+            signInTabBtn.classList.add("btn-hm-secondary");
             if (loginForm) loginForm.classList.add("d-none");
             if (signupForm) signupForm.classList.remove("d-none");
             if (emailVerifyScreen) emailVerifyScreen.classList.add("d-none");
@@ -505,8 +542,8 @@ function updateOnboardingStepContent(parentName) {
         content.innerHTML = `
             <div class="text-center py-3">
                 <i class="fa-solid fa-shield-cat display-3 text-success mb-3"></i>
-                <h4 class="fw-bold text-light">Welcome, ${escapeHtml(parentName)}!</h4>
-                <p class="text-secondary small">HomeMonitor helps you protect your family with simple, transparent device monitoring and location safety.</p>
+                <h4 class="fw-bold">Welcome, ${escapeHtml(parentName)}!</h4>
+                <p class="small" style="color: var(--hm-text-secondary);">HomeMonitor helps you protect your family with simple, transparent device monitoring and location safety.</p>
                 <div class="alert alert-info extra-small text-start py-2 px-3 mt-3">
                     <i class="fa-solid fa-circle-info me-1"></i>You will now be guided through pairing your child's first Android phone or tablet.
                 </div>
@@ -516,8 +553,8 @@ function updateOnboardingStepContent(parentName) {
         content.innerHTML = `
             <div class="py-2">
                 <h5 class="fw-bold text-info mb-2"><i class="fa-solid fa-user-gear me-2"></i>Step 2: Parent Profile & Timezone</h5>
-                <p class="small text-secondary mb-3">Confirm your dashboard notification preferences.</p>
-                <div class="p-3 bg-black rounded border border-secondary extra-small">
+                <p class="small mb-3" style="color: var(--hm-text-secondary);">Confirm your dashboard notification preferences.</p>
+                <div class="p-3 hm-card-subtle rounded border extra-small">
                     <p class="mb-1"><strong>Account:</strong> ${escapeHtml(currentUser?.email || parentName)}</p>
                     <p class="mb-0"><strong>Default Timezone:</strong> Auto (Local Browser Timezone)</p>
                 </div>
@@ -527,27 +564,27 @@ function updateOnboardingStepContent(parentName) {
         content.innerHTML = `
             <div class="py-2">
                 <h5 class="fw-bold text-warning mb-2"><i class="fa-solid fa-mobile-screen me-2"></i>Step 3: Child Device Label</h5>
-                <p class="small text-secondary mb-3">Give your child's device a recognizable name (e.g. Alex's Phone).</p>
-                <input type="text" id="onboardingDeviceLabelInput" class="form-control bg-dark text-light border-secondary mb-2" placeholder="Alex's Phone" value="Child's Phone">
+                <p class="small mb-3" style="color: var(--hm-text-secondary);">Give your child's device a recognizable name (e.g. Alex's Phone).</p>
+                <input type="text" id="onboardingDeviceLabelInput" class="form-control form-control-hm mb-2" placeholder="Alex's Phone" value="Child's Phone">
             </div>
         `;
     } else if (onboardingCurrentStep === 4) {
         content.innerHTML = `
             <div class="text-center py-2">
                 <h5 class="fw-bold text-success mb-2"><i class="fa-solid fa-qrcode me-2"></i>Step 4: Scan Pairing Code</h5>
-                <p class="small text-secondary mb-3">Open HomeMonitor on your child's Android phone and scan this pairing code.</p>
+                <p class="small mb-3" style="color: var(--hm-text-secondary);">Open HomeMonitor on your child's Android phone and scan this pairing code.</p>
                 <div class="bg-white p-3 d-inline-block rounded shadow-sm mb-2">
                     <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https%3A%2F%2Fhomemonitor.app%2Fenroll%3Ftoken%3DHM-PAIR-INITIALIZATION-TOKEN" alt="Pairing Code QR" style="width: 160px; height: 160px;">
                 </div>
-                <small class="text-muted extra-small d-block">Pairing tokens expire after 15 minutes for security.</small>
+                <small class="extra-small d-block" style="color: var(--hm-text-muted);">Pairing tokens expire after 15 minutes for security.</small>
             </div>
         `;
     } else if (onboardingCurrentStep === 5) {
         content.innerHTML = `
             <div class="text-center py-3">
                 <i class="fa-solid fa-circle-check display-3 text-success mb-3"></i>
-                <h4 class="fw-bold text-light">Setup Complete!</h4>
-                <p class="text-secondary small">Your parent portal is ready. You can now monitor device location, screen time, and family activity.</p>
+                <h4 class="fw-bold">Setup Complete!</h4>
+                <p class="small" style="color: var(--hm-text-secondary);">Your parent portal is ready. You can now monitor device location, screen time, and family activity.</p>
             </div>
         `;
     }

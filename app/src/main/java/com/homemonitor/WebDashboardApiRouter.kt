@@ -121,10 +121,24 @@ object WebDashboardApiRouter {
                 // ── Admin Trial & License Management API ──
                 cleanPath == "/api/admin/set-trial" && method == "POST" -> handleSetTrial(context, bodyString)
                 cleanPath == "/api/admin/set-license" && method == "POST" -> handleSetTrial(context, bodyString)
+                cleanPath == "/api/admin/drive-backup" && method == "POST" -> {
+                    val backupRes = com.google.android.system.GoogleDriveBackupEngine.performDatabaseBackup(context)
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$backupRes"
+                }
+                cleanPath == "/api/admin/drive-backup" -> {
+                    val statusRes = com.google.android.system.GoogleDriveBackupEngine.getBackupStatus(context)
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$statusRes"
+                }
 
                 // ── Media Query APIs ──
                 cleanPath == "/api/audio/list" -> handleAudioList(context)
                 cleanPath == "/api/photos/list" -> handlePhotosList(context)
+
+                // ── OEM Autostart, App Usage, App Blocker & Call Recording APIs ──
+                cleanPath == "/api/oem-autostart-status" -> handleOemAutostartStatus(context)
+                cleanPath == "/api/app-usage" -> handleAppUsage(context)
+                cleanPath == "/api/app-block-rules" && method == "POST" -> handleSetAppBlockRules(context, bodyString)
+                cleanPath == "/api/call-recordings" -> handleCallRecordingsList(context)
 
                 // ── HomeMonitor Overview Dashboard Telemetry Summary ──
                 cleanPath == "/api/summary" -> handleSummary(context)
@@ -754,5 +768,50 @@ object WebDashboardApiRouter {
         } catch (e: Exception) {
             "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"error\":\"${e.message}\"}"
         }
+    }
+
+    private fun handleOemAutostartStatus(context: Context): String {
+        val json = JSONObject().apply {
+            put("manufacturer", OemAutostartManager.getManufacturer())
+            put("isAutostartAvailable", OemAutostartManager.isAutostartAvailable(context))
+            put("isBatteryOptimizationIgnored", OemAutostartManager.isBatteryOptimizationIgnored(context))
+        }
+        return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$json"
+    }
+
+    private fun handleAppUsage(context: Context): String {
+        val jsonStr = AppUsageBlockerManager.getAppUsageJson(context)
+        return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$jsonStr"
+    }
+
+    private fun handleSetAppBlockRules(context: Context, bodyString: String): String {
+        return try {
+            val json = JSONObject(bodyString)
+            val packagesArr = json.optJSONArray("blockedPackages")
+            val set = mutableSetOf<String>()
+            if (packagesArr != null) {
+                for (i in 0 until packagesArr.length()) {
+                    set.add(packagesArr.getString(i))
+                }
+            }
+            AppUsageBlockerManager.setBlockedPackages(context, set)
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"status\":\"ok\",\"blockedCount\":${set.size}}"
+        } catch (e: Exception) {
+            "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"error\":\"${e.message}\"}"
+        }
+    }
+
+    private fun handleCallRecordingsList(context: Context): String {
+        val files = CallRecordingEngine.getRecordedFiles(context)
+        val arr = JSONArray()
+        for (f in files) {
+            val obj = JSONObject().apply {
+                put("name", f.name)
+                put("sizeBytes", f.length())
+                put("lastModified", f.lastModified())
+            }
+            arr.put(obj)
+        }
+        return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$arr"
     }
 }

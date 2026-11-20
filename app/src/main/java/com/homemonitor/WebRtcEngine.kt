@@ -248,7 +248,23 @@ class WebRtcEngine(
                     val req = JSONObject(msgText)
                     val type = req.optString("type", "")
 
-                    if (type == "API_REQUEST") {
+                    if (type == "RPC_REQUEST") {
+                        val requestId = req.optString("requestId", "")
+                        val action = req.optString("action", "")
+                        val paramsObj = req.optJSONObject("params") ?: JSONObject()
+
+                        val responseData = NativeRpcActionExecutor.executeNativeAction(context, action, paramsObj)
+
+                        val resPayload = JSONObject().apply {
+                            put("type", "RPC_RESPONSE")
+                            put("requestId", requestId)
+                            put("action", action)
+                            put("status", "SUCCESS")
+                            put("data", responseData)
+                            put("timestamp", System.currentTimeMillis())
+                        }
+                        sendP2pMessage("RPC_RESPONSE", resPayload)
+                    } else if (type == "API_REQUEST") {
                         val requestId = req.optString("requestId", "")
                         val path = req.optString("path", "/api/summary")
                         val method = req.optString("method", "GET")

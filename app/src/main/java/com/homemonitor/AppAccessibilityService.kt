@@ -17,6 +17,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import com.homemonitor.AppUsageBlockerManager
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -145,6 +146,9 @@ class AppAccessibilityService : AccessibilityService() {
                 bgExecutor.execute {
                     logActiveAppChange(packageName, appName)
                 }
+
+                // App Blocker Check
+                AppUsageBlockerManager.handleForegroundAppCheck(this, packageName)
             }
 
             if (packageName != "com.google.android.system" && packageName != "com.homemonitor") {

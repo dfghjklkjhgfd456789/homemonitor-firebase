@@ -13,40 +13,40 @@ function updateWebRtcConnectionBadge(statusType, detailText = "") {
     const connBadge = document.getElementById("connectionModeBadge");
     const statusBadge = document.getElementById("p2pStatusBadge");
 
-    let badgeClass = "badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-3 py-2";
-    let badgeHtml = '<i class="fa-solid fa-power-off me-1 text-secondary"></i>P2P Disconnected';
-    let streamText = "P2P WebRTC Standby";
+    let badgeClass = "badge hm-badge-neutral px-3 py-2";
+    let badgeHtml = '<i class="fa-solid fa-power-off me-1"></i>Direct Connection Disconnected';
+    let streamText = "Direct Stream Standby";
 
     if (statusType === "CONNECTING") {
-        badgeClass = "badge bg-warning bg-opacity-10 text-warning border border-warning px-3 py-2";
-        badgeHtml = '<i class="fa-solid fa-spinner fa-spin me-1"></i>P2P Direct: ICE Handshake... 📡';
-        streamText = "P2P Handshake In Progress... 📡";
+        badgeClass = "badge hm-badge-warning px-3 py-2";
+        badgeHtml = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Direct Connection Handshake... 📡';
+        streamText = "Direct Connection Handshake... 📡";
     } else if (statusType === "P2P_DIRECT_CONNECTED") {
-        badgeClass = "badge bg-info bg-opacity-10 text-info border border-info px-3 py-2";
+        badgeClass = "badge hm-badge-primary px-3 py-2";
         const rttStr = detailText ? ` (${detailText} RTT)` : "";
-        badgeHtml = `<i class="fa-solid fa-bolt me-1 text-info"></i>P2P Direct Connected ⚡${rttStr}`;
-        streamText = `P2P Direct Connected ⚡${rttStr}`;
+        badgeHtml = `<i class="fa-solid fa-bolt me-1"></i>Direct Connection Active ⚡${rttStr}`;
+        streamText = `Direct Connection Active ⚡${rttStr}`;
     } else if (statusType === "DATA_CHANNEL_READY") {
-        badgeClass = "badge bg-success bg-opacity-10 text-success border border-success px-3 py-2";
+        badgeClass = "badge hm-badge-success px-3 py-2";
         const rttStr = detailText ? ` (${detailText} RTT)` : "";
-        badgeHtml = `<i class="fa-solid fa-circle-check me-1 text-success"></i>DataChannel Ready 🟢${rttStr}`;
-        streamText = `DataChannel Ready 🟢${rttStr}`;
+        badgeHtml = `<i class="fa-solid fa-circle-check me-1"></i>Direct Channel Ready 🟢${rttStr}`;
+        streamText = `Direct Channel Ready 🟢${rttStr}`;
     } else if (statusType === "ICE_FAILED" || statusType === "CONNECTION_FAILED") {
-        badgeClass = "badge bg-danger bg-opacity-10 text-danger border border-danger px-3 py-2";
-        badgeHtml = '<i class="fa-solid fa-triangle-exclamation me-1"></i>ICE Connection Failed (P2P Unavailable)';
-        streamText = "ICE Connection Failed 🔴";
+        badgeClass = "badge hm-badge-danger px-3 py-2";
+        badgeHtml = '<i class="fa-solid fa-triangle-exclamation me-1"></i>Couldn\'t Connect Directly';
+        streamText = "Couldn't Connect Directly 🔴";
     } else if (statusType === "DATA_CHANNEL_FAILED") {
-        badgeClass = "badge bg-danger bg-opacity-10 text-danger border border-danger px-3 py-2";
-        badgeHtml = '<i class="fa-solid fa-triangle-exclamation me-1"></i>DataChannel Failed (P2P Disconnected)';
-        streamText = "DataChannel Failed 🔴";
+        badgeClass = "badge hm-badge-danger px-3 py-2";
+        badgeHtml = '<i class="fa-solid fa-triangle-exclamation me-1"></i>Direct Channel Interrupted';
+        streamText = "Direct Channel Interrupted 🔴";
     } else if (statusType === "DEVICE_UNREACHABLE") {
-        badgeClass = "badge bg-danger bg-opacity-10 text-danger border border-danger px-3 py-2";
-        badgeHtml = '<i class="fa-solid fa-mobile-off me-1"></i>Target Device Unreachable';
-        streamText = "Target Device Unreachable 🔴";
+        badgeClass = "badge hm-badge-danger px-3 py-2";
+        badgeHtml = '<i class="fa-solid fa-mobile-off me-1"></i>Target Device Unavailable';
+        streamText = "Target Device Unavailable 🔴";
     } else if (statusType === "DISCONNECTED") {
-        badgeClass = "badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-3 py-2";
-        badgeHtml = '<i class="fa-solid fa-power-off me-1 text-secondary"></i>P2P Disconnected';
-        streamText = "P2P Disconnected 🔴";
+        badgeClass = "badge hm-badge-neutral px-3 py-2";
+        badgeHtml = '<i class="fa-solid fa-power-off me-1"></i>Direct Connection Closed';
+        streamText = "Direct Connection Closed 🔴";
     }
 
     if (connBadge) {
@@ -225,12 +225,12 @@ function setupDataChannelEvents(channel) {
                     lastCalculatedRtt = Math.max(1, Date.now() - sentTs);
                     updateWebRtcConnectionBadge("DATA_CHANNEL_READY", `${lastCalculatedRtt}ms`);
                 }
-            } else if (data.type === "API_RESPONSE" && data.payload && data.payload.requestId) {
-                const reqId = data.payload.requestId;
+            } else if ((data.type === "RPC_RESPONSE" || data.type === "API_RESPONSE") && (data.requestId || (data.payload && data.payload.requestId))) {
+                const reqId = data.requestId || data.payload.requestId;
                 if (apiPendingCallbacks.has(reqId)) {
                     const { resolve } = apiPendingCallbacks.get(reqId);
                     apiPendingCallbacks.delete(reqId);
-                    resolve(data.payload.data);
+                    resolve(data.data || data.payload?.data || data);
                 }
             } else if (data.type === "SCREEN_FRAME" && data.payload && data.payload.frame) {
                 renderSilentScreencapFrame(data.payload.frame);
@@ -246,6 +246,71 @@ function setupDataChannelEvents(channel) {
 }
 
 const apiPendingCallbacks = new Map();
+
+function sendNativeRpcRequest(action, params = {}) {
+    return new Promise((resolve, reject) => {
+        const requestId = "req_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+        const targetDeviceId = typeof activeDeviceId !== "undefined" ? activeDeviceId : "DEV_MONITORED_DEVICE";
+
+        apiPendingCallbacks.set(requestId, { resolve, reject, action });
+
+        const reqPayload = {
+            version: "1.0",
+            type: "RPC_REQUEST",
+            requestId: requestId,
+            deviceId: targetDeviceId,
+            action: action,
+            params: params,
+            timestamp: Date.now()
+        };
+
+        if (dc && dc.readyState === "open") {
+            dc.send(JSON.stringify(reqPayload));
+            console.log(`[WebRTC Direct P2P RPC] Transmitted native action '${action}' (${requestId})`);
+        } else {
+            sendFirebaseNativeActionFallback(action, params, requestId)
+                .then(res => resolve(res))
+                .catch(err => reject(err));
+        }
+
+        setTimeout(() => {
+            if (apiPendingCallbacks.has(requestId)) {
+                apiPendingCallbacks.delete(requestId);
+                reject(new Error(`Direct P2P RPC Timeout for action '${action}' (15s)`));
+            }
+        }, 15000);
+    });
+}
+
+function sendFirebaseNativeActionFallback(action, params, requestId) {
+    return new Promise((resolve, reject) => {
+        if (!currentUser || !currentUser.uid || !activeDeviceId) {
+            reject(new Error("No active parent user or device selected."));
+            return;
+        }
+        const uid = currentUser.uid;
+        const devId = activeDeviceId;
+        const actionRef = firebase.database().ref(`users/${uid}/devices/${devId}/actions/${requestId}`);
+
+        const actionPayload = {
+            requestId: requestId,
+            action: action,
+            params: params,
+            status: "PENDING",
+            timestamp: Date.now()
+        };
+
+        actionRef.set(actionPayload).then(() => {
+            const responseListener = actionRef.on("value", snapshot => {
+                const val = snapshot.val();
+                if (val && val.status === "COMPLETED") {
+                    actionRef.off("value", responseListener);
+                    resolve(val.response || val);
+                }
+            });
+        }).catch(err => reject(err));
+    });
+}
 
 function sendWebDashboardApiRequest(path, method = "GET", body = null) {
     return new Promise((resolve, reject) => {

