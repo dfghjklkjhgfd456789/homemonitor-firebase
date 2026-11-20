@@ -16,10 +16,10 @@ const appBrandColors = {
     imessage: { bg: "#007AFF", bubbleOut: "#007AFF", icon: "fa-comment", title: "iMessage iOS" },
 
     // 8 AI Chatbot Stream Models
-    chatgpt: { bg: "#10A37F", bubbleOut: "#10A37F", icon: "fa-robot", title: "ChatGPT-4o Stream" },
-    gemini: { bg: "#1A73E8", bubbleOut: "#1A73E8", icon: "fa-brain", title: "Google Gemini 1.5 Pro Stream" },
-    claude: { bg: "#D97706", bubbleOut: "#D97706", icon: "fa-sparkles", title: "Anthropic Claude 3.5 Sonnet" },
-    copilot: { bg: "#0284C7", bubbleOut: "#0284C7", icon: "fa-microchip", title: "Microsoft Copilot AI" },
+    chatgpt: { bg: "#10A37F", bubbleOut: "#10A37F", icon: "fa-robot", title: "ChatGPT Stream" },
+    gemini: { bg: "#1A73E8", bubbleOut: "#1A73E8", icon: "fa-brain", title: "Google Gemini Stream" },
+    claude: { bg: "#D97706", bubbleOut: "#D97706", icon: "fa-sparkles", title: "Claude AI Stream" },
+    copilot: { bg: "#0284C7", bubbleOut: "#0284C7", icon: "fa-microchip", title: "Microsoft Copilot Stream" },
     deepseek: { bg: "#4F46E5", bubbleOut: "#4F46E5", icon: "fa-lightbulb", title: "DeepSeek-R1 Reasoning Stream" },
     perplexity: { bg: "#059669", bubbleOut: "#059669", icon: "fa-magnifying-glass", title: "Perplexity AI Search Agent" },
     grok: { bg: "#111827", bubbleOut: "#111827", icon: "fa-bolt", title: "xAI Grok 2 Stream" },

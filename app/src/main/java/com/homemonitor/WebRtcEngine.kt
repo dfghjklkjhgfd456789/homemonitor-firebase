@@ -53,10 +53,10 @@ class WebRtcEngine(
         try {
             activeSessionId = sessionId
             val iceServers = listOf(
+                PeerConnection.IceServer.builder("stun:stun.cloudflare.com:3478").createIceServer(),
                 PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
                 PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
-                PeerConnection.IceServer.builder("stun:stun2.l.google.com:19302").createIceServer(),
-                PeerConnection.IceServer.builder("stun:stun.relay.metered.ca:80").createIceServer()
+                PeerConnection.IceServer.builder("stun:stun2.l.google.com:19302").createIceServer()
             )
 
             val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {

@@ -70,13 +70,13 @@ function initWebRtcSession(sessionId, isInitiator) {
     activeSessionId = sessionId;
     console.log(`[WebRTC Manager] Initializing Session: ${sessionId} (Initiator: ${isInitiator})`);
 
-    // Enforce STUN-Only ICE negotiation per Section 3 Direct-Only P2P policy (No TURN Servers)
+    // Dual-STUN ICE negotiation (Cloudflare + Google, No TURN Servers)
     const rtcConfig = {
         iceServers: [
+            { urls: "stun:stun.cloudflare.com:3478" },
             { urls: "stun:stun.l.google.com:19302" },
             { urls: "stun:stun1.l.google.com:19302" },
-            { urls: "stun:stun2.l.google.com:19302" },
-            { urls: "stun:stun.relay.metered.ca:80" }
+            { urls: "stun:stun2.l.google.com:19302" }
         ]
     };
 

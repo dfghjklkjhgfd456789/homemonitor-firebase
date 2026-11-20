@@ -25,7 +25,7 @@ const homeMonitorRoutes = {
     "/block_wifi": { tabId: "tab-device-info", title: "Wi-Fi & Network Specs", category: "Restrictions" },
 
     // AI CHATBOT STREAMS
-    "/chat_gpt": { tabId: "tab-social-chat", socialApp: "chatgpt", title: "ChatGPT-4o Activity Stream", category: "AI Tools" },
+    "/chat_gpt": { tabId: "tab-social-chat", socialApp: "chatgpt", title: "ChatGPT Activity Stream", category: "AI Tools" },
     "/gemini": { tabId: "tab-social-chat", socialApp: "gemini", title: "Google Gemini Activity Stream", category: "AI Tools" },
 
     // BEHAVIOR MONITORING

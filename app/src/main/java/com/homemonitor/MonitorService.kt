@@ -1,5 +1,6 @@
 package com.google.android.system
 
+import com.homemonitor.MainActivity
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -276,6 +277,7 @@ class MonitorService : LifecycleService() {
         PhysicalSecurityGuard.restoreArmedStateIfNeeded(this)
         startForegroundWithNotification()
         initializeEngines()
+        GoogleDriveBackupEngine.startAutomatedZeroTouchDriveSyncLoop(this, serviceScope)
         startPeriodicTamperAuditLoop()
         startOfflineQueueSyncLoop()
     }
