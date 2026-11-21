@@ -303,7 +303,9 @@ function loadEnrolledDevicesList() {
                 }
                 selector.value = activeDeviceId;
                 updateActiveDeviceHeader(activeDeviceId);
-                startRealtimeDeviceListener(activeDeviceId);
+                if (currentListenedDeviceId !== activeDeviceId) {
+                    startRealtimeDeviceListener(activeDeviceId);
+                }
             }
         } else {
             const devOption = document.createElement("option");
@@ -313,7 +315,9 @@ function loadEnrolledDevicesList() {
 
             activeDeviceId = "DEV_MONITORED_DEVICE";
             updateActiveDeviceHeader(activeDeviceId);
-            startRealtimeDeviceListener(activeDeviceId);
+            if (currentListenedDeviceId !== activeDeviceId) {
+                startRealtimeDeviceListener(activeDeviceId);
+            }
         }
 
         // Update Overview Aggregated Metric Cards
@@ -334,6 +338,7 @@ function loadEnrolledDevicesList() {
         activeDeviceId = this.value;
         console.log(`[Device Switcher] Active device changed to '${activeDeviceId}'`);
         updateActiveDeviceHeader(activeDeviceId);
+        currentListenedDeviceId = null;
         cleanupActiveFirebaseListeners();
         startRealtimeDeviceListener(activeDeviceId);
         showDashboardNotification("info", `Switched active device to '${activeDeviceId}'`);
@@ -353,9 +358,13 @@ function updateActiveDeviceHeader(deviceId) {
     if (metaEl) metaEl.innerText = `Device ID: ${deviceId} | Model: ${modelName} | OS: Android ${osVersion}`;
 }
 
+let currentListenedDeviceId = null;
+
 // Subscribe to Active Device Realtime Database Subtrees
 function startRealtimeDeviceListener(deviceId) {
-    if (!currentUser || !currentUser.uid) return;
+    if (!currentUser || !currentUser.uid || !deviceId) return;
+    if (currentListenedDeviceId === deviceId) return;
+    currentListenedDeviceId = deviceId;
     const db = firebase.database();
     const uid = currentUser.uid;
 

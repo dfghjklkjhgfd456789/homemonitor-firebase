@@ -59,6 +59,10 @@ function updateWebRtcConnectionBadge(statusType, detailText = "") {
 }
 
 function connectP2pWebRtcTunnel() {
+    if (pc && (pc.iceConnectionState === "connected" || pc.iceConnectionState === "checking" || pc.connectionState === "connected")) {
+        console.log("[WebRTC Manager] WebRTC PeerConnection is already active or checking. Skipping duplicate request.");
+        return;
+    }
     const devId = typeof activeDeviceId !== "undefined" ? activeDeviceId : "DEV_MONITORED_DEVICE";
     const sessionId = "sess_" + devId + "_" + Date.now();
     console.log(`[WebRTC Manager] Requesting Direct P2P WebRTC Tunnel for device '${devId}' (Session: ${sessionId})`);
