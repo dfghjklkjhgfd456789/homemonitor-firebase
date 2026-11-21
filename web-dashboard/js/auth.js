@@ -60,6 +60,18 @@ function updateAdminUiState() {
         }
     }
 
+    const superadminHeader = document.getElementById("superadminSidebarHeader");
+    const superadminNav = document.getElementById("superadminSidebarNav");
+    if (superadminHeader && superadminNav) {
+        if (isMasterAdmin) {
+            superadminHeader.classList.remove("d-none");
+            superadminNav.classList.remove("d-none");
+        } else {
+            superadminHeader.classList.add("d-none");
+            superadminNav.classList.add("d-none");
+        }
+    }
+
     const adminBtn = document.getElementById("adminTabBtn");
     if (adminBtn) {
         if (!isMasterAdmin) {
@@ -69,7 +81,8 @@ function updateAdminUiState() {
         }
     }
 
-    if (!isMasterAdmin && window.location.hash === "#/keyword_rule") {
+    const currentPath = window.location.pathname || (window.location.hash ? window.location.hash.replace("#", "") : "");
+    if (!isMasterAdmin && (currentPath === "/superadmin" || currentPath === "/keyword_rule")) {
         if (typeof navigateToRoute === "function") {
             navigateToRoute("/dashboard", true);
         }

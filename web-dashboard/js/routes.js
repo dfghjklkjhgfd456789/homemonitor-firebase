@@ -1,6 +1,9 @@
-// routes.js - Parent-Facing SPA Hash Router with Fail-Closed Authentication & Role Guards
+// routes.js - Dual-Portal SPA Router with Clean HTML5 URLs & Superadmin Role Guards
 const homeMonitorRoutes = {
-    // 8 PRIMARY PARENT ROUTES
+    // MASTER SUPER ADMIN PORTAL ROUTE
+    "/superadmin": { tabId: "tab-superadmin-portal", title: "Master Super Admin Command Portal", category: "System Administration" },
+
+    // PRIMARY PARENT ROUTES
     "/": { tabId: "tab-dashboard-overview", title: "Home Overview", category: "Family Management" },
     "/dashboard": { tabId: "tab-dashboard-overview", title: "Home Overview", category: "Family Management" },
     "/devices": { tabId: "tab-device-info", title: "Monitored Family Devices", category: "Family Management" },
@@ -75,44 +78,70 @@ const homeMonitorRoutes = {
 // Backwards-compatibility alias
 const mSpyRoutes = homeMonitorRoutes;
 
-function navigateToRoute(routePath, updateHash = true) {
+function navigateToRoute(rawPath, updateHistory = true) {
+    // Normalize path (handle clean HTML5 path or legacy hash path)
+    let cleanPath = rawPath || "/dashboard";
+    if (cleanPath.startsWith("#")) cleanPath = cleanPath.substring(1);
+    if (!cleanPath.startsWith("/")) cleanPath = "/" + cleanPath;
+
     // 1. Enforce Authentication Guard (Fail-Closed)
     if (typeof currentAuthState !== "undefined" && currentAuthState !== AUTH_STATES.AUTHENTICATED) {
-        console.warn(`[Route Guard] Blocked unauthenticated route attempt to '${routePath}'`);
+        console.warn(`[Route Guard] Blocked unauthenticated route attempt to '${cleanPath}'`);
         return;
     }
 
-    const route = homeMonitorRoutes[routePath] || homeMonitorRoutes["/dashboard"];
-
-    // Update document title dynamically
-    document.title = `HomeMonitor — ${route.title}`;
-
-    // 2. Enforce Master Admin Role Guard
-    if (route.tabId === "tab-master-admin" || routePath === "/keyword_rule") {
-        if (!isMasterAdmin) {
-            console.warn(`[Route Guard] Blocked non-admin user '${currentUser ? currentUser.email : "unknown"}' from accessing Master Admin route '${routePath}'`);
+    // 2. Enforce Master Super Admin Role Guard
+    if (cleanPath === "/superadmin" || cleanPath === "/keyword_rule") {
+        if (typeof isMasterAdmin !== "undefined" && !isMasterAdmin) {
+            console.warn(`[Route Guard] Blocked non-admin user '${currentUser ? currentUser.email : "unknown"}' from accessing Super Admin route '${cleanPath}'`);
             if (typeof showDashboardNotification === "function") {
-                showDashboardNotification("error", "Access Denied: Verified Master Admin custom claim required.");
+                showDashboardNotification("error", "Access Denied: Master Super Admin authorization required.");
             }
             navigateToRoute("/dashboard", true);
             return;
         }
     }
 
-    console.log(`[Router] Navigating to '${routePath}' -> Tab '${route.tabId}' (${route.title})`);
+    const route = homeMonitorRoutes[cleanPath] || homeMonitorRoutes["/dashboard"];
 
-    // Update browser URL address bar hash alias
-    if (updateHash && window.location.hash !== `#${routePath}`) {
-        window.location.hash = routePath;
+    // Update document title dynamically
+    document.title = `HomeMonitor — ${route.title}`;
+
+    console.log(`[Router] Navigating to '${cleanPath}' -> Tab '${route.tabId}' (${route.title})`);
+
+    // Update URL bar via clean HTML5 History API or Hash fallback
+    if (updateHistory) {
+        try {
+            if (window.location.pathname !== cleanPath) {
+                window.history.pushState({ route: cleanPath }, "", cleanPath);
+            }
+            if (window.location.hash !== `#${cleanPath}`) {
+                window.location.hash = cleanPath;
+            }
+        } catch (_) {
+            window.location.hash = cleanPath;
+        }
     }
 
     // Highlight active link in sidebar
     document.querySelectorAll(".nav-link").forEach(l => l.classList.remove("active"));
-    const activeBtn = document.querySelector(`.nav-link[data-route="${routePath}"]`);
+    const activeBtn = document.querySelector(`.nav-link[data-route="${cleanPath}"]`);
     if (activeBtn) activeBtn.classList.add("active");
 
-    // Hide all panels
+    // Hide all tab panels
     document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.add("d-none"));
+
+    // Handle Master Super Admin Control Center view
+    if (cleanPath === "/superadmin" || route.tabId === "tab-superadmin-portal") {
+        const superadminPanel = document.getElementById("tab-superadmin-portal");
+        if (superadminPanel) {
+            superadminPanel.classList.remove("d-none");
+            if (typeof renderSuperAdminPortal === "function") {
+                renderSuperAdminPortal();
+            }
+        }
+        return;
+    }
 
     // Handle 3-column social chat routing
     if (route.tabId === "tab-social-chat" && route.socialApp) {
@@ -126,7 +155,7 @@ function navigateToRoute(routePath, updateHash = true) {
         return;
     }
 
-    // Handle normal tab panels
+    // Handle normal parent tab panels
     const targetPanel = document.getElementById(route.tabId);
     if (targetPanel) {
         targetPanel.classList.remove("d-none");
@@ -147,20 +176,19 @@ function navigateToRoute(routePath, updateHash = true) {
     }
 }
 
-// Handle Browser Hash Change & Deep-Linking on Load / Back-Forward Navigation
-window.addEventListener("hashchange", function() {
+// Handle Browser Navigation Events (Popstate & Hashchange)
+window.addEventListener("popstate", function(event) {
     if (typeof currentAuthState !== "undefined" && currentAuthState === AUTH_STATES.AUTHENTICATED) {
-        const currentHash = window.location.hash.replace("#", "");
-        if (currentHash && homeMonitorRoutes[currentHash]) {
-            navigateToRoute(currentHash, false);
-        } else if (currentHash) {
-            console.warn(`[Router] Unknown route hash '${currentHash}'. Redirecting to /dashboard.`);
-            navigateToRoute("/dashboard", true);
+        const path = window.location.pathname || (window.location.hash ? window.location.hash.replace("#", "") : "/dashboard");
+        if (homeMonitorRoutes[path]) {
+            navigateToRoute(path, false);
+        } else {
+            navigateToRoute("/dashboard", false);
         }
     }
 });
 
-window.addEventListener("popstate", function() {
+window.addEventListener("hashchange", function() {
     if (typeof currentAuthState !== "undefined" && currentAuthState === AUTH_STATES.AUTHENTICATED) {
         const currentHash = window.location.hash.replace("#", "");
         if (currentHash && homeMonitorRoutes[currentHash]) {

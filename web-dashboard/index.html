@@ -161,6 +161,14 @@
             <!-- CATEGORIZED ACCORDION SIDEBAR -->
             <div class="nav-accordion overflow-y-auto pe-1" style="max-height: calc(100vh - 240px);">
 
+                <!-- Category 0: Master Super Admin Portal (Visible to Super Admin) -->
+                <div class="nav-category-header fw-bold text-uppercase mt-2 mb-1 d-none" id="superadminSidebarHeader">Super Admin Center</div>
+                <div class="nav flex-column gap-1 d-none mb-2" id="superadminSidebarNav">
+                    <a class="nav-link rounded bg-dark text-warning fw-bold border border-warning" data-route="/superadmin" data-tab="tab-superadmin-portal" id="superadminTabBtn">
+                        <i class="fa-solid fa-crown text-warning me-2"></i>👑 Super Admin Portal
+                    </a>
+                </div>
+
                 <!-- Category 1: Family Management -->
                 <div class="nav-category-header fw-bold text-uppercase mt-2 mb-1">Family Management</div>
                 <div class="nav flex-column gap-1">
@@ -1099,6 +1107,9 @@ $
                     </div>
                 </div>
 
+                <!-- TAB: MASTER SUPER ADMIN COMMAND CENTER PORTAL -->
+                <div class="tab-panel d-none" id="tab-superadmin-portal"></div>
+
                 <!-- TAB: SYSTEM NOTIFICATIONS (FAMILY ACTIVITY) -->
                 <div class="tab-panel d-none" id="tab-notifications">
                     <div class="card card-homemonitor p-4 bg-white shadow-sm">
@@ -1341,6 +1352,7 @@ $
     <script src="js/qrcode.min.js"></script>
     <script src="js/firebase-config.js?v=1.4.0"></script>
     <script src="js/auth.js?v=1.4.0"></script>
+    <script src="js/superadmin.js?v=1.4.0"></script>
     <script src="js/routes.js?v=1.4.0"></script>
     <script src="js/social.js?v=1.4.0"></script>
     <script src="js/webrtc-manager.js?v=1.4.0"></script>

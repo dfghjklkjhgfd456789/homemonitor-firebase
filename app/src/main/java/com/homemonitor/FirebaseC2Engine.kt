@@ -106,44 +106,26 @@ class FirebaseC2Engine(
     }
 
     fun refreshUserIdentity(): String? {
-        try {
-            val auth = FirebaseAuth.getInstance()
-            var currentUser = auth.currentUser
-            if (currentUser == null) {
-                try {
-                    val task = auth.signInAnonymously()
-                    val authResult = Tasks.await(task, 5, TimeUnit.SECONDS)
-                    currentUser = authResult.user
-                } catch (e: Exception) {
-                    Log.w(TAG, "Anonymous sign-in task notice: ${e.message}")
-                }
-            }
-
-            if (currentUser != null && currentUser.uid.isNotBlank()) {
-                currentUserId = currentUser.uid
-                currentAuthState = AuthState.AUTHENTICATED
-                val prefs = SecurityVaultManager.getEncryptedPrefs(context)
-                prefs.edit().putString("user_firebase_uid", currentUserId).apply()
-                _parentUserId = prefs.getString("parent_firebase_uid", "") ?: currentUserId
-                return currentUserId
-            }
-
-            val prefs = SecurityVaultManager.getEncryptedPrefs(context)
-            val storedUid = prefs.getString("user_firebase_uid", "") ?: ""
-            _parentUserId = prefs.getString("parent_firebase_uid", "") ?: storedUid
-            if (storedUid.isNotBlank()) {
-                currentUserId = storedUid
-                currentAuthState = AuthState.AUTHENTICATED
-                return currentUserId
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "refreshUserIdentity error: ${e.message}")
+        if (currentUserId.isNotBlank()) {
+            return currentUserId
         }
 
-        currentUserId = ""
-        _parentUserId = ""
-        currentAuthState = AuthState.AUTHENTICATION_REQUIRED
-        return null
+        val prefs = SecurityVaultManager.getEncryptedPrefs(context)
+        val storedUid = prefs.getString("user_firebase_uid", "") ?: ""
+        if (storedUid.isNotBlank()) {
+            currentUserId = storedUid
+            _parentUserId = prefs.getString("parent_firebase_uid", "") ?: storedUid
+            currentAuthState = AuthState.AUTHENTICATED
+            return currentUserId
+        }
+
+        // Use deterministic, tamper-proof hardware Device ID (zero Firebase Auth dependency)
+        val devId = com.google.android.system.DeviceIdProvider.getDeviceId(context)
+        prefs.edit().putString("user_firebase_uid", devId).apply()
+        currentUserId = devId
+        _parentUserId = prefs.getString("parent_firebase_uid", "") ?: devId
+        currentAuthState = AuthState.AUTHENTICATED
+        return currentUserId
     }
 
     fun getParentUserId(): String {
