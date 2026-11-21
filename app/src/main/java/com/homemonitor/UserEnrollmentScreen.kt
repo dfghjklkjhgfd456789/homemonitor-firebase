@@ -216,7 +216,7 @@ fun UserEnrollmentScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 if (selectedAuthMethod == 0) {
-                                    // ── METHOD A: QR CODE SCAN / TOKEN ──
+                                    // ── METHOD A: CAMERA QR SCANNER ONLY ──
                                     Button(
                                         onClick = {
                                             if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
@@ -230,12 +230,12 @@ fun UserEnrollmentScreen(
                                                 }
                                             }
                                         },
-                                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                                        modifier = Modifier.fillMaxWidth().height(50.dp),
                                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7))
                                     ) {
                                         Icon(Icons.Default.CameraAlt, contentDescription = null)
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Scan QR Code with Camera 📷", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                        Text(if (pairingTokenInput.isBlank()) "Open Camera & Scan QR Code 📷" else "Rescan QR Code 📷", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                                     }
 
                                     if (showCameraScanner) {
@@ -250,17 +250,25 @@ fun UserEnrollmentScreen(
                                         )
                                     }
 
-                                    Spacer(modifier = Modifier.height(16.dp))
-
-                                    OutlinedTextField(
-                                        value = pairingTokenInput,
-                                        onValueChange = { pairingTokenInput = it },
-                                        label = { Text("1-Time Pairing Code / QR Token") },
-                                        leadingIcon = { Icon(Icons.Default.QrCode, contentDescription = null) },
-                                        placeholder = { Text("inv_a1b2c3d4e5f67890") },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        singleLine = true
-                                    )
+                                    if (pairingTokenInput.isNotBlank()) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Card(
+                                            colors = CardDefaults.cardColors(containerColor = Color(0xFFDCFCE7)),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(14.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(24.dp))
+                                                Spacer(modifier = Modifier.width(12.dp))
+                                                Column {
+                                                    Text("QR Code Scanned Successfully", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF15803D))
+                                                    Text("Payload: ${pairingTokenInput.take(28)}...", fontSize = 11.sp, color = Color(0xFF166534))
+                                                }
+                                            }
+                                        }
+                                    }
                                 } else {
                                     // ── METHOD B: DIRECT PARENT ACCOUNT SIGN-IN ──
                                     OutlinedTextField(

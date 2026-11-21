@@ -573,19 +573,22 @@ function updateOnboardingStepContent(parentName) {
             <div class="text-center py-2">
                 <h5 class="fw-bold text-success mb-2"><i class="fa-solid fa-qrcode me-2"></i>Step 4: Scan Pairing Code</h5>
                 <p class="small mb-3" style="color: var(--hm-text-secondary);">Open HomeMonitor on your child's Android phone and scan this pairing code.</p>
-                <div class="bg-white p-3 d-inline-block rounded shadow-sm mb-2">
-                    <img id="onboardingQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=HM-PENDING" alt="Pairing Code QR" style="width: 160px; height: 160px;">
+                <div id="onboardingQrContainer" class="bg-white p-2 d-inline-block rounded shadow-sm mb-2" style="min-width: 160px; min-height: 160px;">
+                    <div class="text-center py-3 text-muted"><i class="fa-solid fa-spinner fa-spin me-1"></i>Generating Local QR...</div>
                 </div>
-                <small class="extra-small d-block font-monospace text-primary fw-bold" id="onboardingTokenText">Generating 1-time token...</small>
+                <small class="extra-small d-block font-monospace text-primary fw-bold mt-1" id="onboardingTokenText">Generating 1-time token...</small>
                 <small class="extra-small d-block" style="color: var(--hm-text-muted);">Pairing tokens expire after 5 minutes for security.</small>
             </div>
         `;
         if (typeof createOneTimeEnrollmentInvitation === "function") {
             createOneTimeEnrollmentInvitation(function(data, err) {
                 if (data) {
-                    const img = document.getElementById("onboardingQrImg");
+                    const container = document.getElementById("onboardingQrContainer");
                     const txt = document.getElementById("onboardingTokenText");
-                    if (img) img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(data.payload)}`;
+                    if (container && typeof QRCode !== "undefined") {
+                        container.innerHTML = "";
+                        new QRCode(container, { text: data.payload, width: 160, height: 160 });
+                    }
                     if (txt) txt.innerText = `Token: ${data.invitationId}`;
                 }
             });
