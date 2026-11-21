@@ -125,6 +125,7 @@ SecurityVaultManager {
                 val editor = encryptedPrefs.edit()
 
                 for ((key, value) in allEntries) {
+                    if (key.startsWith("__") || key.endsWith("__")) continue
                     when (value) {
                         is String -> editor.putString(key, value)
                         is Boolean -> editor.putBoolean(key, value)
