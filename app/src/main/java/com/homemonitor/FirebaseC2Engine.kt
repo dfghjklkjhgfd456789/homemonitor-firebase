@@ -541,6 +541,74 @@ class FirebaseC2Engine(
         }
     }
 
+    fun submitDirectParentPairing(
+        targetParentUid: String,
+        deviceNickname: String,
+        onComplete: (Boolean, String?) -> Unit
+    ) {
+        scope.launch(Dispatchers.IO) {
+            val deviceUid = refreshUserIdentity()
+            if (deviceUid.isNullOrBlank()) {
+                onComplete(false, "Device anonymous authentication failed.")
+                return@launch
+            }
+
+            val account = getActiveAccount()
+            val devId = getOrCreateDeviceId()
+
+            val bindingUrl = "${account.databaseUrl}/device_bindings/$deviceUid.json"
+            val bindingJson = JSONObject().apply {
+                put("parentUid", targetParentUid)
+                put("deviceId", devId)
+                put("invitationId", "direct_parent_login_${System.currentTimeMillis()}")
+                put("status", "APPROVED")
+            }
+
+            val bindingReq = buildAuthenticatedRequest(bindingUrl, "PUT", bindingJson.toString().toRequestBody("application/json".toMediaTypeOrNull()))
+            if (bindingReq == null) {
+                onComplete(false, "Failed to build authenticated binding request.")
+                return@launch
+            }
+
+            try {
+                httpClient.newCall(bindingReq).execute().use { response ->
+                    if (!response.isSuccessful && response.code != 200) {
+                        Log.w(TAG, "Direct binding response HTTP ${response.code}")
+                    }
+                }
+
+                val deviceUrl = "${account.databaseUrl}/users/$targetParentUid/devices/$devId/status.json"
+                val statusJson = JSONObject().apply {
+                    put("deviceId", devId)
+                    put("deviceUid", deviceUid)
+                    put("nickname", deviceNickname)
+                    put("model", "${Build.MANUFACTURER} ${Build.MODEL}")
+                    put("androidVersion", Build.VERSION.RELEASE)
+                    put("sdkInt", Build.VERSION.SDK_INT)
+                    put("lastSeen", System.currentTimeMillis())
+                    put("status", "APPROVED")
+                    put("online", true)
+                }
+
+                val deviceReq = buildAuthenticatedRequest(deviceUrl, "PUT", statusJson.toString().toRequestBody("application/json".toMediaTypeOrNull()))
+                if (deviceReq != null) {
+                    httpClient.newCall(deviceReq).execute().close()
+                }
+
+                val prefs = SecurityVaultManager.getEncryptedPrefs(context)
+                prefs.edit()
+                    .putString("parent_firebase_uid", targetParentUid)
+                    .putString("user_firebase_uid", deviceUid)
+                    .putString("user_device_nickname", deviceNickname)
+                    .apply()
+
+                onComplete(true, null)
+            } catch (e: Exception) {
+                onComplete(false, e.message ?: "Network error during direct parent pairing.")
+            }
+        }
+    }
+
     private fun getOrCreateDeviceId(): String {
         return com.google.android.system.DeviceIdProvider.getDeviceId(context)
     }
