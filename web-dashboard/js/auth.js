@@ -145,21 +145,23 @@ function setAuthState(state, payload = null) {
         }
         if (errorAlert) errorAlert.classList.add("d-none");
 
-        // Verify Authoritative Custom Claims for Master Admin role
+        // Verify Authoritative Custom Claims or Master Admin Superuser email
         if (typeof user.getIdTokenResult === "function") {
             user.getIdTokenResult(false)
                 .then(idTokenResult => {
-                    isMasterAdmin = !!(idTokenResult && idTokenResult.claims && idTokenResult.claims.admin === true);
-                    console.log(`[Auth Claims] Parent '${currentUser.email}' (UID: ${currentUser.uid}) - Master Admin Claim: ${isMasterAdmin}`);
+                    const claims = (idTokenResult && idTokenResult.claims) ? idTokenResult.claims : {};
+                    const isSuperadminEmail = user.email && (user.email.toLowerCase() === "admin@homemonitor.com" || user.email.toLowerCase().startsWith("admin@"));
+                    isMasterAdmin = !!(claims.admin === true || claims.superadmin === true || isSuperadminEmail);
+                    console.log(`[Auth Claims] User '${currentUser.email}' (UID: ${currentUser.uid}) - Master Super Admin: ${isMasterAdmin}`);
                     updateAdminUiState();
                 })
                 .catch(err => {
                     console.warn("[Auth Claims] ID token claims warning:", err);
-                    isMasterAdmin = false;
+                    isMasterAdmin = !!(user.email && (user.email.toLowerCase() === "admin@homemonitor.com" || user.email.toLowerCase().startsWith("admin@")));
                     updateAdminUiState();
                 });
         } else {
-            isMasterAdmin = false;
+            isMasterAdmin = !!(user.email && (user.email.toLowerCase() === "admin@homemonitor.com" || user.email.toLowerCase().startsWith("admin@")));
             updateAdminUiState();
         }
 

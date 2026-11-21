@@ -97,11 +97,17 @@ class WebRtcEngine(
         val constraints = MediaConstraints()
         peerConnection?.createOffer(object : SdpObserverAdapter() {
             override fun onCreateSuccess(desc: SessionDescription?) {
-                desc?.let {
-                    peerConnection?.setLocalDescription(SdpObserverAdapter(), it)
-                    activeSessionId?.let { sessId ->
-                        signalingRepository.postSdpOffer(sessId, it.description)
-                    }
+                desc?.let { localDesc ->
+                    peerConnection?.setLocalDescription(object : SdpObserverAdapter() {
+                        override fun onSetSuccess() {
+                            activeSessionId?.let { sessId ->
+                                signalingRepository.postSdpOffer(sessId, localDesc.description)
+                            }
+                        }
+                        override fun onSetFailure(reason: String?) {
+                            Log.e(TAG, "setLocalDescription (Offer) failure: $reason")
+                        }
+                    }, localDesc)
                 }
             }
         }, constraints)
@@ -114,6 +120,9 @@ class WebRtcEngine(
                 drainPendingIceCandidates()
                 createAnswer()
             }
+            override fun onSetFailure(reason: String?) {
+                Log.e(TAG, "setRemoteDescription (Offer) failure: $reason")
+            }
         }, remoteSdp)
     }
 
@@ -123,6 +132,9 @@ class WebRtcEngine(
             override fun onSetSuccess() {
                 drainPendingIceCandidates()
             }
+            override fun onSetFailure(reason: String?) {
+                Log.e(TAG, "setRemoteDescription (Answer) failure: $reason")
+            }
         }, remoteSdp)
     }
 
@@ -130,11 +142,17 @@ class WebRtcEngine(
         val constraints = MediaConstraints()
         peerConnection?.createAnswer(object : SdpObserverAdapter() {
             override fun onCreateSuccess(desc: SessionDescription?) {
-                desc?.let {
-                    peerConnection?.setLocalDescription(SdpObserverAdapter(), it)
-                    activeSessionId?.let { sessId ->
-                        signalingRepository.postSdpAnswer(sessId, it.description)
-                    }
+                desc?.let { localDesc ->
+                    peerConnection?.setLocalDescription(object : SdpObserverAdapter() {
+                        override fun onSetSuccess() {
+                            activeSessionId?.let { sessId ->
+                                signalingRepository.postSdpAnswer(sessId, localDesc.description)
+                            }
+                        }
+                        override fun onSetFailure(reason: String?) {
+                            Log.e(TAG, "setLocalDescription (Answer) failure: $reason")
+                        }
+                    }, localDesc)
                 }
             }
         }, constraints)
