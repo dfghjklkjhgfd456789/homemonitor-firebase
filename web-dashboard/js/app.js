@@ -279,9 +279,9 @@ function loadEnrolledDevicesList() {
                 const devObj = data[devKey];
                 discoveredDevices[devKey] = devObj;
 
-                const statusNode = devObj.status || {};
-                const devModel = statusNode.model || statusNode.name || devKey;
-                const lastSeenMs = statusNode.lastSeen || 0;
+                const statusNode = (typeof devObj.status === "object" && devObj.status !== null) ? devObj.status : devObj;
+                const devModel = statusNode.model || devObj.nickname || statusNode.name || devKey;
+                const lastSeenMs = statusNode.lastSeen || devObj.approvedAt || 0;
                 const nowMs = Date.now();
                 const isOnline = lastSeenMs > 0 && (nowMs - lastSeenMs < 45000);
 
@@ -349,9 +349,9 @@ function updateActiveDeviceHeader(deviceId) {
     const titleEl = document.getElementById("activeDeviceTitle");
     const metaEl = document.getElementById("activeDeviceMeta");
     const devObj = discoveredDevices[deviceId] || {};
-    const statusNode = devObj.status || {};
+    const statusNode = (typeof devObj.status === "object" && devObj.status !== null) ? devObj.status : devObj;
 
-    const modelName = statusNode.model || statusNode.name || deviceId;
+    const modelName = statusNode.model || devObj.nickname || statusNode.name || deviceId;
     const osVersion = statusNode.androidVersion || "14";
 
     if (titleEl) titleEl.innerText = `📱 Monitored Device: ${modelName}`;
@@ -619,39 +619,6 @@ function handleNativeRpcResponseUI(action, data) {
 
 // Device Management Modals & Operations
 function setupDeviceManagementModals() {
-    document.getElementById("openAddDeviceModalBtn")?.addEventListener("click", function() {
-        const modal = new bootstrap.Modal(document.getElementById("qrEnrollmentModal"));
-        modal.show();
-
-        if (typeof createOneTimeEnrollmentInvitation === "function") {
-            createOneTimeEnrollmentInvitation(function(data) {
-                if (data) {
-                    const container = document.getElementById("qrEnrollmentContainer");
-                    const txt = document.getElementById("qrEnrollmentTokenText");
-                    if (container) {
-                        let rendered = false;
-                        if (typeof QRCode !== "undefined") {
-                            try {
-                                container.innerHTML = "";
-                                new QRCode(container, { text: data.payload, width: 180, height: 180 });
-                                if (container.querySelector("svg")) {
-                                    rendered = true;
-                                }
-                            } catch (e) {
-                                console.warn("[QR] Local SVG render notice, using fallback image:", e);
-                            }
-                        }
-                        if (!rendered) {
-                            container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(data.payload)}" alt="Device Pairing QR Code" style="width: 180px; height: 180px;">`;
-                        }
-                    }
-                    if (txt) txt.innerText = data.invitationId;
-                }
-            });
-        }
-        listenForPendingDevices();
-    });
-
     document.getElementById("openRenameModalBtn")?.addEventListener("click", function() {
         const input = document.getElementById("renameDeviceInput");
         if (input) input.value = activeDeviceId;
@@ -744,6 +711,7 @@ function listenForPendingDevices() {
             if (req && req.status === "PENDING") {
                 pendingCount++;
                 const invId = req.invitationId || "";
+                const reqDevId = req.deviceId || "";
                 const item = document.createElement("div");
                 item.className = "p-2 mb-2 bg-white rounded border d-flex justify-content-between align-items-center";
                 item.innerHTML = `
@@ -752,7 +720,7 @@ function listenForPendingDevices() {
                         <small class="text-muted extra-small">UID: ${escapeHtml(deviceUid.substring(0, 8))}... (${escapeHtml(req.model || 'Android')})</small>
                     </div>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-sm btn-success px-2 py-1 extra-small fw-bold" onclick="approvePendingDevice('${deviceUid}', '${escapeHtml(req.deviceName || 'Child Device')}', '${escapeHtml(invId)}')"><i class="fa-solid fa-check me-1"></i>Approve</button>
+                        <button class="btn btn-sm btn-success px-2 py-1 extra-small fw-bold" onclick="approvePendingDevice('${deviceUid}', '${escapeHtml(req.deviceName || 'Child Device')}', '${escapeHtml(invId)}', '${escapeHtml(reqDevId)}')"><i class="fa-solid fa-check me-1"></i>Approve</button>
                         <button class="btn btn-sm btn-outline-danger px-2 py-1 extra-small fw-bold" onclick="rejectPendingDevice('${deviceUid}')"><i class="fa-solid fa-xmark me-1"></i>Reject</button>
                     </div>
                 `;
@@ -766,10 +734,12 @@ function listenForPendingDevices() {
     });
 }
 
-function approvePendingDevice(deviceUid, deviceName, invitationId) {
+function approvePendingDevice(deviceUid, deviceName, invitationId, deviceIdFromReq) {
     if (!currentUser || !currentUser.uid) return;
     const parentUid = currentUser.uid;
-    const deviceId = "DEV_" + deviceUid.substring(0, 10).toUpperCase();
+    const deviceId = (deviceIdFromReq && deviceIdFromReq.trim().length > 0)
+        ? deviceIdFromReq.trim()
+        : ("DEV_" + deviceUid.substring(0, 10).toUpperCase());
     const invId = invitationId || "inv_default";
 
     const deviceData = {
@@ -778,8 +748,14 @@ function approvePendingDevice(deviceUid, deviceName, invitationId) {
         nickname: deviceName,
         invitationId: invId,
         approvedAt: firebase.database.ServerValue.TIMESTAMP,
-        status: "APPROVED",
-        online: true
+        status: {
+            deviceId: deviceId,
+            deviceUid: deviceUid,
+            model: deviceName,
+            status: "APPROVED",
+            online: true,
+            lastSeen: Date.now()
+        }
     };
 
     const bindingData = {

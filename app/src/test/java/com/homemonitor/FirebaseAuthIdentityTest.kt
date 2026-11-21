@@ -37,23 +37,21 @@ class FirebaseAuthIdentityTest {
     }
 
     @Test
-    fun testOneTimeQrInvitationPayloadValidation() {
+    fun testDirectParentPairingPayloadValidation() {
         val jsonPayload = """
             {
                 "v": 2,
                 "project": "homemonitor-db",
-                "invitationId": "inv_a1b2c3d4e5f67890",
                 "parentUid": "parent_user_uid_123",
-                "expiresAt": ${System.currentTimeMillis() + 300000}
+                "deviceNickname": "Child Phone"
             }
         """.trimIndent()
 
         val json = org.json.JSONObject(jsonPayload)
         assertEquals(2, json.getInt("v"))
         assertEquals("homemonitor-db", json.getString("project"))
-        assertEquals("inv_a1b2c3d4e5f67890", json.getString("invitationId"))
         assertEquals("parent_user_uid_123", json.getString("parentUid"))
-        org.junit.Assert.assertTrue(json.getLong("expiresAt") > System.currentTimeMillis())
+        assertEquals("Child Phone", json.getString("deviceNickname"))
     }
 
     @Test

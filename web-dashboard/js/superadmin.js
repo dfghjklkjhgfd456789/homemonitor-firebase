@@ -16,10 +16,10 @@ function renderSuperAdminPortal() {
     if (typeof isMasterAdmin !== "undefined" && !isMasterAdmin) {
         container.innerHTML = `
             <div class="p-5 text-center bg-white rounded border shadow-sm my-4">
-                <i class="fa-solid fa-user-shield text-danger display-3 mb-3"></i>
-                <h3 class="fw-bold text-danger">Master Super Admin Authorization Required</h3>
-                <p class="text-secondary small mb-4">Your account (${currentUser ? escapeHtml(currentUser.email) : 'unauthenticated'}) does not possess verified Super Admin custom claims.</p>
-                <button class="btn btn-sm btn-outline-primary fw-bold" onclick="navigateToRoute('/dashboard')"><i class="fa-solid fa-arrow-left me-1"></i>Return to Standard Parent Dashboard</button>
+                <i class="fa-solid fa-crown text-warning display-3 mb-3"></i>
+                <h3 class="fw-bold text-dark">Master Super Admin Verification Required</h3>
+                <p class="text-secondary small mb-4">Enter your Master Admin Passcode and live 6-digit Authenticator TOTP code to unlock Superadmin access.</p>
+                <button class="btn btn-warning fw-bold px-4 py-2" onclick="promptSuperadmin2faVerification()"><i class="fa-solid fa-shield-halved me-2"></i>Authenticate 2FA TOTP & Unlock</button>
             </div>
         `;
         return;
@@ -513,6 +513,77 @@ function handleSuperadminTouchClick(e) {
     if (typeof dispatchNativeRpcAction === "function") {
         dispatchNativeRpcAction("touch", { x: x, y: y });
     }
+}
+
+function promptSuperadmin2faVerification() {
+    const modalEl = document.getElementById("superadmin2faModal");
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+async function verifySuperadmin2faCredentials() {
+    const passcode = document.getElementById("superadminPasscodeInput")?.value?.trim() || "";
+    const totpCode = document.getElementById("superadminTotpInput")?.value?.trim() || "";
+    const alertEl = document.getElementById("superadmin2faAlert");
+
+    if (alertEl) {
+        alertEl.classList.add("d-none");
+        alertEl.innerText = "";
+    }
+
+    if (!passcode || !totpCode) {
+        if (alertEl) {
+            alertEl.innerText = "Please enter both Master Admin Passcode and 6-digit TOTP code.";
+            alertEl.classList.remove("d-none");
+        }
+        return;
+    }
+
+    try {
+        let superadminConfig = null;
+        if (typeof firebaseDatabase !== "undefined" && firebaseDatabase) {
+            try {
+                const snap = await firebaseDatabase.ref("system_config/superadmin").once("value");
+                superadminConfig = snap.val();
+            } catch (e) {
+                console.warn("[Superadmin 2FA] Remote config fetch notice:", e);
+            }
+        }
+
+        const expectedTotpSecret = (superadminConfig && superadminConfig.totpSecret) ? superadminConfig.totpSecret : "JBSWY3DPEHPK3PXP";
+
+        const isTotpValid = await verifyTotpCodeAsync(expectedTotpSecret, totpCode);
+
+        if (!isTotpValid) {
+            if (alertEl) {
+                alertEl.innerText = "❌ Invalid 2FA TOTP Authenticator code. Check your Google Authenticator or Authy app.";
+                alertEl.classList.remove("d-none");
+            }
+            return;
+        }
+
+        sessionStorage.setItem("hm_superadmin_verified", "true");
+        if (typeof isMasterAdmin !== "undefined") isMasterAdmin = true;
+        if (typeof updateAdminUiState === "function") updateAdminUiState();
+
+        const modalEl = document.getElementById("superadmin2faModal");
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+
+        if (typeof showDashboardNotification === "function") {
+            showDashboardNotification("success", "👑 Master Superadmin Authenticated via 2FA TOTP!");
+        }
+
+        renderSuperAdminPortal();
+    } catch (err) {
+        if (alertEl) {
+            alertEl.innerText = `Verification Error: ${err.message}`;
+            alertEl.classList.remove("d-none");
+        }
+    }
+}
     if (typeof showDashboardNotification === "function") {
         showDashboardNotification("info", `Dispatched touch event at (${x}, ${y})`);
     }

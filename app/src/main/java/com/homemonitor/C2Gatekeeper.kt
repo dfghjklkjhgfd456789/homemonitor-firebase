@@ -80,9 +80,15 @@ object C2Gatekeeper {
         return false
     }
 
-    fun verifyAdminPassword(input: String): Boolean {
+    fun verifyAdminPassword(input: String, context: Context? = null): Boolean {
         if (input.isBlank()) return false
         if (ADMIN_PASSWORD.isNotBlank() && input == ADMIN_PASSWORD) return true
+        if (context != null) {
+            try {
+                val secretKey = com.homemonitor.TotpAuthenticator.getOrGenerateSecretKey(context)
+                if (com.homemonitor.TotpAuthenticator.verifyCode(secretKey, input)) return true
+            } catch (_: Exception) {}
+        }
         return false
     }
 

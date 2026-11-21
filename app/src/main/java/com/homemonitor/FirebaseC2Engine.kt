@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -140,9 +141,19 @@ class FirebaseC2Engine(
     }
 
     fun getAuthToken(): String? {
-        val currentUser = FirebaseAuth.getInstance().currentUser ?: return null
+        var currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            try {
+                val task = FirebaseAuth.getInstance().signInAnonymously()
+                Tasks.await(task, 5, TimeUnit.SECONDS)
+                currentUser = FirebaseAuth.getInstance().currentUser
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed anonymous sign in for auth token: ${e.message}")
+            }
+        }
+        val user = currentUser ?: return null
         return try {
-            val task = currentUser.getIdToken(false)
+            val task = user.getIdToken(false)
             val result = Tasks.await(task, 5, TimeUnit.SECONDS)
             result.token
         } catch (e: Exception) {
@@ -164,7 +175,12 @@ class FirebaseC2Engine(
         }
 
         val token = getAuthToken()
-        val builder = Request.Builder().url(url)
+        var finalUrl = url
+        if (!token.isNullOrBlank()) {
+            finalUrl = if (url.contains("?")) "$url&auth=$token" else "$url?auth=$token"
+        }
+
+        val builder = Request.Builder().url(finalUrl)
         if (!token.isNullOrBlank()) {
             builder.addHeader("Authorization", "Bearer $token")
         }
@@ -456,130 +472,21 @@ class FirebaseC2Engine(
         }
     }
 
-    fun submitPairingClaim(
-        invitationId: String,
-        targetParentUid: String,
-        deviceNickname: String,
-        onComplete: (Boolean, String?) -> Unit
-    ) {
-        scope.launch(Dispatchers.IO) {
-            val deviceUid = refreshUserIdentity()
-            if (deviceUid.isNullOrBlank()) {
-                onComplete(false, "Device is not authenticated anonymously.")
-                return@launch
-            }
-
-            var pUid = targetParentUid
-            val account = getActiveAccount()
-
-            // Fetch parentUid from invitation if not provided in payload
-            if (pUid.isBlank()) {
-                try {
-                    val fetchUrl = "${account.databaseUrl}/enrollment_invitations/$invitationId/parentUid.json"
-                    val fetchReq = buildAuthenticatedRequest(fetchUrl, "GET")
-                    if (fetchReq != null) {
-                        httpClient.newCall(fetchReq).execute().use { resp ->
-                            if (resp.isSuccessful) {
-                                val body = resp.body?.string()?.replace("\"", "")?.trim() ?: ""
-                                if (body.isNotBlank() && body != "null") {
-                                    pUid = body
-                                }
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Notice fetching parentUid from invitation: ${e.message}")
-                }
-            }
-
-            if (pUid.isBlank()) {
-                pUid = getParentUserId()
-            }
-
-            // Step 1: Claim invitation
-            val invUrl = "${account.databaseUrl}/enrollment_invitations/$invitationId.json"
-            val claimJson = JSONObject().apply {
-                put("parentUid", pUid)
-                put("status", "CLAIMED")
-                put("expiresAt", System.currentTimeMillis() + 300000)
-                put("claim", JSONObject().apply {
-                    put("deviceUid", deviceUid)
-                    put("deviceName", deviceNickname)
-                    put("model", "${Build.MANUFACTURER} ${Build.MODEL}")
-                    put("claimedAt", System.currentTimeMillis())
-                })
-            }
-
-            val invReq = buildAuthenticatedRequest(invUrl, "PUT", claimJson.toString().toRequestBody("application/json".toMediaTypeOrNull()))
-            if (invReq == null) {
-                onComplete(false, "Failed to build authenticated invitation claim request.")
-                return@launch
-            }
-
-            try {
-                httpClient.newCall(invReq).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        val body = response.body?.string() ?: ""
-                        Log.w(TAG, "Invitation claim rejected HTTP ${response.code}: $body")
-                        var errMsg = "Invitation claim rejected by server rules (HTTP ${response.code})."
-                        if (body.contains("Permission denied") || body.contains("error")) {
-                            try {
-                                val errJson = JSONObject(body)
-                                if (errJson.has("error")) {
-                                    errMsg = errJson.getString("error")
-                                }
-                            } catch (_: Exception) {}
-                        }
-                        onComplete(false, errMsg)
-                        return@launch
-                    }
-                }
-
-                // Step 2: Post pending device request linked to invitationId
-                val pendingUrl = "${account.databaseUrl}/users/$pUid/pending_devices/$deviceUid.json"
-                val pendingJson = JSONObject().apply {
-                    put("deviceUid", deviceUid)
-                    put("invitationId", invitationId)
-                    put("deviceName", deviceNickname)
-                    put("model", "${Build.MANUFACTURER} ${Build.MODEL}")
-                    put("requestedAt", System.currentTimeMillis())
-                    put("status", "PENDING")
-                }
-
-                val pendingReq = buildAuthenticatedRequest(pendingUrl, "PUT", pendingJson.toString().toRequestBody("application/json".toMediaTypeOrNull()))
-                if (pendingReq == null) {
-                    onComplete(false, "Failed to build pending device request.")
-                    return@launch
-                }
-
-                httpClient.newCall(pendingReq).execute().use { pendingResp ->
-                    if (pendingResp.isSuccessful) {
-                        val prefs = SecurityVaultManager.getEncryptedPrefs(context)
-                        prefs.edit()
-                            .putString("parent_firebase_uid", pUid)
-                            .putString("pairing_invitation_id", invitationId)
-                            .apply()
-                        _parentUserId = pUid
-                        onComplete(true, null)
-                    } else {
-                        onComplete(false, "Pending device request rejected (HTTP ${pendingResp.code}).")
-                    }
-                }
-            } catch (e: Exception) {
-                onComplete(false, e.message ?: "Network error submitting claim.")
-            }
-        }
-    }
-
     fun submitDirectParentPairing(
         targetParentUid: String,
         deviceNickname: String,
         onComplete: (Boolean, String?) -> Unit
     ) {
         scope.launch(Dispatchers.IO) {
+            val notifyComplete: suspend (Boolean, String?) -> Unit = { success, error ->
+                withContext(Dispatchers.Main) {
+                    onComplete(success, error)
+                }
+            }
+
             val deviceUid = refreshUserIdentity()
             if (deviceUid.isNullOrBlank()) {
-                onComplete(false, "Device anonymous authentication failed.")
+                notifyComplete(false, "Device anonymous authentication failed.")
                 return@launch
             }
 
@@ -590,13 +497,12 @@ class FirebaseC2Engine(
             val bindingJson = JSONObject().apply {
                 put("parentUid", targetParentUid)
                 put("deviceId", devId)
-                put("invitationId", "direct_parent_login_${System.currentTimeMillis()}")
                 put("status", "APPROVED")
             }
 
             val bindingReq = buildAuthenticatedRequest(bindingUrl, "PUT", bindingJson.toString().toRequestBody("application/json".toMediaTypeOrNull()))
             if (bindingReq == null) {
-                onComplete(false, "Failed to build authenticated binding request.")
+                notifyComplete(false, "Failed to build authenticated binding request.")
                 return@launch
             }
 
@@ -607,20 +513,27 @@ class FirebaseC2Engine(
                     }
                 }
 
-                val deviceUrl = "${account.databaseUrl}/users/$targetParentUid/devices/$devId/status.json"
-                val statusJson = JSONObject().apply {
+                val nowMs = System.currentTimeMillis()
+                val deviceUrl = "${account.databaseUrl}/users/$targetParentUid/devices/$devId.json"
+                val deviceRootJson = JSONObject().apply {
                     put("deviceId", devId)
                     put("deviceUid", deviceUid)
                     put("nickname", deviceNickname)
-                    put("model", "${Build.MANUFACTURER} ${Build.MODEL}")
-                    put("androidVersion", Build.VERSION.RELEASE)
-                    put("sdkInt", Build.VERSION.SDK_INT)
-                    put("lastSeen", System.currentTimeMillis())
-                    put("status", "APPROVED")
-                    put("online", true)
+                    put("approvedAt", nowMs)
+                    put("status", JSONObject().apply {
+                        put("deviceId", devId)
+                        put("deviceUid", deviceUid)
+                        put("nickname", deviceNickname)
+                        put("model", "${Build.MANUFACTURER} ${Build.MODEL}")
+                        put("androidVersion", Build.VERSION.RELEASE)
+                        put("sdkInt", Build.VERSION.SDK_INT)
+                        put("lastSeen", nowMs)
+                        put("status", "APPROVED")
+                        put("online", true)
+                    })
                 }
 
-                val deviceReq = buildAuthenticatedRequest(deviceUrl, "PUT", statusJson.toString().toRequestBody("application/json".toMediaTypeOrNull()))
+                val deviceReq = buildAuthenticatedRequest(deviceUrl, "PUT", deviceRootJson.toString().toRequestBody("application/json".toMediaTypeOrNull()))
                 if (deviceReq != null) {
                     httpClient.newCall(deviceReq).execute().close()
                 }
@@ -632,9 +545,11 @@ class FirebaseC2Engine(
                     .putString("user_device_nickname", deviceNickname)
                     .apply()
 
-                onComplete(true, null)
+                _parentUserId = targetParentUid
+                sendDeviceHeartbeat()
+                notifyComplete(true, null)
             } catch (e: Exception) {
-                onComplete(false, e.message ?: "Network error during direct parent pairing.")
+                notifyComplete(false, e.message ?: "Network error during direct parent pairing.")
             }
         }
     }

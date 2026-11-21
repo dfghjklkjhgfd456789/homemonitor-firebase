@@ -1,5 +1,7 @@
 // webrtc-manager.js - Browser Direct WebRTC P2P Manager (STUN-Only Direct P2P & DataChannel Protocol)
 
+const CLOUDFLARE_WORKER_URL = "https://webrtc.johnduck99.workers.dev";
+
 let pc = null;
 let dc = null;
 let activeSessionId = null;
@@ -13,48 +15,35 @@ function updateWebRtcConnectionBadge(statusType, detailText = "") {
     const connBadge = document.getElementById("connectionModeBadge");
     const statusBadge = document.getElementById("p2pStatusBadge");
 
-    let badgeClass = "badge hm-badge-neutral px-3 py-2";
-    let badgeHtml = '<i class="fa-solid fa-power-off me-1"></i>Direct Connection Disconnected';
-    let streamText = "Direct Stream Standby";
+    let badgeClass = "badge bg-secondary text-white px-2 py-1 fw-bold";
+    let badgeHtml = 'Disconnected 🔴';
 
     if (statusType === "CONNECTING") {
-        badgeClass = "badge hm-badge-warning px-3 py-2";
-        badgeHtml = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Direct Connection Handshake... 📡';
-        streamText = "Direct Connection Handshake... 📡";
-    } else if (statusType === "P2P_DIRECT_CONNECTED") {
-        badgeClass = "badge hm-badge-primary px-3 py-2";
-        const rttStr = detailText ? ` (${detailText} RTT)` : "";
-        badgeHtml = `<i class="fa-solid fa-bolt me-1"></i>Direct Connection Active ⚡${rttStr}`;
-        streamText = `Direct Connection Active ⚡${rttStr}`;
-    } else if (statusType === "DATA_CHANNEL_READY") {
-        badgeClass = "badge hm-badge-success px-3 py-2";
-        const rttStr = detailText ? ` (${detailText} RTT)` : "";
-        badgeHtml = `<i class="fa-solid fa-circle-check me-1"></i>Direct Channel Ready 🟢${rttStr}`;
-        streamText = `Direct Channel Ready 🟢${rttStr}`;
-    } else if (statusType === "ICE_FAILED" || statusType === "CONNECTION_FAILED") {
-        badgeClass = "badge hm-badge-danger px-3 py-2";
-        badgeHtml = '<i class="fa-solid fa-triangle-exclamation me-1"></i>Couldn\'t Connect Directly';
-        streamText = "Couldn't Connect Directly 🔴";
-    } else if (statusType === "DATA_CHANNEL_FAILED") {
-        badgeClass = "badge hm-badge-danger px-3 py-2";
-        badgeHtml = '<i class="fa-solid fa-triangle-exclamation me-1"></i>Direct Channel Interrupted';
-        streamText = "Direct Channel Interrupted 🔴";
-    } else if (statusType === "DEVICE_UNREACHABLE") {
-        badgeClass = "badge hm-badge-danger px-3 py-2";
-        badgeHtml = '<i class="fa-solid fa-mobile-off me-1"></i>Target Device Unavailable';
-        streamText = "Target Device Unavailable 🔴";
+        badgeClass = "badge bg-warning text-dark px-2 py-1 fw-bold";
+        badgeHtml = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Connecting... 🟡';
+    } else if (statusType === "P2P_DIRECT_CONNECTED" || statusType === "DATA_CHANNEL_READY") {
+        badgeClass = "badge bg-success text-white px-2 py-1 fw-bold";
+        const rttStr = detailText ? ` (${detailText}ms)` : "";
+        badgeHtml = `Connected 🟢${rttStr}`;
+    } else if (statusType === "ICE_FAILED" || statusType === "CONNECTION_FAILED" || statusType === "DATA_CHANNEL_FAILED" || statusType === "DEVICE_UNREACHABLE") {
+        badgeClass = "badge bg-danger text-white px-2 py-1 fw-bold";
+        badgeHtml = "Disconnected 🔴";
     } else if (statusType === "DISCONNECTED") {
-        badgeClass = "badge hm-badge-neutral px-3 py-2";
-        badgeHtml = '<i class="fa-solid fa-power-off me-1"></i>Direct Connection Closed';
-        streamText = "Direct Connection Closed 🔴";
+        badgeClass = "badge bg-secondary text-white px-2 py-1 fw-bold";
+        badgeHtml = "Disconnected 🔴";
     }
 
+    const headerBadge = document.getElementById("p2pHeaderStatusBadge");
+    if (headerBadge) {
+        headerBadge.className = badgeClass;
+        headerBadge.innerHTML = badgeHtml;
+    }
     if (connBadge) {
         connBadge.className = badgeClass;
         connBadge.innerHTML = badgeHtml;
     }
     if (statusBadge) {
-        statusBadge.innerText = streamText;
+        statusBadge.innerHTML = badgeHtml;
     }
 }
 
@@ -418,6 +407,14 @@ function sendSdpOfferToFirebase(sessionId, desc) {
         revision: 1
     };
     firebase.database().ref(`users/${uid}/devices/${devId}/webrtc_signaling/sessions/${sessionId}/offer`).set(offerPayload);
+
+    try {
+        fetch(`${CLOUDFLARE_WORKER_URL}/api/webrtc/offer`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deviceId: devId, sessionId: sessionId, sdp: desc.sdp })
+        }).catch(_ => {});
+    } catch (_) {}
 }
 
 function sendSdpAnswerToFirebase(sessionId, desc) {
@@ -429,6 +426,14 @@ function sendSdpAnswerToFirebase(sessionId, desc) {
         sdp: desc.sdp,
         revision: 1
     });
+
+    try {
+        fetch(`${CLOUDFLARE_WORKER_URL}/api/webrtc/answer`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deviceId: devId, sessionId: sessionId, sdp: desc.sdp })
+        }).catch(_ => {});
+    } catch (_) {}
 }
 
 function sendIceCandidateToFirebase(sessionId, candidate) {
@@ -441,16 +446,27 @@ function sendIceCandidateToFirebase(sessionId, candidate) {
         sdpMid: candidate.sdpMid,
         sdpMLineIndex: candidate.sdpMLineIndex
     });
+
+    try {
+        fetch(`${CLOUDFLARE_WORKER_URL}/api/webrtc/candidate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                deviceId: devId,
+                sessionId: sessionId,
+                sender: "DASHBOARD",
+                candidate: candidate.candidate,
+                sdpMid: candidate.sdpMid,
+                sdpMLineIndex: candidate.sdpMLineIndex
+            })
+        }).catch(_ => {});
+    } catch (_) {}
 }
 
 let pendingIceCandidates = [];
 
 function addRemoteCandidateOrBuffer(candData) {
-    const candStr = candData.candidate || "";
-    if (candStr.includes("typ relay")) {
-        console.warn("[WebRTC Manager] Rejected remote relay candidate per Direct-Only policy:", candStr);
-        return;
-    }
+    if (!candData || !candData.candidate) return;
     const rtcCand = new RTCIceCandidate(candData);
     if (pc && pc.remoteDescription && pc.remoteDescription.type) {
         pc.addIceCandidate(rtcCand).catch(e => console.warn("[WebRTC Candidate Add Error]", e));

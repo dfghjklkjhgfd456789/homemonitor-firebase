@@ -149,13 +149,18 @@
                 </div>
             </div>
 
-            <!-- DEVICE SELECTOR DROPDOWN & ENROLL BUTTON -->
+            <!-- DEVICE SELECTOR DROPDOWN & CONNECT BUTTON -->
             <div class="mb-3">
                 <label for="deviceSelector" class="form-label text-uppercase text-muted extra-small fw-bold mb-1">Monitored Family Device</label>
-                <select id="deviceSelector" class="form-select bg-white text-primary border small fw-bold">
-                    <option value="">📱 Discovering Family Devices...</option>
-                </select>
-                <button class="btn btn-sm btn-outline-primary w-100 mt-2 fw-bold extra-small" id="openAddDeviceModalBtn"><i class="fa-solid fa-qrcode me-1"></i>Add Child's Device (Pairing Code)</button>
+                <div class="d-flex gap-2 align-items-center">
+                    <select id="deviceSelector" class="form-select bg-white text-primary border small fw-bold flex-grow-1">
+                        <option value="">📱 Discovering Family Devices...</option>
+                    </select>
+                    <button class="btn btn-sm btn-primary fw-bold text-nowrap px-3" id="connectP2pBtn" onclick="startP2pWebStreamSession()"><i class="fa-solid fa-bolt me-1"></i>Connect ⚡</button>
+                </div>
+                <div class="mt-2 text-center">
+                    <span id="p2pHeaderStatusBadge" class="badge bg-secondary text-white px-2 py-1 fw-bold">Disconnected 🔴</span>
+                </div>
             </div>
 
             <!-- CATEGORIZED ACCORDION SIDEBAR -->
@@ -442,10 +447,9 @@
                                 </h2>
                                 <div id="helpFaq1" class="accordion-collapse collapse" data-bs-parent="#parentHelpAccordion">
                                     <div class="accordion-body small text-secondary">
-                                        1. Click <strong>Add Child's Device (Pairing Code)</strong> in the sidebar dropdown.<br>
-                                        2. Open the HomeMonitor app on your child's Android phone.<br>
-                                        3. Scan the QR pairing code on your screen or enter the 16-character code.<br>
-                                        4. Grant the required permissions on your child's device to complete setup.
+                                        1. Install the HomeMonitor app on your child's Android phone.<br>
+                                        2. Open the app and sign in with your Parent Account credentials.<br>
+                                        3. Grant the required permissions on your child's device to complete enrollment.
                                     </div>
                                 </div>
                             </div>
@@ -1187,42 +1191,7 @@ $
         </div>
     </div>
 
-    <!-- MODAL 1: ADD CHILD DEVICE (PAIRING CODE & QR ENROLLMENT) -->
-    <div class="modal fade" id="qrEnrollmentModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content bg-white text-dark border">
-                <div class="modal-header border-bottom">
-                    <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-qrcode me-2"></i>Add Child's Device (One-Time Pairing Code)</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <div class="row align-items-center">
-                        <div class="col-md-5 text-center border-end">
-                            <p class="small text-secondary mb-2">Scan with HomeMonitor Android App:</p>
-                            <div id="qrEnrollmentContainer" class="bg-white p-2 d-inline-block rounded shadow-sm border mb-2" style="min-width: 180px; min-height: 180px;">
-                                <div class="text-center py-4 text-muted"><i class="fa-solid fa-spinner fa-spin me-1"></i>Generating Local QR...</div>
-                            </div>
-                            <p class="extra-small text-muted mb-0">Pairing Code: <span id="qrEnrollmentTokenText" class="fw-bold font-monospace text-primary">Generating...</span></p>
-                            <small class="extra-small text-muted d-block mt-1">Valid for 5 minutes. Single-use invitation.</small>
-                        </div>
-                        <div class="col-md-7 ps-md-4">
-                            <h6 class="fw-bold mb-2 text-primary"><i class="fa-solid fa-mobile-screen me-2"></i>Pending Pairing Requests</h6>
-                            <p class="extra-small text-muted mb-3">When your child's phone claims the pairing code, approve the request below to authorize device access.</p>
-                            <div id="pendingPairingRequestsContainer" class="p-2 border rounded bg-light extra-small style-scrollbar" style="max-height: 200px; overflow-y: auto;">
-                                <p class="text-muted text-center py-3 mb-0"><i class="fa-solid fa-spinner fa-spin me-1"></i>Waiting for child device scan...</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="alert alert-info extra-small text-start py-2 px-3 mt-3 mb-0">
-                        <i class="fa-solid fa-shield-halved me-1"></i><strong>Independent Device Identity:</strong> Devices use Anonymous Auth. Explicit parent approval binds the device to your account securely.
-                    </div>
-                </div>
-                <div class="modal-footer border-top">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
     <!-- MODAL 2: FIRST-TIME PARENT ONBOARDING WIZARD -->
     <div class="modal fade" id="onboardingWizardModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
@@ -1275,6 +1244,38 @@ $
                 <div class="modal-footer border-top">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-sm btn-info fw-bold" id="confirmSendResetEmailBtn">Send Reset Link</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: SUPERADMIN 2FA TOTP VERIFICATION MODAL -->
+    <div class="modal fade" id="superadmin2faModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-white text-dark border">
+                <div class="modal-header border-bottom bg-dark text-white">
+                    <h5 class="modal-title fw-bold text-warning"><i class="fa-solid fa-crown me-2"></i>Master Superadmin 2FA Authentication</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="text-center mb-3">
+                        <i class="fa-solid fa-shield-halved display-4 text-warning mb-2"></i>
+                        <h6 class="fw-bold text-dark">2-Factor Authenticator Verification Required</h6>
+                        <p class="extra-small text-muted">Enter your Master Admin Passcode and live 6-digit Authenticator TOTP code to unlock Superadmin access.</p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="superadminPasscodeInput" class="form-label extra-small text-muted fw-bold">Master Admin Passcode</label>
+                        <input type="password" id="superadminPasscodeInput" class="form-control form-control-sm border" placeholder="Enter Master Admin Passcode">
+                    </div>
+                    <div class="mb-3">
+                        <label for="superadminTotpInput" class="form-label extra-small text-muted fw-bold">6-Digit 2FA TOTP Code (Google Authenticator / Authy)</label>
+                        <input type="text" id="superadminTotpInput" class="form-control form-control-sm border text-center font-monospace fs-5" placeholder="000 000" maxlength="7">
+                    </div>
+                    <div id="superadmin2faAlert" class="alert alert-danger extra-small py-2 px-3 d-none"></div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-warning fw-bold px-4" id="confirmSuperadmin2faBtn" onclick="verifySuperadmin2faCredentials()"><i class="fa-solid fa-lock-open me-1"></i>Authenticate & Unlock</button>
                 </div>
             </div>
         </div>
@@ -1350,7 +1351,6 @@ $
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script src="js/qrcode.min.js"></script>
     <script src="js/firebase-config.js?v=1.4.0"></script>
     <script src="js/auth.js?v=1.4.0"></script>
     <script src="js/superadmin.js?v=1.4.0"></script>

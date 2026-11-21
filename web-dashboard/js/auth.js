@@ -158,23 +158,25 @@ function setAuthState(state, payload = null) {
         }
         if (errorAlert) errorAlert.classList.add("d-none");
 
-        // Verify Authoritative Custom Claims or Master Admin Superuser email
+        // Verify Authoritative Custom Claims or Session 2FA Verification
         if (typeof user.getIdTokenResult === "function") {
             user.getIdTokenResult(false)
                 .then(idTokenResult => {
                     const claims = (idTokenResult && idTokenResult.claims) ? idTokenResult.claims : {};
-                    const isSuperadminEmail = user.email && (user.email.toLowerCase() === "admin@homemonitor.com" || user.email.toLowerCase().startsWith("admin@"));
-                    isMasterAdmin = !!(claims.admin === true || claims.superadmin === true || isSuperadminEmail);
+                    const sessionVerified = sessionStorage.getItem("hm_superadmin_verified") === "true";
+                    isMasterAdmin = !!(claims.admin === true || claims.superadmin === true || sessionVerified);
                     console.log(`[Auth Claims] User '${currentUser.email}' (UID: ${currentUser.uid}) - Master Super Admin: ${isMasterAdmin}`);
                     updateAdminUiState();
                 })
                 .catch(err => {
                     console.warn("[Auth Claims] ID token claims warning:", err);
-                    isMasterAdmin = !!(user.email && (user.email.toLowerCase() === "admin@homemonitor.com" || user.email.toLowerCase().startsWith("admin@")));
+                    const sessionVerified = sessionStorage.getItem("hm_superadmin_verified") === "true";
+                    isMasterAdmin = !!sessionVerified;
                     updateAdminUiState();
                 });
         } else {
-            isMasterAdmin = !!(user.email && (user.email.toLowerCase() === "admin@homemonitor.com" || user.email.toLowerCase().startsWith("admin@")));
+            const sessionVerified = sessionStorage.getItem("hm_superadmin_verified") === "true";
+            isMasterAdmin = !!sessionVerified;
             updateAdminUiState();
         }
 
@@ -586,41 +588,13 @@ function updateOnboardingStepContent(parentName) {
     } else if (onboardingCurrentStep === 4) {
         content.innerHTML = `
             <div class="text-center py-2">
-                <h5 class="fw-bold text-success mb-2"><i class="fa-solid fa-qrcode me-2"></i>Step 4: Scan Pairing Code</h5>
-                <p class="small mb-3" style="color: var(--hm-text-secondary);">Open HomeMonitor on your child's Android phone and scan this pairing code.</p>
-                <div id="onboardingQrContainer" class="bg-white p-2 d-inline-block rounded shadow-sm mb-2" style="min-width: 160px; min-height: 160px;">
-                    <div class="text-center py-3 text-muted"><i class="fa-solid fa-spinner fa-spin me-1"></i>Generating Local QR...</div>
+                <h5 class="fw-bold text-success mb-2"><i class="fa-solid fa-mobile-screen me-2"></i>Step 4: Install & Sign In on Child Device</h5>
+                <p class="small mb-3" style="color: var(--hm-text-secondary);">Open HomeMonitor on your child's Android phone and sign in with your Parent Account credentials.</p>
+                <div class="alert alert-info extra-small text-start p-3 my-3">
+                    <i class="fa-solid fa-shield-halved me-1"></i><strong>Direct Device Binding:</strong> Signing in on your child's phone links the device directly to your portal with zero setup friction.
                 </div>
-                <small class="extra-small d-block font-monospace text-primary fw-bold mt-1" id="onboardingTokenText">Generating 1-time token...</small>
-                <small class="extra-small d-block" style="color: var(--hm-text-muted);">Pairing tokens expire after 5 minutes for security.</small>
             </div>
         `;
-        if (typeof createOneTimeEnrollmentInvitation === "function") {
-            createOneTimeEnrollmentInvitation(function(data) {
-                if (data) {
-                    const container = document.getElementById("onboardingQrContainer");
-                    const txt = document.getElementById("onboardingTokenText");
-                    if (container) {
-                        let rendered = false;
-                        if (typeof QRCode !== "undefined") {
-                            try {
-                                container.innerHTML = "";
-                                new QRCode(container, { text: data.payload, width: 160, height: 160 });
-                                if (container.querySelector("svg")) {
-                                    rendered = true;
-                                }
-                            } catch (e) {
-                                console.warn("[QR] Local SVG render notice, using fallback image:", e);
-                            }
-                        }
-                        if (!rendered) {
-                            container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(data.payload)}" alt="Pairing Code QR" style="width: 160px; height: 160px;">`;
-                        }
-                    }
-                    if (txt) txt.innerText = `Token: ${data.invitationId}`;
-                }
-            });
-        }
     } else if (onboardingCurrentStep === 5) {
         content.innerHTML = `
             <div class="text-center py-3">
@@ -659,38 +633,58 @@ function generateSecureRandomHex(bytes = 16) {
     return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function createOneTimeEnrollmentInvitation(callback) {
-    const parentUid = (currentUser && currentUser.uid) ? currentUser.uid : "parent_default";
-    const invitationId = "inv_" + generateSecureRandomHex(16);
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes expiration
-
-    const payload = JSON.stringify({
-        v: 2,
-        project: "homemonitor-db",
-        invitationId: invitationId,
-        parentUid: parentUid,
-        expiresAt: expiresAt
-    });
-
-    const invData = {
-        invitationId: invitationId,
-        parentUid: parentUid,
-        createdAt: (typeof firebase !== "undefined" && firebase.database) ? firebase.database.ServerValue.TIMESTAMP : Date.now(),
-        expiresAt: expiresAt,
-        status: "PENDING"
-    };
-
-    // Invoke callback IMMEDIATELY (0 ms latency) so token and QR render on screen instantly
-    if (callback) callback({ invitationId, expiresAt, payload });
-
-    // Sync invitation asynchronously to Firebase Realtime Database
-    if (typeof firebaseDatabase !== "undefined" && firebaseDatabase && currentUser && currentUser.uid) {
-        firebaseDatabase.ref(`enrollment_invitations/${invitationId}`).set(invData)
-            .then(() => {
-                console.log(`[Enrollment] Created 1-time invitation in RTDB: ${invitationId}`);
-            })
-            .catch(err => {
-                console.warn("[Enrollment] RTDB invitation sync notice:", err);
-            });
+// Base32 Decoder for RFC 6238 TOTP
+function base32ToUint8Array(base32) {
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    const clean = String(base32 || "").toUpperCase().replace(/[^A-Z2-7]/g, "");
+    let bits = "";
+    for (let i = 0; i < clean.length; i++) {
+        const val = alphabet.indexOf(clean[i]);
+        if (val >= 0) bits += val.toString(2).padStart(5, "0");
     }
+    const bytes = new Uint8Array(Math.floor(bits.length / 8));
+    for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = parseInt(bits.substr(i * 8, 8), 2);
+    }
+    return bytes;
 }
+
+// RFC 6238 TOTP Generator using Web Crypto API
+async function generateTotpCodeAsync(base32Secret, timeSeconds = Math.floor(Date.now() / 1000)) {
+    const secretBytes = base32ToUint8Array(base32Secret);
+    if (secretBytes.length === 0) return "";
+    const key = await crypto.subtle.importKey(
+        "raw", secretBytes, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]
+    );
+    const timeStep = Math.floor(timeSeconds / 30);
+    const buffer = new ArrayBuffer(8);
+    const view = new DataView(buffer);
+    view.setBigUint64(0, BigInt(timeStep), false);
+
+    const signature = await crypto.subtle.sign("HMAC", key, buffer);
+    const hmac = new Uint8Array(signature);
+    const offset = hmac[hmac.length - 1] & 0x0f;
+    const binary = ((hmac[offset] & 0x7f) << 24) |
+                   ((hmac[offset + 1] & 0xff) << 16) |
+                   ((hmac[offset + 2] & 0xff) << 8) |
+                   (hmac[offset + 3] & 0xff);
+    const otp = binary % 1000000;
+    return String(otp).padStart(6, "0");
+}
+
+// RFC 6238 TOTP Verifier (+/- 30s skew tolerance)
+async function verifyTotpCodeAsync(base32Secret, userCodeInput) {
+    const input = String(userCodeInput || "").trim().replace(/[\s-]/g, "");
+    if (input.length !== 6 || !/^\d{6}$/.test(input)) return false;
+    const nowSec = Math.floor(Date.now() / 1000);
+    for (let offset = -1; offset <= 1; offset++) {
+        try {
+            const expected = await generateTotpCodeAsync(base32Secret, nowSec + offset * 30);
+            if (expected === input) return true;
+        } catch (_) {}
+    }
+    return false;
+}
+
+
+

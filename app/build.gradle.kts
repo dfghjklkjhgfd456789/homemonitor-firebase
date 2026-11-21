@@ -156,13 +156,12 @@ dependencies {
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
 
-    // CameraX & ML Kit QR Barcode Scanner
+    // CameraX
     implementation(libs.camera.core)
     implementation(libs.camera.camera2)
     implementation(libs.camera.lifecycle)
     implementation("androidx.camera:camera-video:1.3.4")
     implementation("androidx.camera:camera-view:1.3.4")
-    implementation(libs.mlkit.barcode.scanning)
 
     // OkHttp for Telegram API calls
     implementation(libs.okhttp)
