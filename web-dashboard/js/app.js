@@ -622,6 +622,18 @@ function setupDeviceManagementModals() {
     document.getElementById("openAddDeviceModalBtn")?.addEventListener("click", function() {
         const modal = new bootstrap.Modal(document.getElementById("qrEnrollmentModal"));
         modal.show();
+
+        if (typeof createOneTimeEnrollmentInvitation === "function") {
+            createOneTimeEnrollmentInvitation(function(data, err) {
+                if (data) {
+                    const img = document.getElementById("qrEnrollmentImg");
+                    const txt = document.getElementById("qrEnrollmentTokenText");
+                    if (img) img.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(data.payload)}`;
+                    if (txt) txt.innerText = data.invitationId;
+                }
+            });
+        }
+        listenForPendingDevices();
     });
 
     document.getElementById("openRenameModalBtn")?.addEventListener("click", function() {
@@ -696,13 +708,120 @@ function renameActiveDevice(newName) {
     showDashboardNotification("success", `✅ Device renamed to '${newName}'`);
 }
 
+function listenForPendingDevices() {
+    if (!currentUser || !currentUser.uid) return;
+    const pendingRef = firebaseDatabase.ref(`users/${currentUser.uid}/pending_devices`);
+    registerActiveFirebaseListener(pendingRef, "value", function(snapshot) {
+        const container = document.getElementById("pendingPairingRequestsContainer");
+        if (!container) return;
+
+        const data = snapshot.val();
+        if (!data) {
+            container.innerHTML = `<p class="text-muted text-center py-3 mb-0"><i class="fa-solid fa-spinner fa-spin me-1"></i>Waiting for child device scan...</p>`;
+            return;
+        }
+
+        container.innerHTML = "";
+        let pendingCount = 0;
+        Object.keys(data).forEach(deviceUid => {
+            const req = data[deviceUid];
+            if (req && req.status === "PENDING") {
+                pendingCount++;
+                const item = document.createElement("div");
+                item.className = "p-2 mb-2 bg-white rounded border d-flex justify-content-between align-items-center";
+                item.innerHTML = `
+                    <div>
+                        <strong class="d-block text-dark">${escapeHtml(req.deviceName || 'Child Device')}</strong>
+                        <small class="text-muted extra-small">UID: ${escapeHtml(deviceUid.substring(0, 8))}... (${escapeHtml(req.model || 'Android')})</small>
+                    </div>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-sm btn-success px-2 py-1 extra-small fw-bold" onclick="approvePendingDevice('${deviceUid}', '${escapeHtml(req.deviceName || 'Child Device')}')"><i class="fa-solid fa-check me-1"></i>Approve</button>
+                        <button class="btn btn-sm btn-outline-danger px-2 py-1 extra-small fw-bold" onclick="rejectPendingDevice('${deviceUid}')"><i class="fa-solid fa-xmark me-1"></i>Reject</button>
+                    </div>
+                `;
+                container.appendChild(item);
+            }
+        });
+
+        if (pendingCount === 0) {
+            container.innerHTML = `<p class="text-muted text-center py-3 mb-0"><i class="fa-solid fa-circle-check text-success me-1"></i>No pending requests. All claimed devices are approved!</p>`;
+        }
+    });
+}
+
+function approvePendingDevice(deviceUid, deviceName) {
+    if (!currentUser || !currentUser.uid) return;
+    const parentUid = currentUser.uid;
+    const deviceId = "DEV_" + deviceUid.substring(0, 10).toUpperCase();
+
+    const deviceData = {
+        deviceId: deviceId,
+        deviceUid: deviceUid,
+        nickname: deviceName,
+        approvedAt: firebase.database.ServerValue.TIMESTAMP,
+        status: "APPROVED",
+        online: true
+    };
+
+    const bindingData = {
+        parentUid: parentUid,
+        deviceId: deviceId,
+        status: "APPROVED"
+    };
+
+    const updates = {};
+    updates[`users/${parentUid}/pending_devices/${deviceUid}/status`] = "APPROVED";
+    updates[`users/${parentUid}/devices/${deviceId}`] = deviceData;
+    updates[`device_bindings/${deviceUid}`] = bindingData;
+
+    firebaseDatabase.ref().update(updates)
+        .then(() => {
+            console.log(`[Enrollment] Approved device: ${deviceUid} -> ${deviceId}`);
+            if (typeof showDashboardNotification === "function") {
+                showDashboardNotification("success", `✅ Approved device '${deviceName}' successfully!`);
+            }
+        })
+        .catch(err => {
+            console.error("[Enrollment] Approval error:", err);
+            if (typeof showDashboardNotification === "function") {
+                showDashboardNotification("error", `Approval failed: ${err.message}`);
+            }
+        });
+}
+
+function rejectPendingDevice(deviceUid) {
+    if (!currentUser || !currentUser.uid) return;
+    const parentUid = currentUser.uid;
+
+    const updates = {};
+    updates[`users/${parentUid}/pending_devices/${deviceUid}/status`] = "REJECTED";
+    updates[`device_bindings/${deviceUid}`] = null;
+
+    firebaseDatabase.ref().update(updates)
+        .then(() => {
+            console.log(`[Enrollment] Rejected device: ${deviceUid}`);
+        })
+        .catch(err => console.error("[Enrollment] Rejection error:", err));
+}
+
 function unlinkActiveDevice() {
     if (!currentUser || !currentUser.uid || !activeDeviceId) return;
     const uid = currentUser.uid;
     const devIdToRemove = activeDeviceId;
-    firebase.database().ref(`users/${uid}/devices/${devIdToRemove}`).remove()
+
+    firebase.database().ref(`users/${uid}/devices/${devIdToRemove}`).once("value")
+        .then(snap => {
+            const devData = snap.val();
+            const devUid = devData?.deviceUid;
+            const updates = {};
+            updates[`users/${uid}/devices/${devIdToRemove}`] = null;
+            if (devUid) {
+                updates[`device_bindings/${devUid}`] = null;
+            }
+            return firebase.database().ref().update(updates);
+        })
         .then(() => {
-            showDashboardNotification("warning", `🗑️ Removed device ${devIdToRemove}`);
+            showDashboardNotification("warning", `🗑️ Removed & revoked device ${devIdToRemove}`);
             loadEnrolledDevicesList();
         })
         .catch(err => {

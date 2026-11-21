@@ -1,14 +1,34 @@
 {
   "rules": {
+    "enrollment_invitations": {
+      "$invitationId": {
+        ".read": "auth != null && (data.child('parentUid').val() == auth.uid || data.child('claim/deviceUid').val() == auth.uid)",
+        ".write": "auth != null && ((!data.exists() && newData.child('parentUid').val() == auth.uid && newData.child('status').val() == 'PENDING' && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now + 300000) || (data.exists() && data.child('parentUid').val() == auth.uid) || (data.exists() && data.child('status').val() == 'PENDING' && data.child('expiresAt').val() > now && newData.child('status').val() == 'CLAIMED' && newData.child('claim/deviceUid').val() == auth.uid && newData.child('parentUid').val() == data.child('parentUid').val()))"
+      }
+    },
+    "device_bindings": {
+      "$deviceUid": {
+        ".read": "auth != null && (auth.uid == $deviceUid || (data.exists() && data.child('parentUid').val() == auth.uid))",
+        ".write": "auth != null && ((!data.exists() && newData.child('parentUid').val() == auth.uid && newData.child('status').val() == 'APPROVED') || (data.exists() && data.child('parentUid').val() == auth.uid))"
+      }
+    },
     "users": {
-      "$uid": {
-        ".read": "auth != null && auth.uid == $uid",
-        ".write": "auth != null && auth.uid == $uid",
+      "$parentUid": {
+        ".read": "auth != null && auth.uid == $parentUid",
+        ".write": "auth != null && auth.uid == $parentUid",
+        "pending_devices": {
+          "$deviceUid": {
+            ".read": "auth != null && (auth.uid == $parentUid || auth.uid == $deviceUid)",
+            ".write": "auth != null && ((auth.uid == $parentUid) || (auth.uid == $deviceUid && !data.exists() && newData.child('deviceUid').val() == auth.uid && newData.child('status').val() == 'PENDING'))"
+          }
+        },
         "devices": {
           "$deviceId": {
+            ".read": "auth != null && (auth.uid == $parentUid || (root.child('device_bindings').child(auth.uid).exists() && root.child('device_bindings').child(auth.uid).child('parentUid').val() == $parentUid && root.child('device_bindings').child(auth.uid).child('deviceId').val() == $deviceId && root.child('device_bindings').child(auth.uid).child('status').val() == 'APPROVED'))",
+            ".write": "auth != null && (auth.uid == $parentUid || (root.child('device_bindings').child(auth.uid).exists() && root.child('device_bindings').child(auth.uid).child('parentUid').val() == $parentUid && root.child('device_bindings').child(auth.uid).child('deviceId').val() == $deviceId && root.child('device_bindings').child(auth.uid).child('status').val() == 'APPROVED'))",
             ".indexOn": ["lastSeen", "online", "timestamp"],
             "status": {
-              ".validate": "newData.hasChildren(['deviceId', 'lastSeen'])"
+              ".validate": "newData.hasChildren(['deviceId'])"
             },
             "commands": {
               ".indexOn": ["timestamp", "status"]

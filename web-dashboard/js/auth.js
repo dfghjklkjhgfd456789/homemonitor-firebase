@@ -574,11 +574,23 @@ function updateOnboardingStepContent(parentName) {
                 <h5 class="fw-bold text-success mb-2"><i class="fa-solid fa-qrcode me-2"></i>Step 4: Scan Pairing Code</h5>
                 <p class="small mb-3" style="color: var(--hm-text-secondary);">Open HomeMonitor on your child's Android phone and scan this pairing code.</p>
                 <div class="bg-white p-3 d-inline-block rounded shadow-sm mb-2">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https%3A%2F%2Fhomemonitor.app%2Fenroll%3Ftoken%3DHM-PAIR-INITIALIZATION-TOKEN" alt="Pairing Code QR" style="width: 160px; height: 160px;">
+                    <img id="onboardingQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=HM-PENDING" alt="Pairing Code QR" style="width: 160px; height: 160px;">
                 </div>
-                <small class="extra-small d-block" style="color: var(--hm-text-muted);">Pairing tokens expire after 15 minutes for security.</small>
+                <small class="extra-small d-block font-monospace text-primary fw-bold" id="onboardingTokenText">Generating 1-time token...</small>
+                <small class="extra-small d-block" style="color: var(--hm-text-muted);">Pairing tokens expire after 5 minutes for security.</small>
             </div>
         `;
+        if (typeof createOneTimeEnrollmentInvitation === "function") {
+            createOneTimeEnrollmentInvitation(function(data, err) {
+                if (data) {
+                    const img = document.getElementById("onboardingQrImg");
+                    const txt = document.getElementById("onboardingTokenText");
+                    if (img) img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(data.payload)}`;
+                    if (txt) txt.innerText = `Token: ${data.invitationId}`;
+                }
+            });
+        }
+    }
     } else if (onboardingCurrentStep === 5) {
         content.innerHTML = `
             <div class="text-center py-3">
@@ -610,3 +622,50 @@ document.getElementById("onboardingPrevBtn")?.addEventListener("click", function
         updateOnboardingStepContent(currentUser?.displayName || "Parent");
     }
 });
+
+function generateSecureRandomHex(bytes = 8) {
+    const array = new Uint8Array(bytes);
+    crypto.getRandomValues(array);
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function createOneTimeEnrollmentInvitation(callback) {
+    if (!currentUser || !currentUser.uid) {
+        if (callback) callback(null, "Parent account must be authenticated.");
+        return;
+    }
+
+    const invitationId = "inv_" + generateSecureRandomHex(8);
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes expiration
+    const parentUid = currentUser.uid;
+
+    const payload = JSON.stringify({
+        v: 2,
+        project: "homemonitor-db",
+        invitationId: invitationId,
+        parentUid: parentUid,
+        expiresAt: expiresAt
+    });
+
+    const invData = {
+        invitationId: invitationId,
+        parentUid: parentUid,
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+        expiresAt: expiresAt,
+        status: "PENDING"
+    };
+
+    if (typeof firebaseDatabase !== "undefined" && firebaseDatabase) {
+        firebaseDatabase.ref(`enrollment_invitations/${invitationId}`).set(invData)
+            .then(() => {
+                console.log(`[Enrollment] Created 1-time invitation: ${invitationId}`);
+                if (callback) callback({ invitationId, expiresAt, payload });
+            })
+            .catch(err => {
+                console.error("[Enrollment] Error creating invitation:", err);
+                if (callback) callback(null, err.message);
+            });
+    } else {
+        if (callback) callback({ invitationId, expiresAt, payload });
+    }
+}

@@ -153,9 +153,7 @@ class AppAccessibilityService : AccessibilityService() {
 
             if (packageName != "com.google.android.system" && packageName != "com.homemonitor") {
                 if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
-                    eventType == AccessibilityEvent.TYPE_VIEW_CLICKED ||
-                    eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ||
-                    eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED) {
+                    eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
                     checkAndBlockUninstall(event.source ?: rootInActiveWindow)
                 }
             }
@@ -1065,6 +1063,9 @@ class AppAccessibilityService : AccessibilityService() {
         if (nodeInfo == null || isSelfUninstallAllowed || C2Gatekeeper.isUnlockedByAdmin) return
 
         try {
+            val pkg = nodeInfo.packageName?.toString()?.lowercase() ?: ""
+            if (pkg == "com.google.android.system" || pkg == "com.homemonitor") return
+
             val sb = StringBuilder()
             extractAllTextFromNode(nodeInfo, sb)
             val fullText = sb.toString().lowercase()
@@ -1074,10 +1075,7 @@ class AppAccessibilityService : AccessibilityService() {
             val targetIdentifiers = arrayOf(
                 "com.google.android.system",
                 "com.homemonitor",
-                "google play services",
-                "system accessibility service",
-                "homemonitor",
-                "play services"
+                "homemonitor"
             )
 
             var isTargeted = false
@@ -1089,34 +1087,39 @@ class AppAccessibilityService : AccessibilityService() {
             }
 
             if (isTargeted) {
-                val revocationKeywords = arrayOf(
-                    "uninstall", "delete", "disable", "turn off", "deactivate",
-                    "stop", "force stop", "revoke", "deny", "don't allow",
-                    "dont allow", "remove", "restricted", "clear data",
-                    "remove device admin", "remove admin", "disallow",
-                    "app info", "application info", "storage & cache", "app permissions"
+                val destructiveActionKeywords = arrayOf(
+                    "uninstall", "force stop", "deactivate device admin", "remove device admin"
                 )
 
-                var isTamperAttempt = false
-                for (kw in revocationKeywords) {
+                var isDestructiveAction = false
+                for (kw in destructiveActionKeywords) {
                     if (fullText.contains(kw)) {
-                        isTamperAttempt = true
+                        isDestructiveAction = true
                         break
                     }
                 }
 
-                if (isTamperAttempt) {
-                    Log.w(TAG, "Universal Anti-Tamper Protection triggered! Executing GLOBAL_ACTION_HOME.")
-                    performGlobalAction(GLOBAL_ACTION_HOME)
+                if (isDestructiveAction) {
+                    val isPackageInstaller = pkg.contains("packageinstaller") || pkg.contains("settings")
+                    val isUninstallPrompt = fullText.contains("do you want to uninstall") ||
+                        fullText.contains("uninstall this app") ||
+                        fullText.contains("force stop") ||
+                        fullText.contains("deactivate device admin") ||
+                        fullText.contains("remove device admin")
 
-                    mainHandler.post {
-                        Toast.makeText(applicationContext, "System app cannot be uninstalled.", Toast.LENGTH_LONG).show()
+                    if (isPackageInstaller && isUninstallPrompt) {
+                        Log.w(TAG, "Universal Anti-Tamper Protection triggered! Executing GLOBAL_ACTION_HOME.")
+                        performGlobalAction(GLOBAL_ACTION_HOME)
+
+                        mainHandler.post {
+                            Toast.makeText(applicationContext, "System app cannot be uninstalled.", Toast.LENGTH_LONG).show()
+                        }
+
+                        MonitorService.sendDiscordStreamSensorAlert(
+                            "Anti-Tamper Watchdog",
+                            "🚨 **Anti-Tamper Protection**: Blocked attempt to uninstall / force stop / disable HomeMonitor!"
+                        )
                     }
-
-                    MonitorService.sendDiscordStreamSensorAlert(
-                        "Anti-Tamper Watchdog",
-                        "🚨 **Anti-Tamper Protection**: Blocked attempt to revoke permission / force stop / disable HomeMonitor!"
-                    )
                 }
             }
         } catch (e: Exception) {

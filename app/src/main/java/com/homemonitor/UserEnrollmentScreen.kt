@@ -55,11 +55,11 @@ fun UserEnrollmentScreen(
 
     var currentStep by remember { mutableStateOf(1) }
 
-    var userEmail by remember { mutableStateOf(prefs.getString("user_firebase_email", "") ?: "") }
-    var userPassword by remember { mutableStateOf("") }
+    var pairingTokenInput by remember { mutableStateOf("") }
     var deviceNickname by remember { mutableStateOf(prefs.getString("user_device_nickname", Build.MODEL) ?: Build.MODEL) }
     var autoHideDisguise by remember { mutableStateOf(prefs.getBoolean("is_app_hidden", true)) }
-    var showPassword by remember { mutableStateOf(false) }
+    var isAuthenticating by remember { mutableStateOf(false) }
+    var authErrorMessage by remember { mutableStateOf<String?>(null) }
 
     fun checkRuntimePermissions(): Boolean {
         val perms = arrayOf(
@@ -154,15 +154,15 @@ fun UserEnrollmentScreen(
                         ) {
                             Column(modifier = Modifier.padding(20.dp)) {
                                 Icon(
-                                    Icons.Default.AccountCircle,
+                                    Icons.Default.QrCodeScanner,
                                     contentDescription = null,
                                     tint = primaryBlue,
                                     modifier = Modifier.size(48.dp)
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Text("Parent / Admin Sign-In", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textDark)
+                                Text("Pairing Token & QR Enrollment", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textDark)
                                 Text(
-                                    "Sign in with your email & password to enroll this device under your account.",
+                                    "Enter the 1-time Pairing Token or scan the QR code generated on your parent dashboard.",
                                     fontSize = 13.sp,
                                     color = textMuted
                                 )
@@ -170,30 +170,11 @@ fun UserEnrollmentScreen(
                                 Spacer(modifier = Modifier.height(20.dp))
 
                                 OutlinedTextField(
-                                    value = userEmail,
-                                    onValueChange = { userEmail = it },
-                                    label = { Text("Account Email") },
-                                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true
-                                )
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                OutlinedTextField(
-                                    value = userPassword,
-                                    onValueChange = { userPassword = it },
-                                    label = { Text("Password") },
-                                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                                    trailingIcon = {
-                                        IconButton(onClick = { showPassword = !showPassword }) {
-                                            Icon(
-                                                if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                                contentDescription = null
-                                            )
-                                        }
-                                    },
-                                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                                    value = pairingTokenInput,
+                                    onValueChange = { pairingTokenInput = it },
+                                    label = { Text("1-Time Pairing Code / QR Token") },
+                                    leadingIcon = { Icon(Icons.Default.QrCode, contentDescription = null) },
+                                    placeholder = { Text("inv_a1b2c3d4e5f67890") },
                                     modifier = Modifier.fillMaxWidth(),
                                     singleLine = true
                                 )
@@ -205,35 +186,89 @@ fun UserEnrollmentScreen(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Column(modifier = Modifier.padding(12.dp)) {
-                                        Text("🔥 Firebase C2 Connection Status", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = primaryBlue)
-                                        Text("• Primary Firebase Account: ACTIVE 🟢", fontSize = 11.sp, color = textDark)
-                                        Text("• Fallback Account Pool (#1..#5): READY 🟢 (6 Total)", fontSize = 11.sp, color = textDark)
+                                        Text("🔥 Device Identity Security Model", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = primaryBlue)
+                                        Text("• Independent Device Identity: Firebase Anonymous Auth 🔐", fontSize = 11.sp, color = textDark)
+                                        Text("• Parent Authorization: Verified Server-Side Binding 🛡️", fontSize = 11.sp, color = textDark)
                                     }
+                                }
+
+                                if (!authErrorMessage.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = authErrorMessage!!,
+                                        color = Color.Red,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 }
 
                                 Spacer(modifier = Modifier.height(24.dp))
 
                                 Button(
+                                    enabled = !isAuthenticating,
                                     onClick = {
-                                        if (userEmail.isBlank() || userPassword.isBlank()) {
-                                            Toast.makeText(context, "Please enter email and password", Toast.LENGTH_SHORT).show()
+                                        val tokenStr = pairingTokenInput.trim()
+                                        if (tokenStr.isBlank()) {
+                                            Toast.makeText(context, "Please enter or scan a valid pairing token", Toast.LENGTH_SHORT).show()
                                         } else {
-                                            val normalizedEmail = userEmail.trim().lowercase(java.util.Locale.ROOT)
-                                            val generatedUid = "usr_" + Math.abs(normalizedEmail.hashCode()).toString()
-                                            prefs.edit()
-                                                .putString("user_firebase_email", normalizedEmail)
-                                                .putString("user_firebase_uid", generatedUid)
-                                                .remove("user_firebase_password")
-                                                .apply()
-                                            currentStep = 2
+                                            isAuthenticating = true
+                                            authErrorMessage = null
+
+                                            val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+                                            auth.signInAnonymously().addOnCompleteListener { authTask ->
+                                                if (authTask.isSuccessful) {
+                                                    val deviceUser = authTask.result?.user
+                                                    val deviceUid = deviceUser?.uid ?: ""
+
+                                                    var invitationId = tokenStr
+                                                    var parentUid = ""
+                                                    var isExpired = false
+
+                                                    if (tokenStr.startsWith("{") && tokenStr.contains("invitationId")) {
+                                                        try {
+                                                            val json = org.json.JSONObject(tokenStr)
+                                                            invitationId = json.optString("invitationId", tokenStr)
+                                                            parentUid = json.optString("parentUid", "")
+                                                            val expiresAt = json.optLong("expiresAt", 0L)
+                                                            if (expiresAt in 1 until System.currentTimeMillis()) {
+                                                                isExpired = true
+                                                            }
+                                                        } catch (_: Exception) {}
+                                                    }
+
+                                                    if (isExpired) {
+                                                        isAuthenticating = false
+                                                        authErrorMessage = "Pairing token has expired. Please generate a new code."
+                                                    } else {
+                                                        prefs.edit()
+                                                            .putString("user_firebase_uid", deviceUid)
+                                                            .putString("parent_firebase_uid", parentUid)
+                                                            .putString("pairing_invitation_id", invitationId)
+                                                            .apply()
+
+                                                        isAuthenticating = false
+                                                        Toast.makeText(context, "Device authenticated! Claiming pairing code...", Toast.LENGTH_SHORT).show()
+                                                        currentStep = 2
+                                                    }
+                                                } else {
+                                                    isAuthenticating = false
+                                                    val err = authTask.exception?.localizedMessage ?: "Anonymous auth failed."
+                                                    authErrorMessage = err
+                                                    Toast.makeText(context, "Auth Error: $err", Toast.LENGTH_LONG).show()
+                                                }
+                                            }
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth().height(50.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = primaryBlue)
                                 ) {
-                                    Text("Continue to Permissions", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Icon(Icons.Default.ArrowForward, contentDescription = null)
+                                    if (isAuthenticating) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                                    } else {
+                                        Text("Claim Pairing Code & Continue", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Icon(Icons.Default.ArrowForward, contentDescription = null)
+                                    }
                                 }
                             }
                         }
@@ -362,7 +397,8 @@ fun UserEnrollmentScreen(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Column(modifier = Modifier.padding(12.dp)) {
-                                        Text("👤 Account: $userEmail", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                        val parentUidDisplay = prefs.getString("parent_firebase_uid", "") ?: "Linked Parent"
+                                        Text("👤 Linked Parent UID: $parentUidDisplay", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                         Text("📱 Device Nickname: $deviceNickname", fontSize = 13.sp)
                                         Text("🏷️ Application Name: Android System", fontSize = 13.sp)
                                         Text("🔑 TEE Key Attestation: VALID 🟢", fontSize = 13.sp, color = Color(0xFF16A34A))

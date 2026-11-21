@@ -1177,19 +1177,32 @@ $
 
     <!-- MODAL 1: ADD CHILD DEVICE (PAIRING CODE & QR ENROLLMENT) -->
     <div class="modal fade" id="qrEnrollmentModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content bg-white text-dark border">
                 <div class="modal-header border-bottom">
-                    <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-qrcode me-2"></i>Add Child's Device (Pairing Code)</h5>
+                    <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-qrcode me-2"></i>Add Child's Device (One-Time Pairing Code)</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body text-center p-4">
-                    <p class="small text-secondary mb-3">Open the HomeMonitor app on your child's Android phone and scan this pairing code during initial setup.</p>
-                    <div class="bg-white p-3 d-inline-block rounded shadow-sm border mb-3">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https%3A%2F%2Fhomemonitor.app%2Fenroll%3Ftoken%3DHM-PAIR-INITIALIZATION-TOKEN" alt="Device Pairing QR Code" style="width: 180px; height: 180px;">
+                <div class="modal-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-5 text-center border-end">
+                            <p class="small text-secondary mb-2">Scan with HomeMonitor Android App:</p>
+                            <div id="qrEnrollmentContainer" class="bg-white p-2 d-inline-block rounded shadow-sm border mb-2" style="min-width: 180px; min-height: 180px;">
+                                <div class="text-center py-4 text-muted"><i class="fa-solid fa-spinner fa-spin me-1"></i>Generating Local QR...</div>
+                            </div>
+                            <p class="extra-small text-muted mb-0">Pairing Code: <span id="qrEnrollmentTokenText" class="fw-bold font-monospace text-primary">Generating...</span></p>
+                            <small class="extra-small text-muted d-block mt-1">Valid for 5 minutes. Single-use invitation.</small>
+                        </div>
+                        <div class="col-md-7 ps-md-4">
+                            <h6 class="fw-bold mb-2 text-primary"><i class="fa-solid fa-mobile-screen me-2"></i>Pending Pairing Requests</h6>
+                            <p class="extra-small text-muted mb-3">When your child's phone claims the pairing code, approve the request below to authorize device access.</p>
+                            <div id="pendingPairingRequestsContainer" class="p-2 border rounded bg-light extra-small style-scrollbar" style="max-height: 200px; overflow-y: auto;">
+                                <p class="text-muted text-center py-3 mb-0"><i class="fa-solid fa-spinner fa-spin me-1"></i>Waiting for child device scan...</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="alert alert-info extra-small text-start py-2 px-3 mb-0">
-                        <i class="fa-solid fa-shield-halved me-1"></i><strong>Single-Use Pairing Code:</strong> Pairing tokens are 32-character high-entropy keys valid for 15 minutes. Backend verification completes device linking securely.
+                    <div class="alert alert-info extra-small text-start py-2 px-3 mt-3 mb-0">
+                        <i class="fa-solid fa-shield-halved me-1"></i><strong>Independent Device Identity:</strong> Devices use Anonymous Auth. Explicit parent approval binds the device to your account securely.
                     </div>
                 </div>
                 <div class="modal-footer border-top">

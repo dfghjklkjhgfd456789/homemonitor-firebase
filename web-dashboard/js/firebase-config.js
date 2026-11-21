@@ -1,130 +1,46 @@
-// firebase-config.js - Primary + Fallback Firebase Account Pool Config
-const firebaseAccountPool = [
-    {
-        name: "Primary Account (homemonitor-db)",
-        databaseURL: "https://homemonitor-db-default-rtdb.asia-southeast1.firebasedatabase.app",
-        apiKey: "AIzaSyByPqeoxKXhYxqy88pcep5FYzfTZEDhK8g"
-    },
-    {
-        name: "Fallback Account #1",
-        databaseURL: "https://homemonitor-fallback-1-rtdb.firebaseio.com",
-        apiKey: "AIzaSyFallbackKeyOne12345"
-    },
-    {
-        name: "Fallback Account #2",
-        databaseURL: "https://homemonitor-fallback-2-rtdb.firebaseio.com",
-        apiKey: "AIzaSyFallbackKeyTwo12345"
-    },
-    {
-        name: "Fallback Account #3",
-        databaseURL: "https://homemonitor-fallback-3-rtdb.firebaseio.com",
-        apiKey: "AIzaSyFallbackKeyThree12345"
-    },
-    {
-        name: "Fallback Account #4",
-        databaseURL: "https://homemonitor-fallback-4-rtdb.firebaseio.com",
-        apiKey: "AIzaSyFallbackKeyFour12345"
-    },
-    {
-        name: "Fallback Account #5",
-        databaseURL: "https://homemonitor-fallback-5-rtdb.firebaseio.com",
-        apiKey: "AIzaSyFallbackKeyFive12345"
-    }
-];
+// firebase-config.js - Authoritative Firebase Project Configuration (homemonitor-db)
+const firebaseConfig = {
+    apiKey: "AIzaSyByPqeoxKXhYxqy88pcep5FYzfTZEDhK8g",
+    authDomain: "homemonitor-db.firebaseapp.com",
+    databaseURL: "https://homemonitor-db-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "homemonitor-db",
+    storageBucket: "homemonitor-db.firebasestorage.app",
+    messagingSenderId: "163747662526",
+    appId: "1:163747662526:web:6a66ead2b3803586336cef",
+    measurementId: "G-1N5CX87JGG"
+};
 
-let activeFirebaseIndex = 0;
-
-function loadStoredFirebaseKeys() {
-    const savedApiKey = localStorage.getItem("firebase_custom_api_key");
-    const savedDbUrl = localStorage.getItem("firebase_custom_db_url");
-
-    if (savedApiKey && savedApiKey.trim()) {
-        firebaseAccountPool[0].apiKey = savedApiKey.trim();
-    }
-    if (savedDbUrl && savedDbUrl.trim()) {
-        firebaseAccountPool[0].databaseURL = savedDbUrl.trim();
-    }
+// Initialize Authoritative Firebase Instance once
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+} else {
+    firebase.app();
 }
 
-function initActiveFirebaseInstance() {
-    loadStoredFirebaseKeys();
-    const config = firebaseAccountPool[activeFirebaseIndex];
-    if (firebase.apps.length > 0) {
-        firebase.app().delete();
-    }
-    firebase.initializeApp({
-        databaseURL: config.databaseURL,
-        apiKey: config.apiKey
-    });
-    console.log(`[Firebase C2] Active Instance: ${config.name} (${config.databaseURL})`);
-}
+const firebaseApp = firebase.app();
+const firebaseAuth = firebase.auth();
+const firebaseDatabase = firebase.database();
 
-function switchActiveFirebaseAccount(index) {
-    if (index >= 0 && index < firebaseAccountPool.length) {
-        activeFirebaseIndex = index;
-        initActiveFirebaseInstance();
-        renderFirebaseAccountPoolCards();
-        if (typeof activeDeviceId !== "undefined" && activeDeviceId && typeof startRealtimeDeviceListener === "function") {
-            startRealtimeDeviceListener(activeDeviceId);
-        }
-    }
-}
+console.log(`[Firebase C2] Authoritative Instance Active: ${firebaseConfig.projectId} (${firebaseConfig.databaseURL})`);
 
+// UI Display helper for single active Firebase project
 function renderFirebaseAccountPoolCards() {
     const container = document.getElementById("firebaseAccountCardsContainer");
     if (!container) return;
 
-    container.innerHTML = "";
-    firebaseAccountPool.forEach((acc, idx) => {
-        const col = document.createElement("div");
-        col.className = "col-md-4";
-
-        const isActive = (idx === activeFirebaseIndex);
-        const card = document.createElement("div");
-        card.className = `p-3 rounded border cursor-pointer ${isActive ? 'bg-dark text-light border-danger' : 'bg-light border-secondary'}`;
-        card.onclick = function() { switchActiveFirebaseAccount(idx); };
-
-        card.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold mb-1">${acc.name}</h6>
-                <span class="badge ${isActive ? 'bg-danger' : 'bg-secondary'}">${isActive ? 'ACTIVE 🟢' : 'READY'}</span>
+    container.innerHTML = `
+        <div class="col-md-12">
+            <div class="p-3 rounded border bg-dark text-light border-success">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-1">Authoritative Account (${firebaseConfig.projectId})</h6>
+                    <span class="badge bg-success">ACTIVE 🟢</span>
+                </div>
+                <p class="extra-small text-muted mb-0 text-truncate">${firebaseConfig.databaseURL}</p>
             </div>
-            <p class="extra-small text-muted mb-0 text-truncate">${acc.databaseURL}</p>
-        `;
-        col.appendChild(card);
-    });
+        </div>
+    `;
 }
 
 document.addEventListener("DOMContentLoaded", function() {
     renderFirebaseAccountPoolCards();
-
-    const apiKeyInput = document.getElementById("customApiKeyInput");
-    const dbUrlInput = document.getElementById("customDbUrlInput");
-    const saveBtn = document.getElementById("saveCustomFirebaseKeysBtn");
-
-    if (apiKeyInput) {
-        apiKeyInput.value = localStorage.getItem("firebase_custom_api_key") || firebaseAccountPool[0].apiKey;
-    }
-    if (dbUrlInput) {
-        dbUrlInput.value = localStorage.getItem("firebase_custom_db_url") || firebaseAccountPool[0].databaseURL;
-    }
-
-    if (saveBtn) {
-        saveBtn.addEventListener("click", function() {
-            const keyVal = apiKeyInput ? apiKeyInput.value.trim() : "";
-            const urlVal = dbUrlInput ? dbUrlInput.value.trim() : "";
-
-            if (keyVal) localStorage.setItem("firebase_custom_api_key", keyVal);
-            if (urlVal) localStorage.setItem("firebase_custom_db_url", urlVal);
-
-            initActiveFirebaseInstance();
-            alert("✅ Custom Firebase Credentials Saved and Applied!");
-            if (typeof setAuthState === "function" && typeof AUTH_STATES !== "undefined") {
-                setAuthState(AUTH_STATES.UNAUTHENTICATED);
-            }
-        });
-    }
 });
-
-// Initializing Primary Account
-initActiveFirebaseInstance();
