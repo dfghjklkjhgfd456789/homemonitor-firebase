@@ -66,16 +66,15 @@ class WebRtcEngine(
 
             peerConnection = factory?.createPeerConnection(rtcConfig, this)
 
-            val init = DataChannel.Init().apply {
-                ordered = true
-            }
-            dataChannel = peerConnection?.createDataChannel("c2_datachannel", init)
-            dataChannel?.registerObserver(this)
-
             if (isOffer) {
+                val init = DataChannel.Init().apply {
+                    ordered = true
+                }
+                dataChannel = peerConnection?.createDataChannel("c2_datachannel", init)
+                dataChannel?.registerObserver(this)
                 createOffer()
             }
-            Log.i(TAG, "Created PeerConnection for session: $sessionId")
+            Log.i(TAG, "Created PeerConnection for session: $sessionId (isOffer: $isOffer)")
         } catch (e: Exception) {
             Log.e(TAG, "startSession error: ${e.message}")
         }

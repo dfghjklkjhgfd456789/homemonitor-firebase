@@ -244,7 +244,7 @@ const apiPendingCallbacks = new Map();
 function sendNativeRpcRequest(action, params = {}) {
     return new Promise((resolve, reject) => {
         const requestId = "req_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
-        const targetDeviceId = typeof activeDeviceId !== "undefined" ? activeDeviceId : "DEV_MONITORED_DEVICE";
+        const targetDeviceId = getActiveRealDeviceId();
 
         apiPendingCallbacks.set(requestId, { resolve, reject, action });
 
@@ -278,12 +278,12 @@ function sendNativeRpcRequest(action, params = {}) {
 
 function sendFirebaseNativeActionFallback(action, params, requestId) {
     return new Promise((resolve, reject) => {
-        if (!currentUser || !currentUser.uid || !activeDeviceId) {
-            reject(new Error("No active parent user or device selected."));
+        if (!currentUser || !currentUser.uid) {
+            reject(new Error("No active parent user."));
             return;
         }
         const uid = currentUser.uid;
-        const devId = activeDeviceId;
+        const devId = getActiveRealDeviceId();
         const actionRef = firebase.database().ref(`users/${uid}/devices/${devId}/actions/${requestId}`);
 
         const actionPayload = {
@@ -309,7 +309,7 @@ function sendFirebaseNativeActionFallback(action, params, requestId) {
 function sendWebDashboardApiRequest(path, method = "GET", body = null) {
     return new Promise((resolve, reject) => {
         const requestId = "req_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
-        const targetDeviceId = typeof activeDeviceId !== "undefined" ? activeDeviceId : "DEV_MONITORED_DEVICE";
+        const targetDeviceId = getActiveRealDeviceId();
 
         if (!dc || dc.readyState !== "open") {
             console.warn(`[WebRTC Direct P2P API] Failed: DataChannel is not OPEN for ${method} ${path}`);
@@ -345,7 +345,7 @@ function sendWebDashboardApiRequest(path, method = "GET", body = null) {
 
 function queryP2pLocalDatabase(queryType, keyParam) {
     if (dc && dc.readyState === "open") {
-        const targetDeviceId = typeof activeDeviceId !== "undefined" ? activeDeviceId : "DEV_MONITORED_DEVICE";
+        const targetDeviceId = getActiveRealDeviceId();
         const payload = queryType === "SOCIAL" ?
             { version: "1.0", type: "DB_QUERY_SOCIAL", deviceId: targetDeviceId, appKey: keyParam, timestamp: Date.now() } :
             { version: "1.0", type: "DB_QUERY_TELEMETRY", deviceId: targetDeviceId, category: keyParam, timestamp: Date.now() };
@@ -570,7 +570,7 @@ function stopP2pWebStreamSession() {
     try {
         if (activeSessionId && currentUser && currentUser.uid) {
             const uid = currentUser.uid;
-            const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
+            const devId = getActiveRealDeviceId();
             firebase.database().ref(`users/${uid}/devices/${devId}/webrtc_signaling/sessions/${activeSessionId}`).update({
                 status: "TERMINATED",
                 terminatedAt: Date.now()
