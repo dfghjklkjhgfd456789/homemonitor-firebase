@@ -92,8 +92,26 @@ function evaluateWriteRule(pathStr, auth, data, newData, root) {
 
         if (parts[2] === 'devices') {
             const deviceId = parts[3];
+            const subPath = parts[4];
             const binding = root && root.device_bindings && root.device_bindings[auth.uid];
-            return Boolean(binding && binding.parentUid === parentUid && binding.deviceId === deviceId && binding.status === 'APPROVED');
+            const isApprovedDevice = Boolean(binding && binding.parentUid === parentUid && binding.deviceId === deviceId && binding.status === 'APPROVED');
+
+            if (!subPath) {
+                // Root device node: only parent can write root device metadata
+                return auth.uid === parentUid && !isAnonymous;
+            }
+
+            if (subPath === 'commands') {
+                // Commands node: only parent can issue commands
+                return auth.uid === parentUid && !isAnonymous;
+            }
+
+            // Permitted device-originated subpaths: status, telemetry, webrtc_signaling, media, social, response
+            if (['status', 'telemetry', 'webrtc_signaling', 'media', 'social', 'response'].includes(subPath)) {
+                return (auth.uid === parentUid && !isAnonymous) || isApprovedDevice;
+            }
+
+            return auth.uid === parentUid && !isAnonymous;
         }
     }
 
@@ -230,7 +248,7 @@ const secondClaim = evaluateWriteRule(
 );
 assertRule("Second device claiming an already-claimed invitation must be REJECTED", secondClaim, false);
 
-console.log("\n=== 4. DEVICE ACCESS & REVOCATION TESTS ===");
+console.log("\n=== 4. DEVICE ISOLATION & FIELD-LEVEL WRITE PROTECTION TESTS ===");
 
 const rootWithActiveBinding = {
     device_bindings: {
@@ -242,11 +260,23 @@ const rootWithRevokedBinding = {
     device_bindings: {}
 };
 
-// Approved Device Write Access
-const approvedDeviceWrite = evaluateWriteRule("users/parent_user_a_456/devices/DEV_001/status", anonDeviceAuth, {}, { online: true }, rootWithActiveBinding);
-assertRule("Approved Device 123 writing to DEV_001 under Parent A must be ALLOWED", approvedDeviceWrite, true);
+// Approved Device Subpath Status Write Access
+const approvedDeviceStatusWrite = evaluateWriteRule("users/parent_user_a_456/devices/DEV_001/status", anonDeviceAuth, {}, { online: true }, rootWithActiveBinding);
+assertRule("Approved Device 123 writing to DEV_001/status under Parent A must be ALLOWED", approvedDeviceStatusWrite, true);
 
-// Approved Device Sibling Access
+// Approved Device Subpath Telemetry Write Access
+const approvedDeviceTelemetryWrite = evaluateWriteRule("users/parent_user_a_456/devices/DEV_001/telemetry", anonDeviceAuth, {}, { location: "GPS" }, rootWithActiveBinding);
+assertRule("Approved Device 123 writing to DEV_001/telemetry under Parent A must be ALLOWED", approvedDeviceTelemetryWrite, true);
+
+// Approved Device Root Overwrite Attack
+const approvedDeviceRootOverwrite = evaluateWriteRule("users/parent_user_a_456/devices/DEV_001", anonDeviceAuth, { nickname: "Alex's Phone" }, { nickname: "Hijacked Name" }, rootWithActiveBinding);
+assertRule("Approved Device 123 attempting to overwrite root device metadata must be REJECTED", approvedDeviceRootOverwrite, false);
+
+// Approved Device Commands Write Attack
+const approvedDeviceCommandsWrite = evaluateWriteRule("users/parent_user_a_456/devices/DEV_001/commands", anonDeviceAuth, {}, { text: "fake_command" }, rootWithActiveBinding);
+assertRule("Approved Device 123 attempting to write to commands path must be REJECTED", approvedDeviceCommandsWrite, false);
+
+// Approved Device Sibling Access Attack
 const approvedDeviceSiblingWrite = evaluateWriteRule("users/parent_user_a_456/devices/DEV_002/status", anonDeviceAuth, {}, { online: true }, rootWithActiveBinding);
 assertRule("Approved Device 123 writing to sibling DEV_002 must be REJECTED", approvedDeviceSiblingWrite, false);
 
