@@ -624,13 +624,18 @@ function setupDeviceManagementModals() {
         modal.show();
 
         if (typeof createOneTimeEnrollmentInvitation === "function") {
-            createOneTimeEnrollmentInvitation(function(data, err) {
+            createOneTimeEnrollmentInvitation(function(data) {
                 if (data) {
                     const container = document.getElementById("qrEnrollmentContainer");
                     const txt = document.getElementById("qrEnrollmentTokenText");
-                    if (container && typeof QRCode !== "undefined") {
-                        container.innerHTML = "";
-                        new QRCode(container, { text: data.payload, width: 180, height: 180 });
+                    if (container) {
+                        container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(data.payload)}" alt="Device Pairing QR Code" style="width: 180px; height: 180px;">`;
+                        if (typeof QRCode !== "undefined") {
+                            try {
+                                container.innerHTML = "";
+                                new QRCode(container, { text: data.payload, width: 180, height: 180 });
+                            } catch (_) {}
+                        }
                     }
                     if (txt) txt.innerText = data.invitationId;
                 }

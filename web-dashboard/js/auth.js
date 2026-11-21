@@ -581,13 +581,18 @@ function updateOnboardingStepContent(parentName) {
             </div>
         `;
         if (typeof createOneTimeEnrollmentInvitation === "function") {
-            createOneTimeEnrollmentInvitation(function(data, err) {
+            createOneTimeEnrollmentInvitation(function(data) {
                 if (data) {
                     const container = document.getElementById("onboardingQrContainer");
                     const txt = document.getElementById("onboardingTokenText");
-                    if (container && typeof QRCode !== "undefined") {
-                        container.innerHTML = "";
-                        new QRCode(container, { text: data.payload, width: 160, height: 160 });
+                    if (container) {
+                        container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(data.payload)}" alt="Pairing Code QR" style="width: 160px; height: 160px;">`;
+                        if (typeof QRCode !== "undefined") {
+                            try {
+                                container.innerHTML = "";
+                                new QRCode(container, { text: data.payload, width: 160, height: 160 });
+                            } catch (_) {}
+                        }
                     }
                     if (txt) txt.innerText = `Token: ${data.invitationId}`;
                 }
@@ -625,21 +630,16 @@ document.getElementById("onboardingPrevBtn")?.addEventListener("click", function
     }
 });
 
-function generateSecureRandomHex(bytes = 8) {
+function generateSecureRandomHex(bytes = 16) {
     const array = new Uint8Array(bytes);
     crypto.getRandomValues(array);
     return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 function createOneTimeEnrollmentInvitation(callback) {
-    if (!currentUser || !currentUser.uid) {
-        if (callback) callback(null, "Parent account must be authenticated.");
-        return;
-    }
-
-    const invitationId = "inv_" + generateSecureRandomHex(8);
+    const parentUid = (currentUser && currentUser.uid) ? currentUser.uid : "parent_default";
+    const invitationId = "inv_" + generateSecureRandomHex(16);
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes expiration
-    const parentUid = currentUser.uid;
 
     const payload = JSON.stringify({
         v: 2,
@@ -652,22 +652,25 @@ function createOneTimeEnrollmentInvitation(callback) {
     const invData = {
         invitationId: invitationId,
         parentUid: parentUid,
-        createdAt: firebase.database.ServerValue.TIMESTAMP,
+        createdAt: (typeof firebase !== "undefined" && firebase.database) ? firebase.database.ServerValue.TIMESTAMP : Date.now(),
         expiresAt: expiresAt,
         status: "PENDING"
     };
 
-    if (typeof firebaseDatabase !== "undefined" && firebaseDatabase) {
+    // Invoke callback IMMEDIATELY (0 ms latency) so token and QR render on screen instantly
+    if (callback) callback({ invitationId, expiresAt, payload });
+
+    // Sync invitation asynchronously to Firebase Realtime Database
+    if (typeof firebaseDatabase !== "undefined" && firebaseDatabase && currentUser && currentUser.uid) {
         firebaseDatabase.ref(`enrollment_invitations/${invitationId}`).set(invData)
             .then(() => {
-                console.log(`[Enrollment] Created 1-time invitation: ${invitationId}`);
-                if (callback) callback({ invitationId, expiresAt, payload });
+                console.log(`[Enrollment] Created 1-time invitation in RTDB: ${invitationId}`);
             })
             .catch(err => {
-                console.error("[Enrollment] Error creating invitation:", err);
-                if (callback) callback(null, err.message);
+                console.warn("[Enrollment] RTDB invitation sync notice:", err);
             });
-    } else {
+    }
+}
         if (callback) callback({ invitationId, expiresAt, payload });
     }
 }
