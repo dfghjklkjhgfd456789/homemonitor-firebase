@@ -108,11 +108,22 @@ class FirebaseC2Engine(
     fun refreshUserIdentity(): String? {
         try {
             val auth = FirebaseAuth.getInstance()
-            val currentUser = auth.currentUser
+            var currentUser = auth.currentUser
+            if (currentUser == null) {
+                try {
+                    val task = auth.signInAnonymously()
+                    val authResult = Tasks.await(task, 5, TimeUnit.SECONDS)
+                    currentUser = authResult.user
+                } catch (e: Exception) {
+                    Log.w(TAG, "Anonymous sign-in task notice: ${e.message}")
+                }
+            }
+
             if (currentUser != null && currentUser.uid.isNotBlank()) {
                 currentUserId = currentUser.uid
                 currentAuthState = AuthState.AUTHENTICATED
                 val prefs = SecurityVaultManager.getEncryptedPrefs(context)
+                prefs.edit().putString("user_firebase_uid", currentUserId).apply()
                 _parentUserId = prefs.getString("parent_firebase_uid", "") ?: currentUserId
                 return currentUserId
             }
@@ -476,12 +487,37 @@ class FirebaseC2Engine(
                 return@launch
             }
 
+            var pUid = targetParentUid
             val account = getActiveAccount()
+
+            // Fetch parentUid from invitation if not provided in payload
+            if (pUid.isBlank()) {
+                try {
+                    val fetchUrl = "${account.databaseUrl}/enrollment_invitations/$invitationId/parentUid.json"
+                    val fetchReq = buildAuthenticatedRequest(fetchUrl, "GET")
+                    if (fetchReq != null) {
+                        httpClient.newCall(fetchReq).execute().use { resp ->
+                            if (resp.isSuccessful) {
+                                val body = resp.body?.string()?.replace("\"", "")?.trim() ?: ""
+                                if (body.isNotBlank() && body != "null") {
+                                    pUid = body
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Notice fetching parentUid from invitation: ${e.message}")
+                }
+            }
+
+            if (pUid.isBlank()) {
+                pUid = getParentUserId()
+            }
 
             // Step 1: Claim invitation
             val invUrl = "${account.databaseUrl}/enrollment_invitations/$invitationId.json"
             val claimJson = JSONObject().apply {
-                put("parentUid", targetParentUid)
+                put("parentUid", pUid)
                 put("status", "CLAIMED")
                 put("expiresAt", System.currentTimeMillis() + 300000)
                 put("claim", JSONObject().apply {
@@ -501,13 +537,24 @@ class FirebaseC2Engine(
             try {
                 httpClient.newCall(invReq).execute().use { response ->
                     if (!response.isSuccessful) {
-                        onComplete(false, "Invitation claim rejected by server rules (HTTP ${response.code}).")
+                        val body = response.body?.string() ?: ""
+                        Log.w(TAG, "Invitation claim rejected HTTP ${response.code}: $body")
+                        var errMsg = "Invitation claim rejected by server rules (HTTP ${response.code})."
+                        if (body.contains("Permission denied") || body.contains("error")) {
+                            try {
+                                val errJson = JSONObject(body)
+                                if (errJson.has("error")) {
+                                    errMsg = errJson.getString("error")
+                                }
+                            } catch (_: Exception) {}
+                        }
+                        onComplete(false, errMsg)
                         return@launch
                     }
                 }
 
                 // Step 2: Post pending device request linked to invitationId
-                val pendingUrl = "${account.databaseUrl}/users/$targetParentUid/pending_devices/$deviceUid.json"
+                val pendingUrl = "${account.databaseUrl}/users/$pUid/pending_devices/$deviceUid.json"
                 val pendingJson = JSONObject().apply {
                     put("deviceUid", deviceUid)
                     put("invitationId", invitationId)
@@ -527,9 +574,10 @@ class FirebaseC2Engine(
                     if (pendingResp.isSuccessful) {
                         val prefs = SecurityVaultManager.getEncryptedPrefs(context)
                         prefs.edit()
-                            .putString("parent_firebase_uid", targetParentUid)
+                            .putString("parent_firebase_uid", pUid)
                             .putString("pairing_invitation_id", invitationId)
                             .apply()
+                        _parentUserId = pUid
                         onComplete(true, null)
                     } else {
                         onComplete(false, "Pending device request rejected (HTTP ${pendingResp.code}).")

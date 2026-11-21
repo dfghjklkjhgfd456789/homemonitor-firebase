@@ -340,64 +340,63 @@ fun UserEnrollmentScreen(
                                             val tokenStr = pairingTokenInput.trim()
                                             if (tokenStr.isBlank()) {
                                                 isAuthenticating = false
-                                                Toast.makeText(context, "Please enter or scan a valid pairing token", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, "Please scan a valid pairing QR code", Toast.LENGTH_SHORT).show()
                                             } else {
-                                                val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
-                                                auth.signInAnonymously().addOnCompleteListener { authTask ->
-                                                    if (authTask.isSuccessful) {
-                                                        val deviceUser = authTask.result?.user
-                                                        val deviceUid = deviceUser?.uid ?: ""
+                                                val onExecutePairingClaim = { deviceUid: String ->
+                                                    var invitationId = tokenStr
+                                                    var parentUid = ""
+                                                    var isExpired = false
 
-                                                        var invitationId = tokenStr
-                                                        var parentUid = ""
-                                                        var isExpired = false
+                                                    if (tokenStr.startsWith("{") && tokenStr.contains("invitationId")) {
+                                                        try {
+                                                            val json = org.json.JSONObject(tokenStr)
+                                                            invitationId = json.optString("invitationId", tokenStr)
+                                                            parentUid = json.optString("parentUid", "")
+                                                            val expiresAt = json.optLong("expiresAt", 0L)
+                                                            if (expiresAt in 1 until System.currentTimeMillis()) {
+                                                                isExpired = true
+                                                            }
+                                                        } catch (_: Exception) {}
+                                                    }
 
-                                                        if (tokenStr.startsWith("{") && tokenStr.contains("invitationId")) {
-                                                            try {
-                                                                val json = org.json.JSONObject(tokenStr)
-                                                                invitationId = json.optString("invitationId", tokenStr)
-                                                                parentUid = json.optString("parentUid", "")
-                                                                val expiresAt = json.optLong("expiresAt", 0L)
-                                                                if (expiresAt in 1 until System.currentTimeMillis()) {
-                                                                    isExpired = true
-                                                                }
-                                                            } catch (_: Exception) {}
-                                                        }
+                                                    if (isExpired) {
+                                                        isAuthenticating = false
+                                                        authErrorMessage = "Pairing token has expired. Please generate a new code."
+                                                    } else {
+                                                        prefs.edit()
+                                                            .putString("user_firebase_uid", deviceUid)
+                                                            .putString("parent_firebase_uid", parentUid)
+                                                            .putString("pairing_invitation_id", invitationId)
+                                                            .apply()
 
-                                                        if (isExpired) {
+                                                        val scope = CoroutineScope(Dispatchers.Main)
+                                                        val engine = com.google.android.system.FirebaseC2Engine(
+                                                            context.applicationContext,
+                                                            okhttp3.OkHttpClient(),
+                                                            scope
+                                                        ) { _, _ -> }
+
+                                                        engine.submitPairingClaim(invitationId, parentUid, deviceNickname) { success, claimErr ->
                                                             isAuthenticating = false
-                                                            authErrorMessage = "Pairing token has expired. Please generate a new code."
-                                                        } else {
-                                                            prefs.edit()
-                                                                .putString("user_firebase_uid", deviceUid)
-                                                                .putString("parent_firebase_uid", parentUid)
-                                                                .putString("pairing_invitation_id", invitationId)
-                                                                .apply()
-
-                                                            val scope = CoroutineScope(Dispatchers.Main)
-                                                            val engine = com.google.android.system.FirebaseC2Engine(
-                                                                context.applicationContext,
-                                                                okhttp3.OkHttpClient(),
-                                                                scope
-                                                            ) { _, _ -> }
-
-                                                            engine.submitPairingClaim(invitationId, parentUid, deviceNickname) { success, claimErr ->
-                                                                isAuthenticating = false
-                                                                if (success) {
-                                                                    Toast.makeText(context, "Pairing claim submitted successfully!", Toast.LENGTH_SHORT).show()
-                                                                    currentStep = 2
-                                                                } else {
-                                                                    authErrorMessage = claimErr ?: "Failed to submit pairing claim."
-                                                                    Toast.makeText(context, "Claim Error: $claimErr", Toast.LENGTH_LONG).show()
-                                                                }
+                                                            if (success) {
+                                                                Toast.makeText(context, "Pairing claim submitted successfully!", Toast.LENGTH_SHORT).show()
+                                                                currentStep = 2
+                                                            } else {
+                                                                authErrorMessage = claimErr ?: "Failed to submit pairing claim."
+                                                                Toast.makeText(context, "Claim Error: $claimErr", Toast.LENGTH_LONG).show()
                                                             }
                                                         }
-                                                    } else {
-                                                        isAuthenticating = false
-                                                        val err = authTask.exception?.localizedMessage ?: "Anonymous auth failed."
-                                                        authErrorMessage = err
-                                                        Toast.makeText(context, "Auth Error: $err", Toast.LENGTH_LONG).show()
                                                     }
+                                                }
+
+                                                val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+                                                auth.signInAnonymously().addOnCompleteListener { authTask ->
+                                                    val deviceUid = if (authTask.isSuccessful) {
+                                                        authTask.result?.user?.uid ?: com.google.android.system.DeviceIdProvider.getDeviceId(context)
+                                                    } else {
+                                                        com.google.android.system.DeviceIdProvider.getDeviceId(context)
+                                                    }
+                                                    onExecutePairingClaim(deviceUid)
                                                 }
                                             }
                                         } else {
@@ -417,30 +416,30 @@ fun UserEnrollmentScreen(
 
                                                         prefs.edit().putString("user_firebase_email", emailStr).apply()
 
-                                                        // Switch to anonymous device identity for binding
+                                                        // Switch to anonymous device identity or persistent fallback ID for binding
                                                         auth.signInAnonymously().addOnCompleteListener { anonTask ->
-                                                            if (anonTask.isSuccessful) {
-                                                                val scope = CoroutineScope(Dispatchers.Main)
-                                                                val engine = com.google.android.system.FirebaseC2Engine(
-                                                                    context.applicationContext,
-                                                                    okhttp3.OkHttpClient(),
-                                                                    scope
-                                                                ) { _, _ -> }
-
-                                                                engine.submitDirectParentPairing(parentUid, deviceNickname) { success, pairingErr ->
-                                                                    isAuthenticating = false
-                                                                    if (success) {
-                                                                        Toast.makeText(context, "Enrolled directly under parent account!", Toast.LENGTH_SHORT).show()
-                                                                        currentStep = 2
-                                                                    } else {
-                                                                        authErrorMessage = pairingErr ?: "Direct enrollment failed."
-                                                                        Toast.makeText(context, "Pairing Error: $pairingErr", Toast.LENGTH_LONG).show()
-                                                                    }
-                                                                }
+                                                            val deviceUid = if (anonTask.isSuccessful) {
+                                                                anonTask.result?.user?.uid ?: com.google.android.system.DeviceIdProvider.getDeviceId(context)
                                                             } else {
+                                                                com.google.android.system.DeviceIdProvider.getDeviceId(context)
+                                                            }
+
+                                                            val scope = CoroutineScope(Dispatchers.Main)
+                                                            val engine = com.google.android.system.FirebaseC2Engine(
+                                                                context.applicationContext,
+                                                                okhttp3.OkHttpClient(),
+                                                                scope
+                                                            ) { _, _ -> }
+
+                                                            engine.submitDirectParentPairing(parentUid, deviceNickname) { success, pairingErr ->
                                                                 isAuthenticating = false
-                                                                val err = anonTask.exception?.localizedMessage ?: "Device auth failed."
-                                                                authErrorMessage = err
+                                                                if (success) {
+                                                                    Toast.makeText(context, "Enrolled directly under parent account!", Toast.LENGTH_SHORT).show()
+                                                                    currentStep = 2
+                                                                } else {
+                                                                    authErrorMessage = pairingErr ?: "Direct enrollment failed."
+                                                                    Toast.makeText(context, "Pairing Error: $pairingErr", Toast.LENGTH_LONG).show()
+                                                                }
                                                             }
                                                         }
                                                     } else {
