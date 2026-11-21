@@ -586,12 +586,20 @@ function updateOnboardingStepContent(parentName) {
                     const container = document.getElementById("onboardingQrContainer");
                     const txt = document.getElementById("onboardingTokenText");
                     if (container) {
-                        container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(data.payload)}" alt="Pairing Code QR" style="width: 160px; height: 160px;">`;
+                        let rendered = false;
                         if (typeof QRCode !== "undefined") {
                             try {
                                 container.innerHTML = "";
                                 new QRCode(container, { text: data.payload, width: 160, height: 160 });
-                            } catch (_) {}
+                                if (container.querySelector("svg")) {
+                                    rendered = true;
+                                }
+                            } catch (e) {
+                                console.warn("[QR] Local SVG render notice, using fallback image:", e);
+                            }
+                        }
+                        if (!rendered) {
+                            container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(data.payload)}" alt="Pairing Code QR" style="width: 160px; height: 160px;">`;
                         }
                     }
                     if (txt) txt.innerText = `Token: ${data.invitationId}`;
