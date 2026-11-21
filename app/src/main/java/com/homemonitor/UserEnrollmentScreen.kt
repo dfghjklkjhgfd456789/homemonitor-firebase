@@ -216,30 +216,31 @@ fun UserEnrollmentScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 if (selectedAuthMethod == 0) {
-                                    // ── METHOD A: CAMERA QR SCANNER ONLY ──
-                                    Button(
-                                        onClick = {
-                                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                                                showCameraScanner = true
-                                            } else {
-                                                (context as? android.app.Activity)?.requestPermissions(arrayOf(Manifest.permission.CAMERA), 102)
+                                    // ── METHOD A: INSTANT CAMERA QR SCANNER ──
+                                    if (!showCameraScanner && pairingTokenInput.isBlank()) {
+                                        Button(
+                                            onClick = {
                                                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                                                     showCameraScanner = true
                                                 } else {
-                                                    Toast.makeText(context, "Camera permission required for QR scanning", Toast.LENGTH_SHORT).show()
+                                                    (context as? android.app.Activity)?.requestPermissions(arrayOf(Manifest.permission.CAMERA), 102)
+                                                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                                        showCameraScanner = true
+                                                    } else {
+                                                        Toast.makeText(context, "Camera permission required for QR scanning", Toast.LENGTH_SHORT).show()
+                                                    }
                                                 }
-                                            }
-                                        },
-                                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7))
-                                    ) {
-                                        Icon(Icons.Default.CameraAlt, contentDescription = null)
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(if (pairingTokenInput.isBlank()) "Open Camera & Scan QR Code 📷" else "Rescan QR Code 📷", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                            },
+                                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = primaryBlue)
+                                        ) {
+                                            Icon(Icons.Default.CameraAlt, contentDescription = null)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("Scan QR Code 📷", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                        }
                                     }
 
                                     if (showCameraScanner) {
-                                        Spacer(modifier = Modifier.height(16.dp))
                                         QrScannerView(
                                             onQrCodeScanned = { scannedResult ->
                                                 pairingTokenInput = scannedResult
@@ -251,7 +252,6 @@ fun UserEnrollmentScreen(
                                     }
 
                                     if (pairingTokenInput.isNotBlank()) {
-                                        Spacer(modifier = Modifier.height(16.dp))
                                         Card(
                                             colors = CardDefaults.cardColors(containerColor = Color(0xFFDCFCE7)),
                                             modifier = Modifier.fillMaxWidth()
@@ -260,11 +260,14 @@ fun UserEnrollmentScreen(
                                                 modifier = Modifier.padding(14.dp),
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(24.dp))
+                                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(28.dp))
                                                 Spacer(modifier = Modifier.width(12.dp))
-                                                Column {
-                                                    Text("QR Code Scanned Successfully", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF15803D))
-                                                    Text("Payload: ${pairingTokenInput.take(28)}...", fontSize = 11.sp, color = Color(0xFF166534))
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text("QR Code Scanned!", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF15803D))
+                                                    Text("Token: ${pairingTokenInput.take(24)}...", fontSize = 11.sp, color = Color(0xFF166534))
+                                                }
+                                                IconButton(onClick = { pairingTokenInput = ""; showCameraScanner = true }) {
+                                                    Icon(Icons.Default.Refresh, contentDescription = "Rescan", tint = Color(0xFF15803D))
                                                 }
                                             }
                                         }
@@ -457,7 +460,7 @@ fun UserEnrollmentScreen(
                                         CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
                                     } else {
                                         Text(
-                                            if (selectedAuthMethod == 0) "Claim Pairing Code & Continue" else "Sign In Parent & Auto-Pair Device",
+                                            if (selectedAuthMethod == 0) "Continue Setup" else "Sign In Parent",
                                             fontSize = 15.sp,
                                             fontWeight = FontWeight.Bold
                                         )
