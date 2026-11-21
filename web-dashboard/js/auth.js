@@ -590,7 +590,6 @@ function updateOnboardingStepContent(parentName) {
                 }
             });
         }
-    }
     } else if (onboardingCurrentStep === 5) {
         content.innerHTML = `
             <div class="text-center py-3">
