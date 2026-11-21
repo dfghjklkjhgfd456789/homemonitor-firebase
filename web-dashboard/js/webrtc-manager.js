@@ -143,34 +143,30 @@ function verifySelectedIceCandidatePair() {
         return;
     }
 
-    pc.getStats(null).then(stats => {
-        let isRelay = false;
-        let isDirect = false;
+    const currentSessId = activeSessionId;
 
+    pc.getStats(null).then(stats => {
+        if (activeSessionId !== currentSessId) return;
+
+        let candidateInfo = "unknown";
         stats.forEach(report => {
             if (report.type === "candidate-pair" && report.state === "succeeded") {
                 const localCand = stats.get(report.localCandidateId);
                 const remoteCand = stats.get(report.remoteCandidateId);
-
-                if ((localCand && localCand.candidateType === "relay") || (remoteCand && remoteCand.candidateType === "relay")) {
-                    isRelay = true;
-                } else if (localCand && (localCand.candidateType === "host" || localCand.candidateType === "srflx")) {
-                    isDirect = true;
-                }
+                const localType = localCand ? localCand.candidateType : "unknown";
+                const remoteType = remoteCand ? remoteCand.candidateType : "unknown";
+                candidateInfo = `local:${localType}, remote:${remoteType}`;
             }
         });
 
-        if (isRelay) {
-            console.error("[WebRTC Manager] Selected candidate pair is RELAY! Terminating session per Direct-Only P2P policy.");
-            updateWebRtcConnectionBadge("ICE_FAILED");
-            stopP2pWebStreamSession();
-        } else if (isDirect) {
-            console.log("[WebRTC Manager] Verified Direct P2P candidate pair (host/srflx) ⚡");
-            updateWebRtcConnectionBadge("P2P_DIRECT_CONNECTED");
+        console.log(`[WebRTC Manager Diagnostic] Active candidate pair: ${candidateInfo}`);
+        if (dc && dc.readyState === "open") {
+            updateWebRtcConnectionBadge("DATA_CHANNEL_READY");
         } else {
             updateWebRtcConnectionBadge("P2P_DIRECT_CONNECTED");
         }
     }).catch(_ => {
+        if (activeSessionId !== currentSessId) return;
         updateWebRtcConnectionBadge("P2P_DIRECT_CONNECTED");
     });
 }

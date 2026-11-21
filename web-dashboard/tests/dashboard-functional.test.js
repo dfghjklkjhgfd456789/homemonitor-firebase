@@ -81,7 +81,7 @@ const requiredContainers = [
     'parentProfileEmail',
     'sendPasswordResetBtn',
     'parentMfaStatusBadge',
-    'qrEnrollmentModal',
+    'superadmin2faModal',
     'onboardingWizardModal',
     'forgotPasswordModal',
     'renameDeviceModal',
