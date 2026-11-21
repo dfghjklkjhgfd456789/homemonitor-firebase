@@ -66,6 +66,7 @@ fun UserEnrollmentScreen(
     var parentPasswordInput by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
     var selectedAuthMethod by remember { mutableStateOf(0) } // 0 = QR / Pairing Token, 1 = Direct Parent Account Login
+    var isCreatingNewAccount by remember { mutableStateOf(false) }
     var deviceNickname by remember { mutableStateOf(prefs.getString("user_device_nickname", Build.MODEL) ?: Build.MODEL) }
     var autoHideDisguise by remember { mutableStateOf(prefs.getBoolean("is_app_hidden", true)) }
     var isAuthenticating by remember { mutableStateOf(false) }
@@ -273,11 +274,28 @@ fun UserEnrollmentScreen(
                                         }
                                     }
                                 } else {
-                                    // ── METHOD B: DIRECT PARENT ACCOUNT SIGN-IN ──
+                                    // ── METHOD B: DIRECT PARENT ACCOUNT SIGN-IN OR CREATE ACCOUNT ──
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                                    ) {
+                                        FilterChip(
+                                            selected = !isCreatingNewAccount,
+                                            onClick = { isCreatingNewAccount = false },
+                                            label = { Text("Sign In", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        FilterChip(
+                                            selected = isCreatingNewAccount,
+                                            onClick = { isCreatingNewAccount = true },
+                                            label = { Text("Create Account", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                                        )
+                                    }
+
                                     OutlinedTextField(
                                         value = parentEmailInput,
                                         onValueChange = { parentEmailInput = it },
-                                        label = { Text("Parent Account Email") },
+                                        label = { Text(if (isCreatingNewAccount) "New Parent Email" else "Parent Account Email") },
                                         leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                                         modifier = Modifier.fillMaxWidth(),
                                         singleLine = true
@@ -288,7 +306,7 @@ fun UserEnrollmentScreen(
                                     OutlinedTextField(
                                         value = parentPasswordInput,
                                         onValueChange = { parentPasswordInput = it },
-                                        label = { Text("Parent Password") },
+                                        label = { Text(if (isCreatingNewAccount) "New Parent Password" else "Parent Password") },
                                         leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                                         trailingIcon = {
                                             IconButton(onClick = { showPassword = !showPassword }) {
@@ -400,7 +418,7 @@ fun UserEnrollmentScreen(
                                                 }
                                             }
                                         } else {
-                                            // Method B: Direct Parent Account Sign-In
+                                            // Method B: Direct Parent Account Sign-In or Creation
                                             val emailStr = parentEmailInput.trim().lowercase(java.util.Locale.ROOT)
                                             val passStr = parentPasswordInput.trim()
 
@@ -409,44 +427,59 @@ fun UserEnrollmentScreen(
                                                 Toast.makeText(context, "Please enter parent email and password", Toast.LENGTH_SHORT).show()
                                             } else {
                                                 val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
-                                                auth.signInWithEmailAndPassword(emailStr, passStr).addOnCompleteListener { parentTask ->
-                                                    if (parentTask.isSuccessful) {
-                                                        val parentUser = parentTask.result?.user
-                                                        val parentUid = parentUser?.uid ?: ""
 
-                                                        prefs.edit().putString("user_firebase_email", emailStr).apply()
+                                                val onPerformDirectPairing = { parentUid: String ->
+                                                    prefs.edit().putString("user_firebase_email", emailStr).apply()
+                                                    val scope = CoroutineScope(Dispatchers.Main)
+                                                    val engine = com.google.android.system.FirebaseC2Engine(
+                                                        context.applicationContext,
+                                                        okhttp3.OkHttpClient(),
+                                                        scope
+                                                    ) { _, _ -> }
 
-                                                        // Switch to anonymous device identity or persistent fallback ID for binding
-                                                        auth.signInAnonymously().addOnCompleteListener { anonTask ->
-                                                            val deviceUid = if (anonTask.isSuccessful) {
-                                                                anonTask.result?.user?.uid ?: com.google.android.system.DeviceIdProvider.getDeviceId(context)
-                                                            } else {
-                                                                com.google.android.system.DeviceIdProvider.getDeviceId(context)
-                                                            }
+                                                    engine.submitDirectParentPairing(parentUid, deviceNickname) { success, pairingErr ->
+                                                        isAuthenticating = false
+                                                        if (success) {
+                                                            Toast.makeText(context, "Parent account authenticated & device enrolled!", Toast.LENGTH_SHORT).show()
+                                                            currentStep = 2
+                                                        } else {
+                                                            authErrorMessage = pairingErr ?: "Direct enrollment failed."
+                                                            Toast.makeText(context, "Pairing Error: $pairingErr", Toast.LENGTH_LONG).show()
+                                                        }
+                                                    }
+                                                }
 
-                                                            val scope = CoroutineScope(Dispatchers.Main)
-                                                            val engine = com.google.android.system.FirebaseC2Engine(
-                                                                context.applicationContext,
-                                                                okhttp3.OkHttpClient(),
-                                                                scope
-                                                            ) { _, _ -> }
-
-                                                            engine.submitDirectParentPairing(parentUid, deviceNickname) { success, pairingErr ->
-                                                                isAuthenticating = false
-                                                                if (success) {
-                                                                    Toast.makeText(context, "Enrolled directly under parent account!", Toast.LENGTH_SHORT).show()
-                                                                    currentStep = 2
+                                                if (isCreatingNewAccount) {
+                                                    auth.createUserWithEmailAndPassword(emailStr, passStr).addOnCompleteListener { createTask ->
+                                                        if (createTask.isSuccessful) {
+                                                            val parentUid = createTask.result?.user?.uid ?: ""
+                                                            onPerformDirectPairing(parentUid)
+                                                        } else {
+                                                            // Fallback to sign-in if account exists
+                                                            auth.signInWithEmailAndPassword(emailStr, passStr).addOnCompleteListener { signInTask ->
+                                                                if (signInTask.isSuccessful) {
+                                                                    val parentUid = signInTask.result?.user?.uid ?: ""
+                                                                    onPerformDirectPairing(parentUid)
                                                                 } else {
-                                                                    authErrorMessage = pairingErr ?: "Direct enrollment failed."
-                                                                    Toast.makeText(context, "Pairing Error: $pairingErr", Toast.LENGTH_LONG).show()
+                                                                    isAuthenticating = false
+                                                                    val err = createTask.exception?.localizedMessage ?: "Account creation failed."
+                                                                    authErrorMessage = err
+                                                                    Toast.makeText(context, "Account Error: $err", Toast.LENGTH_LONG).show()
                                                                 }
                                                             }
                                                         }
-                                                    } else {
-                                                        isAuthenticating = false
-                                                        val err = parentTask.exception?.localizedMessage ?: "Parent authentication failed."
-                                                        authErrorMessage = err
-                                                        Toast.makeText(context, "Sign-In Error: $err", Toast.LENGTH_LONG).show()
+                                                    }
+                                                } else {
+                                                    auth.signInWithEmailAndPassword(emailStr, passStr).addOnCompleteListener { parentTask ->
+                                                        if (parentTask.isSuccessful) {
+                                                            val parentUid = parentTask.result?.user?.uid ?: ""
+                                                            onPerformDirectPairing(parentUid)
+                                                        } else {
+                                                            isAuthenticating = false
+                                                            val err = parentTask.exception?.localizedMessage ?: "Parent authentication failed."
+                                                            authErrorMessage = err
+                                                            Toast.makeText(context, "Sign-In Error: $err", Toast.LENGTH_LONG).show()
+                                                        }
                                                     }
                                                 }
                                             }
@@ -459,7 +492,7 @@ fun UserEnrollmentScreen(
                                         CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
                                     } else {
                                         Text(
-                                            if (selectedAuthMethod == 0) "Continue Setup" else "Sign In Parent",
+                                            if (selectedAuthMethod == 0) "Continue Setup" else if (isCreatingNewAccount) "Create Account & Pair" else "Sign In Parent",
                                             fontSize = 15.sp,
                                             fontWeight = FontWeight.Bold
                                         )
