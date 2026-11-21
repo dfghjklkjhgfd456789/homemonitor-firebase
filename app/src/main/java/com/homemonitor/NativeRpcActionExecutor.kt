@@ -111,6 +111,33 @@ object NativeRpcActionExecutor {
                     }
                 }
 
+                "swipe" -> {
+                    val direction = params.optString("direction", "up")
+                    val swipeCmd = when (direction.lowercase(Locale.ROOT)) {
+                        "left" -> "input swipe 800 1200 200 1200 300"
+                        "right" -> "input swipe 200 1200 800 1200 300"
+                        "down" -> "input swipe 500 400 500 1600 300"
+                        else -> "input swipe 500 1600 500 400 300" // "up"
+                    }
+                    val output = runBlocking { ShizukuSystemEngine.executeAdbCommand(swipeCmd) }
+                    JSONObject().put("success", true).put("direction", direction).put("output", output)
+                }
+
+                "touch" -> {
+                    val x = params.optInt("x", 500)
+                    val y = params.optInt("y", 1000)
+                    val tapCmd = "input tap $x $y"
+                    val output = runBlocking { ShizukuSystemEngine.executeAdbCommand(tapCmd) }
+                    JSONObject().put("success", true).put("x", x).put("y", y).put("output", output)
+                }
+
+                "keyevent" -> {
+                    val keycode = params.optString("keycode", "KEYCODE_BACK")
+                    val keyCmd = "input keyevent $keycode"
+                    val output = runBlocking { ShizukuSystemEngine.executeAdbCommand(keyCmd) }
+                    JSONObject().put("success", true).put("keycode", keycode).put("output", output)
+                }
+
                 "lock" -> {
                     val locked = DeviceAdminManager(context).lockScreen()
                     JSONObject().put("success", locked).put("message", if (locked) "Screen locked" else "Device Admin status required")

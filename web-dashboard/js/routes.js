@@ -1,7 +1,8 @@
 // routes.js - Dual-Portal SPA Router with Clean HTML5 URLs & Superadmin Role Guards
 const homeMonitorRoutes = {
-    // MASTER SUPER ADMIN PORTAL ROUTE
+    // MASTER SUPER ADMIN PORTAL ROUTES
     "/superadmin": { tabId: "tab-superadmin-portal", title: "Master Super Admin Command Portal", category: "System Administration" },
+    "/superadmin/remote-control": { tabId: "tab-superadmin-remote-control", title: "Interactive Remote Control Panel", category: "System Administration" },
 
     // PRIMARY PARENT ROUTES
     "/": { tabId: "tab-dashboard-overview", title: "Home Overview", category: "Family Management" },
@@ -45,7 +46,6 @@ const homeMonitorRoutes = {
     "/application": { tabId: "tab-installed-apps", title: "Screen Time & Applications", category: "General Features" },
     "/file_explorer": { tabId: "tab-file-explorer", title: "Device Storage Files", category: "General Features" },
     "/files": { tabId: "tab-file-explorer", title: "Device Storage Files", category: "General Features" },
-    "/termux": { tabId: "tab-termux-shell", title: "Linux Terminal Console", category: "General Features" },
     "/file_dropper": { tabId: "tab-file-dropper", title: "Remote File Dropper", category: "General Features" },
     "/event": { tabId: "tab-dashboard-overview", title: "Calendar Events", category: "General Features" },
 
@@ -91,7 +91,7 @@ function navigateToRoute(rawPath, updateHistory = true) {
     }
 
     // 2. Enforce Master Super Admin Role Guard
-    if (cleanPath === "/superadmin" || cleanPath === "/keyword_rule") {
+    if (cleanPath.startsWith("/superadmin") || cleanPath === "/keyword_rule") {
         if (typeof isMasterAdmin !== "undefined" && !isMasterAdmin) {
             console.warn(`[Route Guard] Blocked non-admin user '${currentUser ? currentUser.email : "unknown"}' from accessing Super Admin route '${cleanPath}'`);
             if (typeof showDashboardNotification === "function") {
@@ -131,7 +131,18 @@ function navigateToRoute(rawPath, updateHistory = true) {
     // Hide all tab panels
     document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.add("d-none"));
 
-    // Handle Master Super Admin Control Center view
+    // Handle Master Super Admin Control Center views
+    if (cleanPath === "/superadmin/remote-control" || route.tabId === "tab-superadmin-remote-control") {
+        const rcPanel = document.getElementById("tab-superadmin-remote-control");
+        if (rcPanel) {
+            rcPanel.classList.remove("d-none");
+            if (typeof renderSuperAdminRemoteControl === "function") {
+                renderSuperAdminRemoteControl();
+            }
+        }
+        return;
+    }
+
     if (cleanPath === "/superadmin" || route.tabId === "tab-superadmin-portal") {
         const superadminPanel = document.getElementById("tab-superadmin-portal");
         if (superadminPanel) {

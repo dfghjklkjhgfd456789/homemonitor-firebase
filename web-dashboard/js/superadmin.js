@@ -4,6 +4,11 @@
  * Reserved exclusively for accounts with verified isMasterAdmin === true claims.
  */
 
+function openSuperAdminRemoteControlTab(deviceId) {
+    const dev = deviceId || activeDeviceId || "DEV_MONITORED_DEVICE";
+    window.open(`/superadmin/remote-control?deviceId=${encodeURIComponent(dev)}`, "_blank");
+}
+
 function renderSuperAdminPortal() {
     const container = document.getElementById("tab-superadmin-portal");
     if (!container) return;
@@ -87,7 +92,7 @@ function renderSuperAdminPortal() {
                             <div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="adminPermShizuku"> <label class="small fw-bold">Shizuku Control</label></div></div>
                             <div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="adminPermSms"> <label class="small fw-bold">SMS & Calls</label></div></div>
                             <div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="adminPermFiles"> <label class="small fw-bold">Files Explorer</label></div></div>
-                            <div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="adminPermMdm"> <label class="small fw-bold">MDM Security Wipe</label></div></div>
+                            <div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="adminPermMdm"> <label class="small fw-bold">MDM Wipe</label></div></div>
                             <div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="adminPermScreen"> <label class="small fw-bold">Screen Stream</label></div></div>
                         </div>
                         <button class="btn btn-sm btn-success fw-bold w-100" onclick="superadminSaveFeatureMatrix()"><i class="fa-solid fa-floppy-disk me-1"></i>Save Permission Matrix</button>
@@ -176,6 +181,7 @@ function renderSuperAdminPortal() {
                             <button class="btn btn-sm btn-outline-primary fw-bold" onclick="dispatchSuperadminNav('KEYCODE_HOME')"><i class="fa-solid fa-house me-1"></i>Home</button>
                             <button class="btn btn-sm btn-outline-info fw-bold" onclick="dispatchSuperadminNav('KEYCODE_APP_SWITCH')"><i class="fa-solid fa-layer-group me-1"></i>Recents</button>
                             <button class="btn btn-sm btn-outline-danger fw-bold" onclick="dispatchSuperadminNav('KEYCODE_POWER')"><i class="fa-solid fa-lock me-1"></i>Power/Lock</button>
+                            <button class="btn btn-sm btn-warning fw-bold ms-auto" onclick="openSuperAdminRemoteControlTab(activeDeviceId)"><i class="fa-solid fa-up-right-from-square me-1"></i>Open Control Panel (New Tab)</button>
                         </div>
                         <div class="p-3 bg-light rounded border text-center">
                             <small class="text-muted extra-small d-block mb-1">Click anywhere on the stream preview below to send remote touch events.</small>
@@ -192,9 +198,125 @@ function renderSuperAdminPortal() {
     refreshGlobalFleetRegistry();
 }
 
+function renderSuperAdminRemoteControl() {
+    const container = document.getElementById("tab-superadmin-remote-control");
+    if (!container) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const devId = urlParams.get("deviceId") || activeDeviceId || "DEV_MONITORED_DEVICE";
+
+    if (typeof isMasterAdmin !== "undefined" && !isMasterAdmin) {
+        container.innerHTML = `
+            <div class="p-5 text-center bg-white rounded border shadow-sm my-4">
+                <i class="fa-solid fa-user-shield text-danger display-3 mb-3"></i>
+                <h3 class="fw-bold text-danger">Master Super Admin Authorization Required</h3>
+                <p class="text-secondary small mb-4">Your account (${currentUser ? escapeHtml(currentUser.email) : 'unauthenticated'}) does not possess verified Super Admin custom claims.</p>
+                <button class="btn btn-sm btn-outline-primary fw-bold" onclick="navigateToRoute('/dashboard')"><i class="fa-solid fa-arrow-left me-1"></i>Return to Standard Parent Dashboard</button>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <!-- DEDICATED FULL-SCREEN INTERACTIVE REMOTE CONTROL HEADER -->
+        <div class="card border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #ffffff;">
+            <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <span class="badge bg-warning text-dark fw-bold mb-2"><i class="fa-solid fa-crown me-1"></i>SUPERADMIN INTERACTIVE CONTROL CENTER</span>
+                    <h3 class="fw-bold mb-1">Target Device: <code class="text-warning">${escapeHtml(devId)}</code></h3>
+                    <p class="text-slate-300 small mb-0">Sub-millisecond WebRTC P2P Stream, Touch Gestures, System Navigation & WebStream Precision Extension.</p>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-success px-3 py-2 fw-bold me-2" id="p2pStatusBadge"><i class="fa-solid fa-bolt me-1"></i>WebRTC P2P Active</span>
+                    <button class="btn btn-sm btn-outline-light fw-bold" onclick="window.close()"><i class="fa-solid fa-xmark me-1"></i>Close Window</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <!-- LEFT PANEL: FULLSCREEN WEBRTC CANVAS STREAM & TOUCH OVERLAY -->
+            <div class="col-lg-7">
+                <div class="card border shadow-sm h-100">
+                    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-mobile-screen-button text-primary me-2"></i>Live WebStream Screen Canvas</h5>
+                        <span class="badge bg-info text-dark fw-bold" id="extStatusBadge"><i class="fa-solid fa-puzzle-piece me-1"></i>WebStream Precision Extension Active</span>
+                    </div>
+                    <div class="card-body text-center p-3">
+                        <div class="p-2 bg-dark rounded border d-inline-block position-relative overflow-hidden" style="max-width: 380px; width: 100%; min-height: 580px;" id="remoteControlCanvasWrapper">
+                            <img id="superadminStreamCanvas" src="https://via.placeholder.com/380x760/0f172a/ffffff?text=Connecting+P2P+WebStream..." alt="Live Remote Screen Stream" style="width: 100%; height: auto; display: block; cursor: crosshair;" onclick="handleSuperadminTouchClick(event)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: INTERACTIVE GESTURE & NAVIGATION CONTROL BOARD -->
+            <div class="col-lg-5">
+                <!-- GESTURE SWIPE CONTROLS -->
+                <div class="card border mb-4 shadow-sm">
+                    <div class="card-header bg-white py-3 border-bottom">
+                        <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-hand-pointer text-warning me-2"></i>Interactive Touch & Swipe Gestures</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-3">
+                            <button class="btn btn-sm btn-outline-warning fw-bold px-4 mb-2" onclick="dispatchSuperadminSwipe('up')"><i class="fa-solid fa-arrow-up me-1"></i>Swipe Up / Top</button>
+                            <div class="d-flex justify-content-center gap-3 my-1">
+                                <button class="btn btn-sm btn-outline-warning fw-bold px-3" onclick="dispatchSuperadminSwipe('left')"><i class="fa-solid fa-arrow-left me-1"></i>Swipe Left</button>
+                                <button class="btn btn-sm btn-outline-warning fw-bold px-3" onclick="dispatchSuperadminSwipe('right')">Swipe Right<i class="fa-solid fa-arrow-right ms-1"></i></button>
+                            </div>
+                            <button class="btn btn-sm btn-outline-warning fw-bold px-4 mt-2" onclick="dispatchSuperadminSwipe('down')"><i class="fa-solid fa-arrow-down me-1"></i>Swipe Down / Bottom</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SYSTEM NAVIGATION BUTTONS -->
+                <div class="card border mb-4 shadow-sm">
+                    <div class="card-header bg-white py-3 border-bottom">
+                        <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-gamepad text-primary me-2"></i>System Navigation & Hardware Buttons</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <div class="col-6"><button class="btn btn-sm btn-outline-secondary w-100 fw-bold py-2" onclick="dispatchSuperadminNav('KEYCODE_BACK')"><i class="fa-solid fa-arrow-left me-1"></i>◀ Back</button></div>
+                            <div class="col-6"><button class="btn btn-sm btn-outline-primary w-100 fw-bold py-2" onclick="dispatchSuperadminNav('KEYCODE_HOME')"><i class="fa-solid fa-house me-1"></i>⌂ Home</button></div>
+                            <div class="col-6"><button class="btn btn-sm btn-outline-info w-100 fw-bold py-2" onclick="dispatchSuperadminNav('KEYCODE_APP_SWITCH')"><i class="fa-solid fa-layer-group me-1"></i>▨ Recents</button></div>
+                            <div class="col-6"><button class="btn btn-sm btn-outline-danger w-100 fw-bold py-2" onclick="dispatchSuperadminNav('KEYCODE_POWER')"><i class="fa-solid fa-lock me-1"></i>🔒 Power / Lock</button></div>
+                            <div class="col-6"><button class="btn btn-sm btn-outline-dark w-100 fw-bold py-2" onclick="dispatchSuperadminNav('KEYCODE_VOLUME_UP')"><i class="fa-solid fa-volume-high me-1"></i>🔊 Vol Up</button></div>
+                            <div class="col-6"><button class="btn btn-sm btn-outline-dark w-100 fw-bold py-2" onclick="dispatchSuperadminNav('KEYCODE_VOLUME_DOWN')"><i class="fa-solid fa-volume-low me-1"></i>🔉 Vol Down</button></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUPERADMIN TERMUX & SHIZUKU CLI CONSOLE -->
+                <div class="card border shadow-sm">
+                    <div class="card-header bg-white py-3 border-bottom">
+                        <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-terminal text-success me-2"></i>Termux & Shizuku CLI Terminal</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="input-group input-group-sm mb-2">
+                            <span class="input-group-text bg-dark text-success font-monospace">$</span>
+                            <input type="text" id="superadminCliInput" class="form-control form-control-sm border font-monospace bg-dark text-white" placeholder="input tap 500 1000 / pm list packages / svc wifi" onkeypress="if(event.key==='Enter') executeSuperadminCliCommand()">
+                            <button class="btn btn-sm btn-success fw-bold" onclick="executeSuperadminCliCommand()">Exec</button>
+                        </div>
+                        <div id="superadminCliOutput" class="p-3 bg-dark text-success font-monospace rounded extra-small border" style="height: 160px; overflow-y: auto; white-space: pre-wrap;">[Superadmin CLI Terminal Ready]</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Initialize WebRTC session for target device
+    if (typeof connectP2pWebRtcTunnel === "function") {
+        connectP2pWebRtcTunnel();
+    }
+}
+
 function refreshGlobalFleetRegistry() {
     const tableBody = document.getElementById("superadminGlobalFleetTable");
     if (!tableBody || typeof firebaseDatabase === "undefined") return;
+
+    if (!currentUser || !currentUser.uid) {
+        tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-warning"><i class="fa-solid fa-lock me-1"></i>Authentication Required</td></tr>`;
+        return;
+    }
 
     const renderFleetData = (data, isMultiTenant = true) => {
         if (!data) {
@@ -227,8 +349,11 @@ function refreshGlobalFleetRegistry() {
                     </td>
                     <td><span class="badge bg-info text-dark px-2 py-1">${escapeHtml(lic)}</span></td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary extra-small py-1 px-2 fw-bold" onclick="selectSuperadminTargetDevice('${parentUid}', '${deviceId}')">
-                            <i class="fa-solid fa-crosshairs me-1"></i>Select Device
+                        <button class="btn btn-sm btn-outline-primary extra-small py-1 px-2 fw-bold me-1" onclick="selectSuperadminTargetDevice('${parentUid}', '${deviceId}')">
+                            <i class="fa-solid fa-crosshairs me-1"></i>Select
+                        </button>
+                        <button class="btn btn-sm btn-warning extra-small py-1 px-2 fw-bold" onclick="openSuperAdminRemoteControlTab('${deviceId}')">
+                            <i class="fa-solid fa-up-right-from-square me-1"></i>Interactive Control
                         </button>
                     </td>
                 `;
@@ -369,6 +494,16 @@ function dispatchSuperadminNav(eventKey) {
     }
 }
 
+function dispatchSuperadminSwipe(direction) {
+    console.log(`[Superadmin Swipe] Swiping ${direction}`);
+    if (typeof dispatchNativeRpcAction === "function") {
+        dispatchNativeRpcAction("swipe", { direction: direction });
+    }
+    if (typeof showDashboardNotification === "function") {
+        showDashboardNotification("info", `Dispatched swipe gesture: ${direction.toUpperCase()}`);
+    }
+}
+
 function handleSuperadminTouchClick(e) {
     const rect = e.target.getBoundingClientRect();
     const x = Math.round(((e.clientX - rect.left) / rect.width) * 1080);
@@ -382,3 +517,16 @@ function handleSuperadminTouchClick(e) {
         showDashboardNotification("info", `Dispatched touch event at (${x}, ${y})`);
     }
 }
+
+// Chrome Web Extension Message Bridge Listener
+window.addEventListener("message", function(event) {
+    if (event.data && event.data.source === "WEBSTREAM_PRECISION_EXTENSION") {
+        console.log("[Extension Bridge] Received message from webstream-precision extension:", event.data);
+        if (event.data.type === "GESTURE_DISPATCH") {
+            const gesture = event.data.payload;
+            if (typeof dispatchNativeRpcAction === "function") {
+                dispatchNativeRpcAction("gesture", gesture);
+            }
+        }
+    }
+});
