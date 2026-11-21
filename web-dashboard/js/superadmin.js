@@ -196,62 +196,79 @@ function refreshGlobalFleetRegistry() {
     const tableBody = document.getElementById("superadminGlobalFleetTable");
     if (!tableBody || typeof firebaseDatabase === "undefined") return;
 
+    const renderFleetData = (data, isMultiTenant = true) => {
+        if (!data) {
+            tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">No child devices currently enrolled.</td></tr>`;
+            return;
+        }
+
+        tableBody.innerHTML = "";
+        let totalCount = 0;
+
+        const processDevicesObj = (parentUid, parentEmail, devicesObj) => {
+            if (!devicesObj) return;
+            Object.keys(devicesObj).forEach(deviceId => {
+                totalCount++;
+                const dev = devicesObj[deviceId];
+                const online = dev ? dev.online : false;
+                const statusObj = dev ? dev.status : {};
+                const model = statusObj ? (statusObj.model || "Android System") : "Android System";
+                const lic = dev && dev.license ? dev.license.status : "ACTIVE";
+
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td><code class="text-primary">${escapeHtml(deviceId)}</code></td>
+                    <td><span class="small font-monospace">${escapeHtml(parentEmail)}</span></td>
+                    <td>${escapeHtml(model)}</td>
+                    <td>
+                        <span class="badge ${online ? 'bg-success' : 'bg-secondary'} px-2 py-1">
+                            <i class="fa-solid ${online ? 'fa-circle-check' : 'fa-circle-stop'} me-1"></i>${online ? 'Online' : 'Offline'}
+                        </span>
+                    </td>
+                    <td><span class="badge bg-info text-dark px-2 py-1">${escapeHtml(lic)}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary extra-small py-1 px-2 fw-bold" onclick="selectSuperadminTargetDevice('${parentUid}', '${deviceId}')">
+                            <i class="fa-solid fa-crosshairs me-1"></i>Select Device
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        };
+
+        if (isMultiTenant) {
+            Object.keys(data).forEach(pUid => {
+                const userRec = data[pUid];
+                const pEmail = userRec ? (userRec.email || pUid) : pUid;
+                const devs = userRec ? userRec.devices : null;
+                processDevicesObj(pUid, pEmail, devs);
+            });
+        } else {
+            processDevicesObj(currentUser.uid, currentUser.email || "Parent", data);
+        }
+
+        if (totalCount === 0) {
+            tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">No child devices currently enrolled.</td></tr>`;
+        }
+    };
+
+    // Attempt multi-tenant root query first, falling back to current user's devices if restricted by Security Rules
     firebaseDatabase.ref("users").once("value")
         .then(snapshot => {
-            const data = snapshot.val();
-            if (!data) {
-                tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">No registered parent users or devices found.</td></tr>`;
-                return;
-            }
-
-            tableBody.innerHTML = "";
-            let totalCount = 0;
-
-            Object.keys(data).forEach(parentUid => {
-                const userRecord = data[parentUid];
-                const devicesObj = userRecord ? userRecord.devices : null;
-                const parentEmail = userRecord ? (userRecord.email || parentUid) : parentUid;
-
-                if (devicesObj) {
-                    Object.keys(devicesObj).forEach(deviceId => {
-                        totalCount++;
-                        const dev = devicesObj[deviceId];
-                        const online = dev ? dev.online : false;
-                        const statusObj = dev ? dev.status : {};
-                        const model = statusObj ? (statusObj.model || "Android System") : "Android System";
-                        const lic = dev && dev.license ? dev.license.status : "ACTIVE";
-
-                        const row = document.createElement("tr");
-                        row.innerHTML = `
-                            <td><code class="text-primary">${escapeHtml(deviceId)}</code></td>
-                            <td><span class="small font-monospace">${escapeHtml(parentEmail)}</span></td>
-                            <td>${escapeHtml(model)}</td>
-                            <td>
-                                <span class="badge ${online ? 'bg-success' : 'bg-secondary'} px-2 py-1">
-                                    <i class="fa-solid ${online ? 'fa-circle-check' : 'fa-circle-stop'} me-1"></i>${online ? 'Online' : 'Offline'}
-                                </span>
-                            </td>
-                            <td><span class="badge bg-info text-dark px-2 py-1">${escapeHtml(lic)}</span></td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary extra-small py-1 px-2 fw-bold" onclick="selectSuperadminTargetDevice('${parentUid}', '${deviceId}')">
-                                    <i class="fa-solid fa-crosshairs me-1"></i>Select Device
-                                </button>
-                            </td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
-                }
-            });
-
-            if (totalCount === 0) {
-                tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">No child devices currently enrolled.</td></tr>`;
-            }
+            renderFleetData(snapshot.val(), true);
         })
         .catch(err => {
-            console.error("[Superadmin Fleet] Error fetching registry:", err);
-            if (tableBody) {
-                tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Error loading global fleet: ${escapeHtml(err.message)}</td></tr>`;
-            }
+            console.warn("[Superadmin Fleet] Root /users read fallback notice:", err.message);
+            firebaseDatabase.ref(`users/${currentUser.uid}/devices`).once("value")
+                .then(snapshot => {
+                    renderFleetData(snapshot.val(), false);
+                })
+                .catch(fallbackErr => {
+                    console.error("[Superadmin Fleet] Error loading devices:", fallbackErr);
+                    if (tableBody) {
+                        tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Error loading fleet: ${escapeHtml(fallbackErr.message)}</td></tr>`;
+                    }
+                });
         });
 }
 
