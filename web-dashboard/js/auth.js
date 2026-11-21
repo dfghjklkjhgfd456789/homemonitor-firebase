@@ -671,6 +671,3 @@ function createOneTimeEnrollmentInvitation(callback) {
             });
     }
 }
-        if (callback) callback({ invitationId, expiresAt, payload });
-    }
-}
