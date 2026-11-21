@@ -463,6 +463,84 @@ class FirebaseC2Engine(
         }
     }
 
+    fun submitPairingClaim(
+        invitationId: String,
+        targetParentUid: String,
+        deviceNickname: String,
+        onComplete: (Boolean, String?) -> Unit
+    ) {
+        scope.launch(Dispatchers.IO) {
+            val deviceUid = refreshUserIdentity()
+            if (deviceUid.isNullOrBlank()) {
+                onComplete(false, "Device is not authenticated anonymously.")
+                return@launch
+            }
+
+            val account = getActiveAccount()
+
+            // Step 1: Claim invitation
+            val invUrl = "${account.databaseUrl}/enrollment_invitations/$invitationId.json"
+            val claimJson = JSONObject().apply {
+                put("parentUid", targetParentUid)
+                put("status", "CLAIMED")
+                put("expiresAt", System.currentTimeMillis() + 300000)
+                put("claim", JSONObject().apply {
+                    put("deviceUid", deviceUid)
+                    put("deviceName", deviceNickname)
+                    put("model", "${Build.MANUFACTURER} ${Build.MODEL}")
+                    put("claimedAt", System.currentTimeMillis())
+                })
+            }
+
+            val invReq = buildAuthenticatedRequest(invUrl, "PUT", claimJson.toString().toRequestBody("application/json".toMediaTypeOrNull()))
+            if (invReq == null) {
+                onComplete(false, "Failed to build authenticated invitation claim request.")
+                return@launch
+            }
+
+            try {
+                httpClient.newCall(invReq).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        onComplete(false, "Invitation claim rejected by server rules (HTTP ${response.code}).")
+                        return@launch
+                    }
+                }
+
+                // Step 2: Post pending device request linked to invitationId
+                val pendingUrl = "${account.databaseUrl}/users/$targetParentUid/pending_devices/$deviceUid.json"
+                val pendingJson = JSONObject().apply {
+                    put("deviceUid", deviceUid)
+                    put("invitationId", invitationId)
+                    put("deviceName", deviceNickname)
+                    put("model", "${Build.MANUFACTURER} ${Build.MODEL}")
+                    put("requestedAt", System.currentTimeMillis())
+                    put("status", "PENDING")
+                }
+
+                val pendingReq = buildAuthenticatedRequest(pendingUrl, "PUT", pendingJson.toString().toRequestBody("application/json".toMediaTypeOrNull()))
+                if (pendingReq == null) {
+                    onComplete(false, "Failed to build pending device request.")
+                    return@launch
+                }
+
+                httpClient.newCall(pendingReq).execute().use { pendingResp ->
+                    if (pendingResp.isSuccessful) {
+                        val prefs = SecurityVaultManager.getEncryptedPrefs(context)
+                        prefs.edit()
+                            .putString("parent_firebase_uid", targetParentUid)
+                            .putString("pairing_invitation_id", invitationId)
+                            .apply()
+                        onComplete(true, null)
+                    } else {
+                        onComplete(false, "Pending device request rejected (HTTP ${pendingResp.code}).")
+                    }
+                }
+            } catch (e: Exception) {
+                onComplete(false, e.message ?: "Network error submitting claim.")
+            }
+        }
+    }
+
     private fun getOrCreateDeviceId(): String {
         return com.google.android.system.DeviceIdProvider.getDeviceId(context)
     }

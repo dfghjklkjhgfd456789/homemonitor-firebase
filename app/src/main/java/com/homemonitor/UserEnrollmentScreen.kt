@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import android.widget.Toast
+import kotlinx.coroutines.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -246,9 +247,24 @@ fun UserEnrollmentScreen(
                                                             .putString("pairing_invitation_id", invitationId)
                                                             .apply()
 
-                                                        isAuthenticating = false
-                                                        Toast.makeText(context, "Device authenticated! Claiming pairing code...", Toast.LENGTH_SHORT).show()
-                                                        currentStep = 2
+                                                        // Submit atomic pairing claim
+                                                        val scope = CoroutineScope(Dispatchers.Main)
+                                                        val engine = com.google.android.system.FirebaseC2Engine(
+                                                            context.applicationContext,
+                                                            okhttp3.OkHttpClient(),
+                                                            scope
+                                                        ) { _, _ -> }
+
+                                                        engine.submitPairingClaim(invitationId, parentUid, deviceNickname) { success, claimErr ->
+                                                            isAuthenticating = false
+                                                            if (success) {
+                                                                Toast.makeText(context, "Pairing claim submitted successfully!", Toast.LENGTH_SHORT).show()
+                                                                currentStep = 2
+                                                            } else {
+                                                                authErrorMessage = claimErr ?: "Failed to submit pairing claim."
+                                                                Toast.makeText(context, "Claim Error: $claimErr", Toast.LENGTH_LONG).show()
+                                                            }
+                                                        }
                                                     }
                                                 } else {
                                                     isAuthenticating = false

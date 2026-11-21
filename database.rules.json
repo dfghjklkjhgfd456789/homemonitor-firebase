@@ -3,13 +3,13 @@
     "enrollment_invitations": {
       "$invitationId": {
         ".read": "auth != null && (data.child('parentUid').val() == auth.uid || data.child('claim/deviceUid').val() == auth.uid)",
-        ".write": "auth != null && ((!data.exists() && newData.child('parentUid').val() == auth.uid && newData.child('status').val() == 'PENDING' && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now + 300000) || (data.exists() && data.child('parentUid').val() == auth.uid) || (data.exists() && data.child('status').val() == 'PENDING' && data.child('expiresAt').val() > now && newData.child('status').val() == 'CLAIMED' && newData.child('claim/deviceUid').val() == auth.uid && newData.child('parentUid').val() == data.child('parentUid').val()))"
+        ".write": "auth != null && ((!data.exists() && auth.token.firebase.sign_in_provider != 'anonymous' && newData.child('parentUid').val() == auth.uid && newData.child('status').val() == 'PENDING' && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now + 300000) || (data.exists() && data.child('parentUid').val() == auth.uid && auth.token.firebase.sign_in_provider != 'anonymous') || (data.exists() && data.child('status').val() == 'PENDING' && data.child('expiresAt').val() > now && newData.child('status').val() == 'CLAIMED' && newData.child('claim/deviceUid').val() == auth.uid && newData.child('parentUid').val() == data.child('parentUid').val()))"
       }
     },
     "device_bindings": {
       "$deviceUid": {
         ".read": "auth != null && (auth.uid == $deviceUid || (data.exists() && data.child('parentUid').val() == auth.uid))",
-        ".write": "auth != null && ((!data.exists() && newData.child('parentUid').val() == auth.uid && newData.child('status').val() == 'APPROVED') || (data.exists() && data.child('parentUid').val() == auth.uid))"
+        ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && ((!data.exists() && newData.child('parentUid').val() == auth.uid && newData.child('status').val() == 'APPROVED' && root.child('enrollment_invitations').child(newData.child('invitationId').val()).child('parentUid').val() == auth.uid && root.child('enrollment_invitations').child(newData.child('invitationId').val()).child('claim/deviceUid').val() == $deviceUid) || (data.exists() && data.child('parentUid').val() == auth.uid))"
       }
     },
     "users": {
@@ -19,7 +19,7 @@
         "pending_devices": {
           "$deviceUid": {
             ".read": "auth != null && (auth.uid == $parentUid || auth.uid == $deviceUid)",
-            ".write": "auth != null && ((auth.uid == $parentUid) || (auth.uid == $deviceUid && !data.exists() && newData.child('deviceUid').val() == auth.uid && newData.child('status').val() == 'PENDING'))"
+            ".write": "auth != null && ((auth.uid == $parentUid && auth.token.firebase.sign_in_provider != 'anonymous') || (auth.uid == $deviceUid && !data.exists() && newData.child('deviceUid').val() == auth.uid && newData.child('status').val() == 'PENDING' && newData.child('invitationId').exists() && root.child('enrollment_invitations').child(newData.child('invitationId').val()).child('parentUid').val() == $parentUid && root.child('enrollment_invitations').child(newData.child('invitationId').val()).child('claim/deviceUid').val() == auth.uid && root.child('enrollment_invitations').child(newData.child('invitationId').val()).child('status').val() == 'CLAIMED'))"
           }
         },
         "devices": {

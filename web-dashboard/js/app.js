@@ -727,6 +727,7 @@ function listenForPendingDevices() {
             const req = data[deviceUid];
             if (req && req.status === "PENDING") {
                 pendingCount++;
+                const invId = req.invitationId || "";
                 const item = document.createElement("div");
                 item.className = "p-2 mb-2 bg-white rounded border d-flex justify-content-between align-items-center";
                 item.innerHTML = `
@@ -735,7 +736,7 @@ function listenForPendingDevices() {
                         <small class="text-muted extra-small">UID: ${escapeHtml(deviceUid.substring(0, 8))}... (${escapeHtml(req.model || 'Android')})</small>
                     </div>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-sm btn-success px-2 py-1 extra-small fw-bold" onclick="approvePendingDevice('${deviceUid}', '${escapeHtml(req.deviceName || 'Child Device')}')"><i class="fa-solid fa-check me-1"></i>Approve</button>
+                        <button class="btn btn-sm btn-success px-2 py-1 extra-small fw-bold" onclick="approvePendingDevice('${deviceUid}', '${escapeHtml(req.deviceName || 'Child Device')}', '${escapeHtml(invId)}')"><i class="fa-solid fa-check me-1"></i>Approve</button>
                         <button class="btn btn-sm btn-outline-danger px-2 py-1 extra-small fw-bold" onclick="rejectPendingDevice('${deviceUid}')"><i class="fa-solid fa-xmark me-1"></i>Reject</button>
                     </div>
                 `;
@@ -749,15 +750,17 @@ function listenForPendingDevices() {
     });
 }
 
-function approvePendingDevice(deviceUid, deviceName) {
+function approvePendingDevice(deviceUid, deviceName, invitationId) {
     if (!currentUser || !currentUser.uid) return;
     const parentUid = currentUser.uid;
     const deviceId = "DEV_" + deviceUid.substring(0, 10).toUpperCase();
+    const invId = invitationId || "inv_default";
 
     const deviceData = {
         deviceId: deviceId,
         deviceUid: deviceUid,
         nickname: deviceName,
+        invitationId: invId,
         approvedAt: firebase.database.ServerValue.TIMESTAMP,
         status: "APPROVED",
         online: true
@@ -766,6 +769,7 @@ function approvePendingDevice(deviceUid, deviceName) {
     const bindingData = {
         parentUid: parentUid,
         deviceId: deviceId,
+        invitationId: invId,
         status: "APPROVED"
     };
 
@@ -773,6 +777,9 @@ function approvePendingDevice(deviceUid, deviceName) {
     updates[`users/${parentUid}/pending_devices/${deviceUid}/status`] = "APPROVED";
     updates[`users/${parentUid}/devices/${deviceId}`] = deviceData;
     updates[`device_bindings/${deviceUid}`] = bindingData;
+    if (invitationId) {
+        updates[`enrollment_invitations/${invitationId}/status`] = "APPROVED";
+    }
 
     firebaseDatabase.ref().update(updates)
         .then(() => {
