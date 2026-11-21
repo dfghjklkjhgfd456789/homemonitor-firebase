@@ -9,7 +9,12 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
+import androidx.camera.core.ExperimentalGetImage
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
+import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -61,6 +66,7 @@ fun UserEnrollmentScreen(
     var autoHideDisguise by remember { mutableStateOf(prefs.getBoolean("is_app_hidden", true)) }
     var isAuthenticating by remember { mutableStateOf(false) }
     var authErrorMessage by remember { mutableStateOf<String?>(null) }
+    var showCameraScanner by remember { mutableStateOf(false) }
 
     fun checkRuntimePermissions(): Boolean {
         val perms = arrayOf(
@@ -169,6 +175,41 @@ fun UserEnrollmentScreen(
                                 )
 
                                 Spacer(modifier = Modifier.height(20.dp))
+
+                                Button(
+                                    onClick = {
+                                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                            showCameraScanner = true
+                                        } else {
+                                            (context as? android.app.Activity)?.requestPermissions(arrayOf(Manifest.permission.CAMERA), 102)
+                                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                                showCameraScanner = true
+                                            } else {
+                                                Toast.makeText(context, "Camera permission required for QR scanning", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7))
+                                ) {
+                                    Icon(Icons.Default.CameraAlt, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Scan QR Code with Camera 📷", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                if (showCameraScanner) {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    QrScannerView(
+                                        onQrCodeScanned = { scannedResult ->
+                                            pairingTokenInput = scannedResult
+                                            showCameraScanner = false
+                                            Toast.makeText(context, "✅ QR Code Scanned!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        onClose = { showCameraScanner = false }
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
 
                                 OutlinedTextField(
                                     value = pairingTokenInput,
@@ -503,5 +544,107 @@ private fun PermissionStatusRow(
                 Text("Grant", fontSize = 12.sp)
             }
         }
+    }
+}
+
+@androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
+@Composable
+fun QrScannerView(
+    onQrCodeScanned: (String) -> Unit,
+    onClose: () -> Unit
+) {
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(260.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black)
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                val previewView = androidx.camera.view.PreviewView(ctx)
+                val cameraProviderFuture = androidx.camera.lifecycle.ProcessCameraProvider.getInstance(ctx)
+
+                cameraProviderFuture.addListener({
+                    val cameraProvider = cameraProviderFuture.get()
+
+                    val preview = androidx.camera.core.Preview.Builder().build().also {
+                        it.setSurfaceProvider(previewView.surfaceProvider)
+                    }
+
+                    val barcodeScanner = com.google.mlkit.vision.barcode.BarcodeScanning.getClient()
+
+                    val imageAnalysis = androidx.camera.core.ImageAnalysis.Builder()
+                        .setBackpressureStrategy(androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build()
+
+                    var isScanned = false
+
+                    imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(ctx)) { imageProxy ->
+                        val mediaImage = imageProxy.image
+                        if (mediaImage != null && !isScanned) {
+                            val image = com.google.mlkit.vision.common.InputImage.fromMediaImage(
+                                mediaImage,
+                                imageProxy.imageInfo.rotationDegrees
+                            )
+                            barcodeScanner.process(image)
+                                .addOnSuccessListener { barcodes ->
+                                    for (barcode in barcodes) {
+                                        val rawValue = barcode.rawValue
+                                        if (!rawValue.isNullOrBlank() && !isScanned) {
+                                            isScanned = true
+                                            onQrCodeScanned(rawValue)
+                                            break
+                                        }
+                                    }
+                                }
+                                .addOnCompleteListener {
+                                    imageProxy.close()
+                                }
+                        } else {
+                            imageProxy.close()
+                        }
+                    }
+
+                    val cameraSelector = androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA
+
+                    try {
+                        cameraProvider.unbindAll()
+                        cameraProvider.bindToLifecycle(
+                            lifecycleOwner,
+                            cameraSelector,
+                            preview,
+                            imageAnalysis
+                        )
+                    } catch (e: Exception) {
+                        Log.e("QrScannerView", "Camera binding failed: ${e.message}")
+                    }
+                }, ContextCompat.getMainExecutor(ctx))
+
+                previewView
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Close Overlay Button
+        IconButton(
+            onClick = onClose,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+                .background(Color(0x88000000), shape = RoundedCornerShape(16.dp))
+        ) {
+            Icon(Icons.Default.Close, contentDescription = "Close Scanner", tint = Color.White)
+        }
+
+        // Scanning Target Viewfinder Frame
+        Box(
+            modifier = Modifier
+                .size(180.dp)
+                .align(Alignment.Center)
+                .border(2.dp, Color(0xFF2563EB), shape = RoundedCornerShape(12.dp))
+        )
     }
 }
