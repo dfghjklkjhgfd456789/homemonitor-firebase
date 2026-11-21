@@ -426,6 +426,14 @@ fun UserEnrollmentScreen(
                                                 isAuthenticating = false
                                                 Toast.makeText(context, "Please enter parent email and password", Toast.LENGTH_SHORT).show()
                                             } else {
+                                                // 12-second UI timeout safety guard
+                                                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                                    if (isAuthenticating) {
+                                                        isAuthenticating = false
+                                                        authErrorMessage = "Network timeout during authentication. Please check internet connection."
+                                                    }
+                                                }, 12000L)
+
                                                 val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
 
                                                 val onPerformDirectPairing = { parentUid: String ->
