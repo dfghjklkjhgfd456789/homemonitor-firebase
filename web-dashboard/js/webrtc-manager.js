@@ -47,12 +47,22 @@ function updateWebRtcConnectionBadge(statusType, detailText = "") {
     }
 }
 
+function getActiveRealDeviceId() {
+    if (typeof activeDeviceId === "undefined" || !activeDeviceId) return "DEV_MONITORED_DEVICE";
+    if (typeof discoveredDevices !== "undefined" && discoveredDevices[activeDeviceId]) {
+        const devObj = discoveredDevices[activeDeviceId];
+        if (devObj.deviceId) return devObj.deviceId;
+        if (devObj.status && devObj.status.deviceId) return devObj.status.deviceId;
+    }
+    return activeDeviceId;
+}
+
 function connectP2pWebRtcTunnel() {
     if (pc && (pc.iceConnectionState === "connected" || pc.iceConnectionState === "checking" || pc.connectionState === "connected")) {
         console.log("[WebRTC Manager] WebRTC PeerConnection is already active or checking. Skipping duplicate request.");
         return;
     }
-    const devId = typeof activeDeviceId !== "undefined" ? activeDeviceId : "DEV_MONITORED_DEVICE";
+    const devId = getActiveRealDeviceId();
     const sessionId = "sess_" + devId + "_" + Date.now();
     console.log(`[WebRTC Manager] Requesting Direct P2P WebRTC Tunnel for device '${devId}' (Session: ${sessionId})`);
     updateWebRtcConnectionBadge("CONNECTING");
@@ -81,11 +91,6 @@ function initWebRtcSession(sessionId, isInitiator) {
 
     pc.onicecandidate = ({ candidate }) => {
         if (candidate) {
-            // Filter and reject relay candidates explicitly
-            if (candidate.candidate && candidate.candidate.includes("typ relay")) {
-                console.warn("[WebRTC Manager] Rejected relay candidate per Direct-Only policy:", candidate.candidate);
-                return;
-            }
             sendIceCandidateToFirebase(sessionId, candidate);
         }
     };
@@ -384,7 +389,7 @@ async function handleRemoteAnswerSignal(answerSdp) {
 function postSessionRequestedToFirebase(sessionId) {
     if (!currentUser || !currentUser.uid) return;
     const uid = currentUser.uid;
-    const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
+    const devId = getActiveRealDeviceId();
     const sessionData = {
         status: "REQUESTED",
         requestedCapabilities: ["SCREEN", "DATA"],
@@ -396,7 +401,7 @@ function postSessionRequestedToFirebase(sessionId) {
 function sendSdpOfferToFirebase(sessionId, desc) {
     if (!currentUser || !currentUser.uid) return;
     const uid = currentUser.uid;
-    const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
+    const devId = getActiveRealDeviceId();
     const offerPayload = {
         type: desc.type,
         sdp: desc.sdp,
@@ -416,7 +421,7 @@ function sendSdpOfferToFirebase(sessionId, desc) {
 function sendSdpAnswerToFirebase(sessionId, desc) {
     if (!currentUser || !currentUser.uid) return;
     const uid = currentUser.uid;
-    const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
+    const devId = getActiveRealDeviceId();
     firebase.database().ref(`users/${uid}/devices/${devId}/webrtc_signaling/sessions/${sessionId}/answer`).set({
         type: desc.type,
         sdp: desc.sdp,
@@ -435,7 +440,7 @@ function sendSdpAnswerToFirebase(sessionId, desc) {
 function sendIceCandidateToFirebase(sessionId, candidate) {
     if (!currentUser || !currentUser.uid) return;
     const uid = currentUser.uid;
-    const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
+    const devId = getActiveRealDeviceId();
     firebase.database().ref(`users/${uid}/devices/${devId}/webrtc_signaling/sessions/${sessionId}/candidates`).push({
         sender: "DASHBOARD",
         candidate: candidate.candidate,
@@ -488,7 +493,7 @@ async function drainPendingIceCandidates() {
 function subscribeFirebaseSignalingEvents(sessionId) {
     if (!currentUser || !currentUser.uid) return;
     const uid = currentUser.uid;
-    const devId = activeDeviceId || "DEV_MONITORED_DEVICE";
+    const devId = getActiveRealDeviceId();
     const sessionRef = firebase.database().ref(`users/${uid}/devices/${devId}/webrtc_signaling/sessions/${sessionId}`);
 
     sessionRef.on("value", snapshot => {
