@@ -40,10 +40,22 @@
             },
             "webrtc_signaling": {
               ".read": "auth != null && (auth.uid == $parentUid || (root.child('device_bindings').child(auth.uid).exists() && root.child('device_bindings').child(auth.uid).child('parentUid').val() == $parentUid && root.child('device_bindings').child(auth.uid).child('deviceId').val() == $deviceId && root.child('device_bindings').child(auth.uid).child('status').val() == 'APPROVED'))",
-              ".write": "auth != null && (auth.uid == $parentUid || (root.child('device_bindings').child(auth.uid).exists() && root.child('device_bindings').child(auth.uid).child('parentUid').val() == $parentUid && root.child('device_bindings').child(auth.uid).child('deviceId').val() == $deviceId && root.child('device_bindings').child(auth.uid).child('status').val() == 'APPROVED'))",
               "sessions": {
                 "$sessionId": {
-                  ".indexOn": ["status", "timestamp"]
+                  ".read": "auth != null && (auth.uid == $parentUid || (root.child('device_bindings').child(auth.uid).exists() && root.child('device_bindings').child(auth.uid).child('parentUid').val() == $parentUid && root.child('device_bindings').child(auth.uid).child('deviceId').val() == $deviceId && root.child('device_bindings').child(auth.uid).child('status').val() == 'APPROVED'))",
+                  ".indexOn": ["status", "timestamp"],
+                  "status": {
+                    ".write": "auth != null && (auth.uid == $parentUid || (root.child('device_bindings').child(auth.uid).exists() && root.child('device_bindings').child(auth.uid).child('parentUid').val() == $parentUid && root.child('device_bindings').child(auth.uid).child('deviceId').val() == $deviceId && root.child('device_bindings').child(auth.uid).child('status').val() == 'APPROVED'))"
+                  },
+                  "offer": {
+                    ".write": "auth != null && auth.uid == $parentUid"
+                  },
+                  "answer": {
+                    ".write": "auth != null && (auth.uid == $parentUid || (root.child('device_bindings').child(auth.uid).exists() && root.child('device_bindings').child(auth.uid).child('parentUid').val() == $parentUid && root.child('device_bindings').child(auth.uid).child('deviceId').val() == $deviceId && root.child('device_bindings').child(auth.uid).child('status').val() == 'APPROVED'))"
+                  },
+                  "candidates": {
+                    ".write": "auth != null && (auth.uid == $parentUid || (root.child('device_bindings').child(auth.uid).exists() && root.child('device_bindings').child(auth.uid).child('parentUid').val() == $parentUid && root.child('device_bindings').child(auth.uid).child('deviceId').val() == $deviceId && root.child('device_bindings').child(auth.uid).child('status').val() == 'APPROVED'))"
+                  }
                 }
               }
             },
