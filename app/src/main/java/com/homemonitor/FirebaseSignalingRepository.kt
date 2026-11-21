@@ -79,16 +79,22 @@ class FirebaseSignalingRepository(
                                             val answer = sessObj.optJSONObject("answer")
                                             val candidates = sessObj.optJSONObject("candidates")
 
-                                            if ((status == "REQUESTED" || (offer != null && offer.has("sdp"))) && activeSessionId == null) {
-                                                activeSessionId = sessId
-                                                postAcceptSession(sessId)
-                                                val reqCaps = mutableListOf<String>()
-                                                val capsArr = sessObj.optJSONArray("requestedCapabilities")
-                                                if (capsArr != null) {
-                                                    for (i in 0 until capsArr.length()) reqCaps.add(capsArr.getString(i))
+                                            if (status == "REQUESTED" || (offer != null && offer.has("sdp"))) {
+                                                if (activeSessionId == null || activeSessionId != sessId) {
+                                                    if (activeSessionId != null && activeSessionId != sessId) {
+                                                        Log.i(TAG, "Replacing stale WebRTC session '$activeSessionId' with new session '$sessId'")
+                                                        callback?.onSessionTerminated(activeSessionId!!)
+                                                    }
+                                                    activeSessionId = sessId
+                                                    postAcceptSession(sessId)
+                                                    val reqCaps = mutableListOf<String>()
+                                                    val capsArr = sessObj.optJSONArray("requestedCapabilities")
+                                                    if (capsArr != null) {
+                                                        for (i in 0 until capsArr.length()) reqCaps.add(capsArr.getString(i))
+                                                    }
+                                                    Log.i(TAG, "Incoming WebRTC Session Accepted: $sessId")
+                                                    callback?.onSessionRequested(sessId, reqCaps)
                                                 }
-                                                Log.i(TAG, "Incoming WebRTC Session Accepted: $sessId")
-                                                callback?.onSessionRequested(sessId, reqCaps)
                                             }
 
                                             if (sessId == activeSessionId) {
