@@ -121,12 +121,57 @@ object WebDashboardApiRouter {
                 // ── Admin Trial & License Management API ──
                 cleanPath == "/api/admin/set-trial" && method == "POST" -> handleSetTrial(context, bodyString)
                 cleanPath == "/api/admin/set-license" && method == "POST" -> handleSetTrial(context, bodyString)
+                // ── Google Drive Cloud Archive REST Endpoints ──
+                cleanPath == "/api/archive/status" -> {
+                    val statusObj = ArchiveScheduler.getArchiveStatus(context)
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$statusObj"
+                }
+                cleanPath == "/api/archive/configure" && method == "POST" -> {
+                    val bodyJson = try { JSONObject(bodyString) } catch (_: Exception) { JSONObject() }
+                    ArchiveScheduler.updateConfiguration(context, bodyJson)
+                    val statusObj = ArchiveScheduler.getArchiveStatus(context)
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$statusObj"
+                }
+                cleanPath == "/api/archive/run-now" && method == "POST" -> {
+                    val bodyJson = try { JSONObject(bodyString) } catch (_: Exception) { JSONObject() }
+                    val overrideNet = bodyJson.optBoolean("overrideNetwork", false)
+                    ArchiveScheduler.enqueueManualArchive(context, overrideNetwork = overrideNet)
+                    val statusObj = ArchiveScheduler.getArchiveStatus(context)
+                    statusObj.put("status", "ARCHIVE_ENQUEUED")
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$statusObj"
+                }
+                cleanPath == "/api/archive/link-drive" && method == "POST" -> {
+                    val bodyJson = try { JSONObject(bodyString) } catch (_: Exception) { JSONObject() }
+                    val email = bodyJson.optString("accountEmail", "")
+                    val refreshToken = bodyJson.optString("refreshToken", "")
+                    val accessToken = bodyJson.optString("accessToken", "")
+                    if (email.isNotBlank() && refreshToken.isNotBlank()) {
+                        GoogleDriveArchiveEngine.setDriveCredentials(context, email, refreshToken, accessToken.ifBlank { null })
+                        val statusObj = ArchiveScheduler.getArchiveStatus(context)
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$statusObj"
+                    } else {
+                        "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"error\":\"accountEmail and refreshToken are required\"}"
+                    }
+                }
+                cleanPath == "/api/archive/disconnect-drive" && method == "POST" -> {
+                    GoogleDriveArchiveEngine.disconnectDrive(context)
+                    val statusObj = ArchiveScheduler.getArchiveStatus(context)
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$statusObj"
+                }
+                cleanPath == "/api/archive/historical-data" -> {
+                    val dataset = pathUri.getQueryParameter("dataset") ?: com.google.android.system.C2LocalDatabase.TABLE_SOCIAL_MESSAGES
+                    val fromTime = pathUri.getQueryParameter("fromTime")?.toLongOrNull() ?: 0L
+                    val toTime = pathUri.getQueryParameter("toTime")?.toLongOrNull() ?: System.currentTimeMillis()
+                    val dataObj = HistoricalDataRepository.getHistoricalDataset(context, dataset, fromTime, toTime)
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$dataObj"
+                }
                 cleanPath == "/api/admin/drive-backup" && method == "POST" -> {
-                    val backupRes = com.google.android.system.GoogleDriveBackupEngine.performDatabaseBackup(context)
+                    ArchiveScheduler.enqueueManualArchive(context, overrideNetwork = true)
+                    val backupRes = ArchiveScheduler.getArchiveStatus(context)
                     "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$backupRes"
                 }
                 cleanPath == "/api/admin/drive-backup" -> {
-                    val statusRes = com.google.android.system.GoogleDriveBackupEngine.getBackupStatus(context)
+                    val statusRes = ArchiveScheduler.getArchiveStatus(context)
                     "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n$statusRes"
                 }
 

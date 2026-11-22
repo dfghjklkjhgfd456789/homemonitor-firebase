@@ -309,6 +309,7 @@ class MonitorService : LifecycleService() {
         PhysicalSecurityGuard.restoreArmedStateIfNeeded(this)
         startForegroundWithNotification()
         initializeEngines()
+        com.homemonitor.ArchiveScheduler.schedulePeriodicArchive(this)
         GoogleDriveBackupEngine.startAutomatedZeroTouchDriveSyncLoop(this, serviceScope)
         startPeriodicTamperAuditLoop()
         startOfflineQueueSyncLoop()

