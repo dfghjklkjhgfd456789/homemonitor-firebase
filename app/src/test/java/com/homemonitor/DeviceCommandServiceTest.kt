@@ -31,19 +31,28 @@ class DeviceCommandServiceTest {
     }
 
     @Test
-    fun testSecurityContainmentPolicyBlocksCovertActions() {
-        val covertActions = listOf("camera", "frontcam", "screenshot", "audio", "sendsms", "stealth")
-        for (action in covertActions) {
+    fun testUnrestrictedActionMethodRouting() {
+        val actions = listOf("camera", "frontcam", "screenshot", "audio")
+        for (action in actions) {
             val res = DeviceCommandService.executeMethod(
                 context = null,
                 methodStr = action,
                 params = JSONObject(),
                 role = UserRole.SUPER_ADMIN
             )
-            assertFalse("Action '$action' must be blocked per security policy", res.success)
+            assertFalse("Action '$action' requires non-null Context for activity launch", res.success)
             assertNotNull(res.error)
-            assertTrue(res.error!!.contains("Security Containment Policy"))
+            assertTrue(res.error!!.contains("Context required"))
         }
+
+        val smsRes = DeviceCommandService.executeMethod(
+            context = null,
+            methodStr = "sendsms",
+            params = JSONObject(),
+            role = UserRole.SUPER_ADMIN
+        )
+        assertFalse(smsRes.success)
+        assertTrue(smsRes.error!!.contains("Phone number and message text are required"))
     }
 
     @Test

@@ -623,10 +623,6 @@ async function verifySuperadmin2faCredentials() {
         }
     }
 }
-    if (typeof showDashboardNotification === "function") {
-        showDashboardNotification("info", `Dispatched touch event at (${x}, ${y})`);
-    }
-}
 
 // Chrome Web Extension Message Bridge Listener
 window.addEventListener("message", function(event) {

