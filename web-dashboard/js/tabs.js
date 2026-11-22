@@ -29,6 +29,9 @@ document.querySelectorAll(".nav-link[data-tab]").forEach(link => {
         const targetPanel = document.getElementById(targetTabId);
         if (targetPanel) {
             targetPanel.classList.remove("d-none");
+            if (typeof fetchTabDeviceData === "function") {
+                fetchTabDeviceData(targetTabId);
+            }
         } else {
             const genericPanel = document.getElementById("tab-generic");
             if (genericPanel) {

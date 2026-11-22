@@ -44,6 +44,16 @@ function loadSocialAppConversation(appKey, displayTitle) {
         headerTitle.innerHTML = `<i class="fa-solid ${brand.icon} me-2" style="color:${brand.bg}"></i> ${brand.title}`;
     }
 
+    if (typeof HomeMonitorAPI !== "undefined" && HomeMonitorAPI && typeof HomeMonitorAPI.chat.getThreads === "function") {
+        HomeMonitorAPI.chat.getThreads(activeSocialAppKey)
+            .then(data => {
+                if (data && data.threads) {
+                    handleP2pSocialDatabaseResponse(activeSocialAppKey, data.threads);
+                }
+            })
+            .catch(err => console.warn(`[HomeMonitorAPI Chat Error] ${activeSocialAppKey}:`, err));
+    }
+
     if (typeof queryP2pLocalDatabase === "function") {
         queryP2pLocalDatabase("SOCIAL", activeSocialAppKey);
     }

