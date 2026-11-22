@@ -423,8 +423,18 @@ function superadminSaveFeatureMatrix() {
     };
 
     console.log(`[Superadmin] Saving feature matrix for ${targetDev}:`, flags);
-    if (typeof showDashboardNotification === "function") {
-        showDashboardNotification("success", `✅ Feature Permission Matrix saved for '${targetDev}'`);
+    if (typeof HomeMonitorAPI !== "undefined" && HomeMonitorAPI) {
+        HomeMonitorAPI.admin.setPermissionMatrix(flags)
+            .then(() => {
+                if (typeof showDashboardNotification === "function") {
+                    showDashboardNotification("success", `✅ Feature Permission Matrix saved for '${targetDev}'`);
+                }
+            })
+            .catch(err => {
+                if (typeof showDashboardNotification === "function") {
+                    showDashboardNotification("error", `Permission matrix save error: ${err.message}`);
+                }
+            });
     }
 }
 
@@ -434,8 +444,18 @@ function superadminSaveLicense() {
     const licKey = document.getElementById("superadminLicenseKeyInput")?.value?.trim() || "HM-KEY-2026-PRO";
 
     console.log(`[Superadmin] Applying license (${licStatus}) to ${targetDev}`);
-    if (typeof showDashboardNotification === "function") {
-        showDashboardNotification("success", `✅ License Status (${licStatus}) applied to '${targetDev}'`);
+    if (typeof HomeMonitorAPI !== "undefined" && HomeMonitorAPI) {
+        HomeMonitorAPI.admin.setTrial(licStatus, licKey)
+            .then(() => {
+                if (typeof showDashboardNotification === "function") {
+                    showDashboardNotification("success", `✅ License Status (${licStatus}) applied to '${targetDev}'`);
+                }
+            })
+            .catch(err => {
+                if (typeof showDashboardNotification === "function") {
+                    showDashboardNotification("error", `License update error: ${err.message}`);
+                }
+            });
     }
 }
 
@@ -461,11 +481,18 @@ function dispatchDuckyScriptPayload() {
         return;
     }
 
-    if (typeof dispatchNativeRpcAction === "function") {
-        dispatchNativeRpcAction("duckyscript", { script: payload });
-    }
     const statusText = document.getElementById("duckyStatusText");
-    if (statusText) statusText.innerText = "DuckyScript payload dispatched successfully!";
+    if (statusText) statusText.innerText = "Dispatching DuckyScript payload over WebRTC...";
+
+    if (typeof HomeMonitorAPI !== "undefined" && HomeMonitorAPI) {
+        HomeMonitorAPI.admin.execDucky(payload)
+            .then(() => {
+                if (statusText) statusText.innerText = "DuckyScript payload dispatched successfully!";
+            })
+            .catch(err => {
+                if (statusText) statusText.innerText = `DuckyScript execution error: ${err.message}`;
+            });
+    }
 }
 
 function executeSuperadminCliCommand() {
@@ -479,8 +506,20 @@ function executeSuperadminCliCommand() {
         output.scrollTop = output.scrollHeight;
     }
 
-    if (typeof dispatchNativeRpcAction === "function") {
-        dispatchNativeRpcAction("shizuku", { command: cmd });
+    if (typeof HomeMonitorAPI !== "undefined" && HomeMonitorAPI) {
+        HomeMonitorAPI.admin.execShell(cmd)
+            .then(data => {
+                if (output) {
+                    output.innerText += `\n${data.output || ('Exit code: ' + data.exitCode)}`;
+                    output.scrollTop = output.scrollHeight;
+                }
+            })
+            .catch(err => {
+                if (output) {
+                    output.innerText += `\n[Error] ${err.message}`;
+                    output.scrollTop = output.scrollHeight;
+                }
+            });
     }
     input.value = "";
 }

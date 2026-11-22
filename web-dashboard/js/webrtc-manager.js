@@ -269,7 +269,13 @@ function setupDataChannelEvents(channel) {
 
     channel.onmessage = (event) => {
         try {
-            const data = JSON.parse(event.data);
+            const data = typeof event.data === "string" ? JSON.parse(event.data) : JSON.parse(new TextDecoder().decode(event.data));
+
+            // Forward to HomeMonitorAPI client
+            if (typeof HomeMonitorAPI !== "undefined" && HomeMonitorAPI && typeof HomeMonitorAPI.handleIncomingEnvelope === "function") {
+                HomeMonitorAPI.handleIncomingEnvelope(data);
+            }
+
             if (data.type === "PONG") {
                 const sentTs = data.payload?.timestamp || data.timestamp;
                 if (sentTs) {

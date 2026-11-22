@@ -6,6 +6,7 @@
   "scripts": {
     "test:functional": "node web-dashboard/tests/dashboard-functional.test.js",
     "test:protocol": "node web-dashboard/tests/signaling-protocol.test.js",
+    "test:api-client": "node web-dashboard/tests/homemonitor-api-client.test.js",
     "test:rules": "node web-dashboard/tests/firebase-rules-security.test.js",
     "test:emulator": "npx firebase-tools emulators:exec --only database --project demo-homemonitor \"node web-dashboard/tests/firebase-signaling-emulator.test.js\"",
     "check:syntax": "node --check web-dashboard/js/*.js"
