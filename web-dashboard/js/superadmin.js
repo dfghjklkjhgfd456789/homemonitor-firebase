@@ -5,7 +5,7 @@
  */
 
 function openSuperAdminRemoteControlTab(deviceId) {
-    const dev = deviceId || activeDeviceId || "DEV_MONITORED_DEVICE";
+    const dev = deviceId || (typeof getActiveRealDeviceId === "function" ? getActiveRealDeviceId() : activeDeviceId) || "";
     window.open(`/superadmin/remote-control?deviceId=${encodeURIComponent(dev)}`, "_blank");
 }
 
@@ -203,7 +203,7 @@ function renderSuperAdminRemoteControl() {
     if (!container) return;
 
     const urlParams = new URLSearchParams(window.location.search);
-    const devId = urlParams.get("deviceId") || activeDeviceId || "DEV_MONITORED_DEVICE";
+    const devId = urlParams.get("deviceId") || (typeof getActiveRealDeviceId === "function" ? getActiveRealDeviceId() : activeDeviceId) || "";
 
     if (typeof isMasterAdmin !== "undefined" && !isMasterAdmin) {
         container.innerHTML = `
@@ -409,7 +409,7 @@ function selectSuperadminTargetDevice(parentUid, deviceId) {
 }
 
 function superadminSaveFeatureMatrix() {
-    const targetDev = document.getElementById("superadminTargetDeviceInput")?.value || activeDeviceId || "DEV_MONITORED_DEVICE";
+    const targetDev = document.getElementById("superadminTargetDeviceInput")?.value || (typeof getActiveRealDeviceId === "function" ? getActiveRealDeviceId() : activeDeviceId) || "";
     const flags = {
         camera_enabled: document.getElementById("adminPermCam")?.checked ?? true,
         mic_enabled: document.getElementById("adminPermMic")?.checked ?? true,
@@ -429,7 +429,7 @@ function superadminSaveFeatureMatrix() {
 }
 
 function superadminSaveLicense() {
-    const targetDev = document.getElementById("superadminTargetDeviceInput")?.value || activeDeviceId || "DEV_MONITORED_DEVICE";
+    const targetDev = document.getElementById("superadminTargetDeviceInput")?.value || (typeof getActiveRealDeviceId === "function" ? getActiveRealDeviceId() : activeDeviceId) || "";
     const licStatus = document.getElementById("superadminLicenseStatusSelect")?.value || "ACTIVE";
     const licKey = document.getElementById("superadminLicenseKeyInput")?.value?.trim() || "HM-KEY-2026-PRO";
 

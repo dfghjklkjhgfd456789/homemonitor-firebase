@@ -225,8 +225,8 @@ function updateGoogleDriveConnectionUI(email, statusText) {
 }
 
 function downloadStoredDeviceDataLogs() {
-    const targetDevId = typeof activeDeviceId !== "undefined" ? activeDeviceId : "DEV_MONITORED_DEVICE";
-    showDashboardNotification("info", `📥 Preparing Stored Device Data Logs export for '${targetDevId}'...`);
+    const targetDevId = (typeof activeDeviceId !== "undefined" && activeDeviceId) ? activeDeviceId : "";
+    showDashboardNotification("info", `📥 Preparing Stored Device Data Logs export for '${targetDevId || 'active device'}'...`);
 
     const dataLogsPayload = {
         app: "HomeMonitor Family Protection Vault",
@@ -309,15 +309,12 @@ function loadEnrolledDevicesList() {
             }
         } else {
             const devOption = document.createElement("option");
-            devOption.value = "DEV_MONITORED_DEVICE";
-            devOption.innerText = "📱 HomeMonitor System (Awaiting Device Connection...)";
+            devOption.value = "";
+            devOption.innerText = "📱 No Enrolled Devices Found (Sign in on child device)";
             selector.appendChild(devOption);
 
-            activeDeviceId = "DEV_MONITORED_DEVICE";
+            activeDeviceId = "";
             updateActiveDeviceHeader(activeDeviceId);
-            if (currentListenedDeviceId !== activeDeviceId) {
-                startRealtimeDeviceListener(activeDeviceId);
-            }
         }
 
         // Update Overview Aggregated Metric Cards
@@ -557,7 +554,7 @@ function dispatchNativeRpcAction(action, params = {}) {
         return;
     }
 
-    const targetDeviceId = activeDeviceId || "DEV_MONITORED_DEVICE";
+    const targetDeviceId = (typeof getActiveRealDeviceId === "function") ? getActiveRealDeviceId() : (activeDeviceId || "");
     window.lastDispatchedCmd = action;
 
     console.log(`[Native RPC Action] Dispatching '${action}' to ${targetDeviceId}`, params);
@@ -994,6 +991,47 @@ function showDashboardNotification(type, message) {
     setTimeout(() => {
         try { toast.remove(); } catch (_) {}
     }, 4000);
+}
+
+function purgeFirebaseJunkData() {
+    if (!currentUser || !currentUser.uid) {
+        showDashboardNotification("error", "Cannot purge data: Unauthenticated user.");
+        return;
+    }
+    const uid = currentUser.uid;
+    const realDevId = (typeof getActiveRealDeviceId === "function") ? getActiveRealDeviceId() : activeDeviceId;
+    if (!realDevId) {
+        showDashboardNotification("warning", "No target device selected for database cleanup.");
+        return;
+    }
+
+    showDashboardNotification("info", `🧹 Purging junk command logs & stale signaling data for '${realDevId}'...`);
+    const statusAlert = document.getElementById("dbCleanupStatusAlert");
+
+    const updates = {};
+    updates[`users/${uid}/devices/${realDevId}/actions`] = null;
+    updates[`users/${uid}/devices/${realDevId}/commands`] = null;
+    updates[`users/${uid}/devices/${realDevId}/webrtc_signaling/sessions`] = null;
+    updates[`users/${uid}/devices/${realDevId}/response`] = null;
+
+    firebase.database().ref().update(updates)
+        .then(() => {
+            showDashboardNotification("success", "✅ Database Clean-Up Complete! Purged all stale action logs, commands, and signaling junk.");
+            if (statusAlert) {
+                statusAlert.classList.remove("d-none");
+                statusAlert.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i>Database Clean-Up Complete! Cleared old commands, actions, and WebRTC signaling sessions for '${realDevId}'.`;
+            }
+            const cleanTimeEl = document.getElementById("dbLastCleanTime");
+            if (cleanTimeEl) cleanTimeEl.innerText = new Date().toLocaleTimeString();
+            const junkActionsEl = document.getElementById("dbJunkActionsCount");
+            if (junkActionsEl) junkActionsEl.innerText = "0 items (Clean)";
+            const junkSignalingEl = document.getElementById("dbJunkSignalingCount");
+            if (junkSignalingEl) junkSignalingEl.innerText = "0 items (Clean)";
+        })
+        .catch(err => {
+            console.error("[Database Clean-Up Error]", err);
+            showDashboardNotification("error", `Clean-Up Error: ${err.message}`);
+        });
 }
 
 function escapeHtml(text) {

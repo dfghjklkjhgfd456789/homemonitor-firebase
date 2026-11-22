@@ -48,7 +48,7 @@ function updateWebRtcConnectionBadge(statusType, detailText = "") {
 }
 
 function getActiveRealDeviceId() {
-    if (typeof activeDeviceId === "undefined" || !activeDeviceId) return "DEV_MONITORED_DEVICE";
+    if (typeof activeDeviceId === "undefined" || !activeDeviceId) return "";
     if (typeof discoveredDevices !== "undefined" && discoveredDevices[activeDeviceId]) {
         const devObj = discoveredDevices[activeDeviceId];
         if (devObj.deviceId) return devObj.deviceId;

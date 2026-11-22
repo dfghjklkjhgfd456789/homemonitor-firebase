@@ -87,7 +87,7 @@ function handleP2pSocialDatabaseResponse(appKey, messages) {
 function subscribeRealtimeFirebaseSocialFeed(appKey) {
     if (typeof currentUser === "undefined" || !currentUser || !currentUser.uid) return;
     const uid = currentUser.uid;
-    const devId = (typeof activeDeviceId !== "undefined" && activeDeviceId) ? activeDeviceId : "DEV_MONITORED_DEVICE";
+    const devId = (typeof getActiveRealDeviceId === "function") ? getActiveRealDeviceId() : (activeDeviceId || "");
 
     if (typeof firebase !== "undefined" && firebase.database) {
         firebase.database().ref(`users/${uid}/devices/${devId}/social/${appKey}`).limitToLast(50).on("value", snapshot => {
