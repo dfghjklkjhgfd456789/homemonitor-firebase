@@ -84,18 +84,31 @@ class FirebaseSignalingProvider(
 
                                             if (sessId == activeSessionId) {
                                                 // Offer envelope parsing
-                                                if (offerObj != null && offerObj.has("sdp")) {
-                                                    val msgId = offerObj.optString("messageId", "offer_$sessId")
-                                                    val offerEnvelope = SignalingEnvelope(
-                                                        protocolVersion = offerObj.optInt("protocolVersion", 1),
-                                                        sessionId = sessId,
-                                                        messageId = msgId,
-                                                        sequence = offerObj.optLong("sequence", ++lastSequence),
-                                                        senderRole = offerObj.optString("senderRole", "WEB"),
-                                                        type = "SDP_OFFER",
-                                                        payload = offerObj
-                                                    )
-                                                    listener?.onEnvelopeReceived(offerEnvelope)
+                                                if (offerObj != null) {
+                                                    val parsedOffer = SignalingEnvelope.fromJsonObject(offerObj)
+                                                    val offerEnvelope = if (parsedOffer != null && parsedOffer.type == "SDP_OFFER") {
+                                                        parsedOffer
+                                                    } else {
+                                                        val sdpStr = offerObj.optJSONObject("payload")?.optString("sdp") ?: offerObj.optString("sdp", "")
+                                                        if (sdpStr.isNotBlank()) {
+                                                            SignalingEnvelope(
+                                                                protocolVersion = offerObj.optInt("protocolVersion", 1),
+                                                                sessionId = sessId,
+                                                                messageId = offerObj.optString("messageId", "offer_$sessId"),
+                                                                sequence = offerObj.optLong("sequence", ++lastSequence),
+                                                                senderRole = offerObj.optString("senderRole", "WEB"),
+                                                                type = "SDP_OFFER",
+                                                                payload = offerObj.optJSONObject("payload") ?: JSONObject().apply {
+                                                                    put("type", "offer")
+                                                                    put("sdp", sdpStr)
+                                                                    put("revision", 1)
+                                                                }
+                                                            )
+                                                        } else null
+                                                    }
+                                                    if (offerEnvelope != null) {
+                                                        listener?.onEnvelopeReceived(offerEnvelope)
+                                                    }
                                                 }
 
                                                 // Candidates envelope parsing
@@ -104,18 +117,29 @@ class FirebaseSignalingProvider(
                                                     while (candKeys.hasNext()) {
                                                         val cKey = candKeys.next()
                                                         val cObj = candidatesObj.optJSONObject(cKey) ?: continue
-                                                        val sender = cObj.optString("senderRole", cObj.optString("sender", ""))
-                                                        if (sender != "ANDROID") {
-                                                            val msgId = cObj.optString("messageId", "cand_${sessId}_$cKey")
-                                                            val candEnvelope = SignalingEnvelope(
-                                                                protocolVersion = cObj.optInt("protocolVersion", 1),
-                                                                sessionId = sessId,
-                                                                messageId = msgId,
-                                                                sequence = cObj.optLong("sequence", ++lastSequence),
-                                                                senderRole = if (sender.isBlank()) "WEB" else sender,
-                                                                type = "ICE_CANDIDATE",
-                                                                payload = cObj
-                                                            )
+                                                        val parsedCand = SignalingEnvelope.fromJsonObject(cObj)
+                                                        val candEnvelope = if (parsedCand != null && parsedCand.type == "ICE_CANDIDATE") {
+                                                            if (parsedCand.senderRole != "ANDROID") parsedCand else null
+                                                        } else {
+                                                            val sender = cObj.optString("senderRole", cObj.optString("sender", "WEB"))
+                                                            val candStr = cObj.optJSONObject("payload")?.optString("candidate") ?: cObj.optString("candidate", "")
+                                                            if (sender != "ANDROID" && candStr.isNotBlank()) {
+                                                                SignalingEnvelope(
+                                                                    protocolVersion = cObj.optInt("protocolVersion", 1),
+                                                                    sessionId = sessId,
+                                                                    messageId = cObj.optString("messageId", "cand_${sessId}_$cKey"),
+                                                                    sequence = cObj.optLong("sequence", ++lastSequence),
+                                                                    senderRole = sender,
+                                                                    type = "ICE_CANDIDATE",
+                                                                    payload = cObj.optJSONObject("payload") ?: JSONObject().apply {
+                                                                        put("candidate", candStr)
+                                                                        put("sdpMid", cObj.optString("sdpMid", "0"))
+                                                                        put("sdpMLineIndex", cObj.optInt("sdpMLineIndex", 0))
+                                                                    }
+                                                                )
+                                                            } else null
+                                                        }
+                                                        if (candEnvelope != null) {
                                                             listener?.onEnvelopeReceived(candEnvelope)
                                                         }
                                                     }

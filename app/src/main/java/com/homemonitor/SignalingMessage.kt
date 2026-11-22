@@ -41,13 +41,29 @@ data class SignalingEnvelope(
                 val sessionId = json.optString("sessionId", "")
                 val messageId = json.optString("messageId", "")
                 val sequence = json.optLong("sequence", 0L)
-                val senderRole = json.optString("senderRole", "")
+                val senderRole = json.optString("senderRole", json.optString("sender", ""))
                 val type = json.optString("type", "")
                 val createdAt = json.optLong("createdAt", System.currentTimeMillis())
                 val expiresAt = json.optLong("expiresAt", System.currentTimeMillis() + 60_000L)
-                val payload = json.optJSONObject("payload") ?: JSONObject()
 
-                if (sessionId.isBlank() || messageId.isBlank() || senderRole.isBlank() || type.isBlank()) {
+                var payload = json.optJSONObject("payload")
+                if (payload == null) {
+                    payload = JSONObject()
+                    if (json.has("sdp")) payload.put("sdp", json.optString("sdp"))
+                    if (json.has("candidate")) payload.put("candidate", json.optString("candidate"))
+                    if (json.has("sdpMid")) payload.put("sdpMid", json.optString("sdpMid"))
+                    if (json.has("sdpMLineIndex")) payload.put("sdpMLineIndex", json.optInt("sdpMLineIndex"))
+                    if (json.has("status")) payload.put("status", json.optString("status"))
+                    if (json.has("requestedCapabilities")) payload.put("requestedCapabilities", json.optJSONArray("requestedCapabilities"))
+                } else {
+                    // Normalize top-level fallbacks into payload if payload is missing specific keys
+                    if (!payload.has("sdp") && json.has("sdp")) payload.put("sdp", json.optString("sdp"))
+                    if (!payload.has("candidate") && json.has("candidate")) payload.put("candidate", json.optString("candidate"))
+                    if (!payload.has("sdpMid") && json.has("sdpMid")) payload.put("sdpMid", json.optString("sdpMid"))
+                    if (!payload.has("sdpMLineIndex") && json.has("sdpMLineIndex")) payload.put("sdpMLineIndex", json.optInt("sdpMLineIndex"))
+                }
+
+                if (sessionId.isBlank() || messageId.isBlank() || senderRole.isBlank() || type.isBlank() || protocolVersion < 1) {
                     null
                 } else {
                     SignalingEnvelope(

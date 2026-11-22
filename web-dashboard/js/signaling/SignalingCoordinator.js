@@ -49,37 +49,91 @@ class SignalingCoordinator {
     }
 
     handleIncomingEnvelope(envelope) {
-        if (!envelope || envelope.senderRole === "WEB" || envelope.senderRole === "DASHBOARD") {
+        // 1. Validate envelope structure
+        if (!envelope || typeof envelope !== "object") {
+            console.warn("[SignalingCoordinator] Invalid envelope object");
+            return;
+        }
+        if (!envelope.sessionId || !envelope.messageId || !envelope.type || !envelope.senderRole) {
+            console.warn("[SignalingCoordinator] Missing mandatory envelope envelope headers");
+            return;
+        }
+
+        // 2. Validate protocol version
+        if (envelope.protocolVersion && envelope.protocolVersion < 1) {
+            console.warn(`[SignalingCoordinator] Invalid protocolVersion (${envelope.protocolVersion})`);
+            return;
+        }
+
+        // 3. Validate session ID
+        if (envelope.sessionId !== this.activeSessionId) {
+            console.warn(`[SignalingCoordinator] Ignored envelope for non-active session: ${envelope.sessionId}`);
+            return;
+        }
+
+        // 4. Validate sender role
+        if (envelope.senderRole === "WEB" || envelope.senderRole === "DASHBOARD") {
             // Ignore self-published messages
             return;
         }
 
-        if (envelope.sessionId && envelope.sessionId !== this.activeSessionId) {
+        // 5. Validate message type
+        const knownTypes = ["SDP_ANSWER", "ICE_CANDIDATE", "SESSION_CLOSE", "SESSION_ERROR", "MESSAGE_ACK"];
+        if (!knownTypes.includes(envelope.type)) {
+            console.warn(`[SignalingCoordinator] Ignored unknown envelope type: ${envelope.type}`);
             return;
         }
 
-        if (envelope.messageId) {
-            if (this.processedMessages.has(envelope.messageId)) {
-                // Deduplicate second copy arriving via fallback provider
+        // 6. Validate required payload fields
+        const payload = envelope.payload || {};
+        if (envelope.type === "SDP_ANSWER") {
+            const sdp = payload.sdp || envelope.sdp;
+            if (!sdp || typeof sdp !== "string" || !sdp.trim()) {
+                console.warn("[SignalingCoordinator] Rejected SDP_ANSWER: payload.sdp is missing or empty");
                 return;
             }
-            this.processedMessages.add(envelope.messageId);
-            if (this.processedMessages.size > 500) {
-                const firstKey = this.processedMessages.values().next().value;
-                this.processedMessages.delete(firstKey);
+        } else if (envelope.type === "ICE_CANDIDATE") {
+            const candidate = payload.candidate || envelope.candidate;
+            if (!candidate || typeof candidate !== "string" || !candidate.trim()) {
+                console.warn("[SignalingCoordinator] Rejected ICE_CANDIDATE: payload.candidate is missing or empty");
+                return;
             }
         }
 
+        // 7. Validate expiry
+        if (envelope.expiresAt && Date.now() > envelope.expiresAt) {
+            console.warn(`[SignalingCoordinator] Rejected expired envelope: ${envelope.messageId}`);
+            return;
+        }
+
+        // 8. Only then register message ID as processed
+        if (this.processedMessages.has(envelope.messageId)) {
+            console.log(`[SignalingCoordinator] Deduplicated duplicate messageId: ${envelope.messageId}`);
+            return;
+        }
+        this.processedMessages.add(envelope.messageId);
+        if (this.processedMessages.size > 500) {
+            const firstKey = this.processedMessages.values().next().value;
+            this.processedMessages.delete(firstKey);
+        }
+
+        // 9. Dispatch event
         console.log(`[SignalingCoordinator] Inbound Envelope (${envelope.type}, ID: ${envelope.messageId})`);
 
         if (this.listener) {
-            if (envelope.type === "SDP_ANSWER" && envelope.payload && envelope.payload.sdp) {
+            if (envelope.type === "SDP_ANSWER") {
+                const sdpStr = payload.sdp || envelope.sdp;
                 if (typeof this.listener.onAnswerReceived === "function") {
-                    this.listener.onAnswerReceived(envelope.payload.sdp);
+                    this.listener.onAnswerReceived(sdpStr);
                 }
-            } else if (envelope.type === "ICE_CANDIDATE" && envelope.payload && envelope.payload.candidate) {
+            } else if (envelope.type === "ICE_CANDIDATE") {
+                const candObj = {
+                    candidate: payload.candidate || envelope.candidate,
+                    sdpMid: payload.sdpMid !== undefined ? payload.sdpMid : (envelope.sdpMid || "0"),
+                    sdpMLineIndex: payload.sdpMLineIndex !== undefined ? payload.sdpMLineIndex : (envelope.sdpMLineIndex !== undefined ? envelope.sdpMLineIndex : 0)
+                };
                 if (typeof this.listener.onIceCandidateReceived === "function") {
-                    this.listener.onIceCandidateReceived(envelope.payload);
+                    this.listener.onIceCandidateReceived(candObj);
                 }
             } else if (envelope.type === "SESSION_CLOSE") {
                 if (typeof this.listener.onSessionClosed === "function") {

@@ -395,7 +395,7 @@ class MonitorService : LifecycleService() {
                 val signalingCoordinator = SignalingCoordinator(this@MonitorService, fbEngine)
                 webRtcEngine = WebRtcEngine(this@MonitorService, signalingCoordinator)
 
-                signalingRepository = FirebaseSignalingRepository(this@MonitorService, fbEngine).apply {
+                signalingRepository = FirebaseSignalingRepository(signalingCoordinator).apply {
                     setCallback(object : FirebaseSignalingRepository.SignalingCallback {
                         override fun onSessionRequested(sessionId: String, requestedCapabilities: List<String>) {
                             webRtcEngine?.startAnswererSession(sessionId)

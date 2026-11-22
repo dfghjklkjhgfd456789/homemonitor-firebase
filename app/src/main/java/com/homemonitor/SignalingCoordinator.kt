@@ -81,19 +81,79 @@ class SignalingCoordinator(
     }
 
     @Synchronized
-    private fun handleIncomingEnvelope(envelope: SignalingEnvelope) {
+    fun handleIncomingEnvelope(envelope: SignalingEnvelope?) {
+        // 1. Validate envelope structure
+        if (envelope == null) {
+            Log.w(TAG, "Rejected envelope: null")
+            return
+        }
+
+        // 2. Validate protocol version
+        if (envelope.protocolVersion < 1) {
+            Log.w(TAG, "Rejected envelope: invalid protocolVersion (${envelope.protocolVersion})")
+            return
+        }
+
+        // 3. Validate session ID
+        if (envelope.sessionId.isBlank()) {
+            Log.w(TAG, "Rejected envelope: empty sessionId")
+            return
+        }
+        if (activeSessionId != null && activeSessionId != envelope.sessionId) {
+            // Allow new session request or new offer to replace stale session
+            if (envelope.type != "SESSION_REQUEST" && envelope.type != "SDP_OFFER") {
+                Log.w(TAG, "Rejected envelope from stale session: ${envelope.sessionId} (active: $activeSessionId)")
+                return
+            }
+        }
+
+        // 4. Validate sender role
         if (envelope.senderRole == "ANDROID") {
             // Ignore self-published messages
             return
         }
 
-        if (messageTracker.isAlreadyProcessed(envelope.sessionId, envelope.messageId)) {
-            // Deduplicate second copy arriving via fallback route
+        // 5. Validate message type
+        val knownTypes = setOf("SESSION_REQUEST", "SESSION_ACCEPTED", "SDP_OFFER", "SDP_ANSWER", "ICE_CANDIDATE", "SESSION_CLOSE", "SESSION_ERROR", "MESSAGE_ACK")
+        if (!knownTypes.contains(envelope.type)) {
+            Log.w(TAG, "Rejected envelope: unknown type (${envelope.type})")
             return
         }
 
-        Log.i(TAG, "Received Signaling Envelope: type=${envelope.type}, sessionId=${envelope.sessionId}, messageId=${envelope.messageId}")
+        // 6. Validate required payload fields
+        val payload = envelope.payload
+        when (envelope.type) {
+            "SDP_OFFER" -> {
+                val sdp = payload.optString("sdp", "")
+                if (sdp.isBlank()) {
+                    Log.w(TAG, "Rejected SDP_OFFER envelope: missing SDP in payload")
+                    return
+                }
+            }
+            "ICE_CANDIDATE" -> {
+                val candStr = payload.optString("candidate", "")
+                if (candStr.isBlank()) {
+                    Log.w(TAG, "Rejected ICE_CANDIDATE envelope: missing candidate in payload")
+                    return
+                }
+            }
+        }
 
+        // 7. Validate expiry
+        if (envelope.expiresAt > 0 && System.currentTimeMillis() > envelope.expiresAt) {
+            Log.w(TAG, "Rejected envelope: expired at ${envelope.expiresAt} (now: ${System.currentTimeMillis()})")
+            return
+        }
+
+        // 8. Only then register message ID as processed
+        if (messageTracker.isAlreadyProcessed(envelope.sessionId, envelope.messageId)) {
+            Log.i(TAG, "Deduplicated second copy of envelope: type=${envelope.type}, ID=${envelope.messageId}")
+            return
+        }
+
+        Log.i(TAG, "Dispatching validated envelope: type=${envelope.type}, sessionId=${envelope.sessionId}, messageId=${envelope.messageId}")
+
+        // 9. Dispatch event
         when (envelope.type) {
             "SESSION_REQUEST" -> {
                 if (activeSessionId == null || activeSessionId != envelope.sessionId) {
@@ -103,7 +163,7 @@ class SignalingCoordinator(
                     activeSessionId = envelope.sessionId
                     postSessionAccepted(envelope.sessionId)
                     val reqCaps = mutableListOf<String>()
-                    val capsArr = envelope.payload.optJSONArray("requestedCapabilities")
+                    val capsArr = payload.optJSONArray("requestedCapabilities")
                     if (capsArr != null) {
                         for (i in 0 until capsArr.length()) reqCaps.add(capsArr.getString(i))
                     }
@@ -111,17 +171,12 @@ class SignalingCoordinator(
                 }
             }
             "SDP_OFFER" -> {
-                val sdp = envelope.payload.optString("sdp", "")
-                if (sdp.isNotBlank()) {
-                    if (activeSessionId == null) activeSessionId = envelope.sessionId
-                    listener?.onOfferReceived(envelope.sessionId, sdp)
-                }
+                val sdp = payload.optString("sdp", "")
+                if (activeSessionId == null) activeSessionId = envelope.sessionId
+                listener?.onOfferReceived(envelope.sessionId, sdp)
             }
             "ICE_CANDIDATE" -> {
-                val candStr = envelope.payload.optString("candidate", "")
-                if (candStr.isNotBlank()) {
-                    listener?.onIceCandidateReceived(envelope.sessionId, envelope.payload)
-                }
+                listener?.onIceCandidateReceived(envelope.sessionId, payload)
             }
             "SESSION_CLOSE", "SESSION_ERROR" -> {
                 val sessId = activeSessionId ?: envelope.sessionId

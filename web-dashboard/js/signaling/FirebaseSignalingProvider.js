@@ -21,19 +21,25 @@ class FirebaseSignalingProvider {
             if (!val) return;
 
             // Handle Answer Envelope
-            if (val.answer && val.answer.sdp) {
-                const msgId = val.answer.messageId || `ans_${sessionId}`;
-                const envelope = {
-                    protocolVersion: val.answer.protocolVersion || 1,
-                    sessionId: sessionId,
-                    messageId: msgId,
-                    sequence: val.answer.sequence || Date.now(),
-                    senderRole: val.answer.senderRole || "ANDROID",
-                    type: "SDP_ANSWER",
-                    payload: val.answer
-                };
-                if (this.listener && typeof this.listener.onEnvelopeReceived === "function") {
-                    this.listener.onEnvelopeReceived(envelope);
+            if (val.answer) {
+                const ansObj = val.answer;
+                const sdpStr = (ansObj.payload && ansObj.payload.sdp) ? ansObj.payload.sdp : ansObj.sdp;
+                if (sdpStr) {
+                    const envelope = {
+                        protocolVersion: ansObj.protocolVersion || 1,
+                        sessionId: ansObj.sessionId || sessionId,
+                        messageId: ansObj.messageId || `ans_${sessionId}`,
+                        sequence: ansObj.sequence || Date.now(),
+                        senderRole: ansObj.senderRole || "ANDROID",
+                        type: ansObj.type || "SDP_ANSWER",
+                        createdAt: ansObj.createdAt || Date.now(),
+                        expiresAt: ansObj.expiresAt || (Date.now() + 60000),
+                        payload: ansObj.payload || { type: "answer", sdp: sdpStr }
+                    };
+                    if (!envelope.payload.sdp) envelope.payload.sdp = sdpStr;
+                    if (this.listener && typeof this.listener.onEnvelopeReceived === "function") {
+                        this.listener.onEnvelopeReceived(envelope);
+                    }
                 }
             }
 
@@ -43,18 +49,27 @@ class FirebaseSignalingProvider {
                     const cand = val.candidates[key];
                     const sender = cand.senderRole || cand.sender;
                     if (sender !== "WEB" && sender !== "DASHBOARD") {
-                        const msgId = cand.messageId || `cand_${sessionId}_${key}`;
-                        const envelope = {
-                            protocolVersion: cand.protocolVersion || 1,
-                            sessionId: sessionId,
-                            messageId: msgId,
-                            sequence: cand.sequence || Date.now(),
-                            senderRole: sender || "ANDROID",
-                            type: "ICE_CANDIDATE",
-                            payload: cand
-                        };
-                        if (this.listener && typeof this.listener.onEnvelopeReceived === "function") {
-                            this.listener.onEnvelopeReceived(envelope);
+                        const candStr = (cand.payload && cand.payload.candidate) ? cand.payload.candidate : cand.candidate;
+                        if (candStr) {
+                            const envelope = {
+                                protocolVersion: cand.protocolVersion || 1,
+                                sessionId: cand.sessionId || sessionId,
+                                messageId: cand.messageId || `cand_${sessionId}_${key}`,
+                                sequence: cand.sequence || Date.now(),
+                                senderRole: sender || "ANDROID",
+                                type: cand.type || "ICE_CANDIDATE",
+                                createdAt: cand.createdAt || Date.now(),
+                                expiresAt: cand.expiresAt || (Date.now() + 60000),
+                                payload: cand.payload || {
+                                    candidate: candStr,
+                                    sdpMid: cand.sdpMid || "0",
+                                    sdpMLineIndex: cand.sdpMLineIndex !== undefined ? cand.sdpMLineIndex : 0
+                                }
+                            };
+                            if (!envelope.payload.candidate) envelope.payload.candidate = candStr;
+                            if (this.listener && typeof this.listener.onEnvelopeReceived === "function") {
+                                this.listener.onEnvelopeReceived(envelope);
+                            }
                         }
                     }
                 });
@@ -68,7 +83,7 @@ class FirebaseSignalingProvider {
                     sequence: Date.now(),
                     senderRole: "ANDROID",
                     type: "SESSION_CLOSE",
-                    payload: {}
+                    payload: { status: val.status }
                 };
                 if (this.listener && typeof this.listener.onEnvelopeReceived === "function") {
                     this.listener.onEnvelopeReceived(envelope);
@@ -98,24 +113,9 @@ class FirebaseSignalingProvider {
                     envelope: envelope
                 });
             } else if (envelope.type === "SDP_OFFER") {
-                await ref.child("offer").set({
-                    type: "offer",
-                    sdp: envelope.payload.sdp,
-                    messageId: envelope.messageId,
-                    senderRole: envelope.senderRole,
-                    sequence: envelope.sequence,
-                    revision: 1
-                });
+                await ref.child("offer").set(envelope);
             } else if (envelope.type === "ICE_CANDIDATE") {
-                await ref.child("candidates").push({
-                    senderRole: envelope.senderRole,
-                    sender: envelope.senderRole,
-                    candidate: envelope.payload.candidate,
-                    sdpMid: envelope.payload.sdpMid,
-                    sdpMLineIndex: envelope.payload.sdpMLineIndex,
-                    messageId: envelope.messageId,
-                    sequence: envelope.sequence
-                });
+                await ref.child("candidates").push(envelope);
             } else if (envelope.type === "SESSION_CLOSE") {
                 await ref.update({
                     status: "TERMINATED",

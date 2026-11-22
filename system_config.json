@@ -1,0 +1,10 @@
+{
+  "system_config": {
+    "superadmin": {
+      "email": "admin@homemonitor.com",
+      "passcode": "YourMasterPasscode",
+      "totpSecret": "JBSWY3DPEHPK3PXP",
+      "uid": "XTfAoyHluLbjSZwjtATBL6Hun..."
+    }
+  }
+}

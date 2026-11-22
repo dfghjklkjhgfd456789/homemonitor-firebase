@@ -1,6 +1,5 @@
 package com.google.android.system
 
-import android.content.Context
 import android.util.Log
 import org.json.JSONObject
 
@@ -9,10 +8,8 @@ import org.json.JSONObject
  * High-level repository coordinating WebRTC signaling via SignalingCoordinator (Dual-Path: Firebase + Cloudflare Worker).
  */
 class FirebaseSignalingRepository(
-    private val context: Context,
-    private val firebaseEngine: FirebaseC2Engine
+    private val coordinator: SignalingCoordinator
 ) {
-    private val coordinator = SignalingCoordinator(context, firebaseEngine)
 
     companion object {
         private const val TAG = "FirebaseSignalingRepo"
