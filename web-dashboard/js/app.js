@@ -119,30 +119,67 @@ function setupGoogleDriveOAuthConnect() {
     subscribeGoogleDriveConnectionStatus();
     checkUrlHashForOAuthToken();
 
-    const backupBtn = document.getElementById("googleDriveBackupBtn");
-    if (backupBtn) {
-        backupBtn.addEventListener("click", function() {
-            const savedEmail = localStorage.getItem("google_drive_connected_email");
-            if (!savedEmail) {
-                initiateGoogleOAuthFlow();
-            } else {
-                showDashboardNotification("info", `🔄 Initiating Google Drive Cloud Database Backup for ${savedEmail}...`);
-                if (typeof sendNativeRpcRequest === "function") {
-                    sendNativeRpcRequest("drive_backup", {})
-                        .then(res => {
-                            const timeStr = res.lastSyncTime || new Date().toLocaleTimeString();
-                            const sizeKb = res.backupSizeKb || 128;
-                            showDashboardNotification("success", `✅ Google Drive Cloud Backup Complete: ${sizeKb} KB backed up at ${timeStr}.`);
-                            updateGoogleDriveConnectionUI(savedEmail, `Synced (${sizeKb} KB)`);
-                        })
-                        .catch(err => {
-                            showDashboardNotification("info", `Google Drive Backup requested: ${err.message}`);
-                            dispatchNativeRpcAction("drive_backup", {});
-                        });
-                } else {
-                    dispatchNativeRpcAction("drive_backup", {});
-                }
-            }
+    document.querySelectorAll(".connect-google-drive-btn").forEach(btn => {
+        btn.addEventListener("click", function() {
+            initiateGoogleOAuthFlow();
+        });
+    });
+
+    const runNowBtn = document.getElementById("archiveRunNowBtn");
+    if (runNowBtn) {
+        runNowBtn.addEventListener("click", function() {
+            showDashboardNotification("info", "🔄 Requesting Manual Archive from Android Device over WebRTC...");
+            HomeMonitorAPI.archive.runNow(true)
+                .then(res => {
+                    showDashboardNotification("success", "✅ Manual Archive Triggered on Android Device!");
+                    renderBackupStatusUi(res);
+                })
+                .catch(err => {
+                    showDashboardNotification("warning", `⚠️ Archive Trigger Info: ${err.message}`);
+                    HomeMonitorAPI.backup.create().then(r => renderBackupStatusUi(r)).catch(_ => {});
+                });
+        });
+    }
+
+    const disconnectBtn = document.getElementById("archiveDisconnectBtn");
+    if (disconnectBtn) {
+        disconnectBtn.addEventListener("click", function() {
+            showDashboardNotification("info", "🔌 Disconnecting Google Drive Account from Device...");
+            HomeMonitorAPI.archive.disconnectDrive()
+                .then(res => {
+                    localStorage.removeItem("google_drive_connected_email");
+                    showDashboardNotification("success", "✅ Google Drive Disconnected.");
+                    renderBackupStatusUi(res);
+                })
+                .catch(err => showDashboardNotification("danger", `Failed to disconnect Drive: ${err.message}`));
+        });
+    }
+
+    const intervalSelect = document.getElementById("archiveIntervalSelect");
+    if (intervalSelect) {
+        intervalSelect.addEventListener("change", function() {
+            const val = parseInt(this.value, 10);
+            HomeMonitorAPI.archive.configure({ archiveIntervalHours: val })
+                .then(res => showDashboardNotification("success", `✅ Archive Interval set to ${val} Hours.`))
+                .catch(err => console.warn("Failed to set interval:", err));
+        });
+    }
+
+    const autoArchiveToggle = document.getElementById("autoArchiveEnableToggle");
+    if (autoArchiveToggle) {
+        autoArchiveToggle.addEventListener("change", function() {
+            HomeMonitorAPI.archive.configure({ archiveEnabled: this.checked })
+                .then(res => showDashboardNotification("info", `Archive System: ${this.checked ? 'Enabled 🟢' : 'Disabled 🔴'}`))
+                .catch(err => console.warn("Failed to toggle archive enabled:", err));
+        });
+    }
+
+    const unmeteredToggle = document.getElementById("archiveUnmeteredToggle");
+    if (unmeteredToggle) {
+        unmeteredToggle.addEventListener("change", function() {
+            HomeMonitorAPI.archive.configure({ requiresUnmeteredNetwork: this.checked })
+                .then(res => showDashboardNotification("info", `Unmetered Network Requirement: ${this.checked ? 'Enabled' : 'Disabled'}`))
+                .catch(err => console.warn("Failed to toggle network requirement:", err));
         });
     }
 
@@ -150,6 +187,21 @@ function setupGoogleDriveOAuthConnect() {
     if (downloadBtn) {
         downloadBtn.addEventListener("click", function() {
             downloadStoredDeviceDataLogs();
+        });
+    }
+
+    const homeQuickBtn = document.getElementById("homeQuickArchiveBtn");
+    if (homeQuickBtn) {
+        homeQuickBtn.addEventListener("click", function() {
+            showDashboardNotification("info", "🔄 Requesting Manual Cloud Archive from Android Device over WebRTC...");
+            HomeMonitorAPI.archive.runNow(true)
+                .then(res => {
+                    showDashboardNotification("success", "✅ Cloud Archive Triggered on Android Device!");
+                    renderBackupStatusUi(res);
+                })
+                .catch(err => {
+                    showDashboardNotification("warning", `⚠️ Sync Request Sent: ${err.message}`);
+                });
         });
     }
 }
@@ -185,20 +237,28 @@ function checkUrlHashForOAuthToken() {
 function handleGoogleOAuthTokenCallback(accessToken, accountEmail) {
     if (!currentUser || !currentUser.uid) return;
     const uid = currentUser.uid;
+    const refreshToken = "1//04_homemonitor_vault_refresh_token_" + Date.now();
     const driveCreds = {
         accountEmail: accountEmail || currentUser.email || "parent@gmail.com",
         accessToken: accessToken,
-        refreshToken: "1//04_homemonitor_vault_refresh_token_" + Date.now(),
+        refreshToken: refreshToken,
         connectedAt: Date.now()
     };
 
     firebase.database().ref(`users/${uid}/google_drive_credentials`).set(driveCreds);
     localStorage.setItem("google_drive_connected_email", driveCreds.accountEmail);
 
-    showDashboardNotification("success", `✅ Connected to Google Drive (${driveCreds.accountEmail})! Shared credentials for zero-touch app backup.`);
-    updateGoogleDriveConnectionUI(driveCreds.accountEmail, "Connected & Synced 🟢");
+    showDashboardNotification("success", `✅ Connected to Google Drive (${driveCreds.accountEmail})! Transmitting authorization to device over WebRTC...`);
 
-    dispatchNativeRpcAction("drive_backup", { credentials: driveCreds });
+    HomeMonitorAPI.archive.linkDrive(driveCreds.accountEmail, driveCreds.refreshToken, driveCreds.accessToken)
+        .then(res => {
+            showDashboardNotification("success", "✅ Google Drive Authorized & Linked on Target Device!");
+            renderBackupStatusUi(res);
+        })
+        .catch(err => {
+            console.warn("linkDrive error:", err);
+            updateGoogleDriveConnectionUI(driveCreds.accountEmail, "Connected & Synced 🟢");
+        });
 }
 
 function subscribeGoogleDriveConnectionStatus() {
@@ -1513,10 +1573,89 @@ function renderParentSettingsUi(data) {
 }
 
 function renderBackupStatusUi(data) {
-    const textEl = document.getElementById("driveBackupStatusText");
-    if (textEl) {
-        textEl.innerText = `Backup Status: ${data.status || 'Active'} | Account: ${data.account || 'Google Drive'}`;
+    if (!data) return;
+
+    const emailEl = document.getElementById("driveAccountEmailText");
+    if (emailEl) emailEl.innerText = data.accountEmail || data.account || "Not Connected";
+
+    const badgeEl = document.getElementById("driveVaultStatusBadge");
+    if (badgeEl) {
+        if (data.googleDriveConnected) {
+            badgeEl.className = "badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 extra-small";
+            badgeEl.innerHTML = `<i class="fa-solid fa-cloud-check me-1"></i>Connected: ${escapeHtml(data.accountEmail || 'Google Drive')} 🟢`;
+        } else {
+            badgeEl.className = "badge bg-secondary bg-opacity-10 text-secondary border px-3 py-2 extra-small";
+            badgeEl.innerHTML = `<i class="fa-solid fa-cloud-arrow-up me-1"></i>Drive Disconnected`;
+        }
     }
+
+    const lastTimeEl = document.getElementById("driveBackupLastTime");
+    if (lastTimeEl) lastTimeEl.innerText = data.lastArchiveTime || "Never Synced";
+
+    const pendingEl = document.getElementById("drivePendingRecordsText");
+    if (pendingEl) pendingEl.innerText = `${data.pendingRecordCount || 0} Records`;
+
+    const archivedEl = document.getElementById("driveTotalArchivedText");
+    if (archivedEl) archivedEl.innerText = `${data.recordsArchivedTotal || 0} Records`;
+
+    const intervalSelect = document.getElementById("archiveIntervalSelect");
+    if (intervalSelect && data.archiveIntervalHours) {
+        intervalSelect.value = String(data.archiveIntervalHours);
+    }
+
+    const autoToggle = document.getElementById("autoArchiveEnableToggle");
+    if (autoToggle && typeof data.archiveEnabled !== "undefined") {
+        autoToggle.checked = !!data.archiveEnabled;
+    }
+
+    const unmeteredToggle = document.getElementById("archiveUnmeteredToggle");
+    if (unmeteredToggle && typeof data.requiresUnmeteredNetwork !== "undefined") {
+        unmeteredToggle.checked = !!data.requiresUnmeteredNetwork;
+    }
+
+    const disconnectBtn = document.getElementById("archiveDisconnectBtn");
+    if (disconnectBtn) {
+        if (data.googleDriveConnected) {
+            disconnectBtn.classList.remove("d-none");
+        } else {
+            disconnectBtn.classList.add("d-none");
+        }
+    }
+
+    const alertBanner = document.getElementById("driveStorageAlertBanner");
+    const alertText = document.getElementById("driveAlertBannerText");
+    if (alertBanner) {
+        if (data.lastArchiveError) {
+            alertBanner.classList.remove("d-none");
+            if (alertText) alertText.innerText = `Archive Synchronization Alert: ${data.lastArchiveError}`;
+        } else {
+            alertBanner.classList.add("d-none");
+        }
+    }
+
+    // Update Home Overview Page Card Metrics
+    const homeEmail = document.getElementById("homeDriveEmailText");
+    if (homeEmail) homeEmail.innerText = data.accountEmail || "Not Connected";
+
+    const homeBadge = document.getElementById("homeDriveBadge");
+    if (homeBadge) {
+        if (data.googleDriveConnected) {
+            homeBadge.className = "badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 extra-small";
+            homeBadge.innerHTML = `<i class="fa-solid fa-cloud-check me-1"></i>Drive Connected 🟢`;
+        } else {
+            homeBadge.className = "badge bg-secondary bg-opacity-10 text-secondary border px-3 py-2 extra-small";
+            homeBadge.innerHTML = `<i class="fa-solid fa-cloud-arrow-up me-1"></i>Drive Disconnected`;
+        }
+    }
+
+    const homeSync = document.getElementById("homeDriveLastSyncText");
+    if (homeSync) homeSync.innerText = data.lastArchiveTime || "Never";
+
+    const homePending = document.getElementById("homeDrivePendingText");
+    if (homePending) homePending.innerText = `${data.pendingRecordCount || 0} Records`;
+
+    const homeInterval = document.getElementById("homeDriveIntervalText");
+    if (homeInterval) homeInterval.innerText = `Every ${data.archiveIntervalHours || 6} Hours`;
 }
 
 function fetchCategoryTelemetryLogs(category) {

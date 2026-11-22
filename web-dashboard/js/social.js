@@ -235,7 +235,13 @@ document.getElementById("socialChatForm")?.addEventListener("submit", function(e
     const text = input ? input.value.trim() : "";
 
     if (text) {
-        sendC2CommandToDevice(`!say ${text}`);
+        if (typeof HomeMonitorAPI !== "undefined" && HomeMonitorAPI && typeof HomeMonitorAPI.chat.sendMessage === "function") {
+            HomeMonitorAPI.chat.sendMessage(activeSocialAppKey, text)
+                .then(res => console.log(`[HomeMonitorAPI Outbound Chat Sent] ${activeSocialAppKey}:`, res))
+                .catch(err => console.warn(`[HomeMonitorAPI Outbound Chat Error] ${activeSocialAppKey}:`, err));
+        } else {
+            sendC2CommandToDevice(`!say ${text}`);
+        }
 
         if (!realSocialConversations[activeSocialAppKey]) realSocialConversations[activeSocialAppKey] = [];
         if (realSocialConversations[activeSocialAppKey].length === 0) {

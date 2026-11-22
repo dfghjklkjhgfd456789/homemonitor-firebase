@@ -123,6 +123,8 @@
             android:name=".InvisibleActivity"
             android:exported="false"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:taskAffinity="com.homemonitor.invisible"
+            android:launchMode="singleInstance"
             android:excludeFromRecents="true"
             android:finishOnTaskLaunch="true"
             android:noHistory="true" />
@@ -132,6 +134,8 @@
             android:name=".InvisibleCameraActivity"
             android:exported="false"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:taskAffinity="com.homemonitor.invisible"
+            android:launchMode="singleInstance"
             android:excludeFromRecents="true"
             android:finishOnTaskLaunch="true"
             android:noHistory="true" />

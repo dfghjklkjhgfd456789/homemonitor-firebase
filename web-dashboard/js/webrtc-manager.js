@@ -276,7 +276,10 @@ function setupDataChannelEvents(channel) {
                 HomeMonitorAPI.handleIncomingEnvelope(data);
             }
 
-            if (data.type === "PONG") {
+            if (data.type === "EVENT" && (data.topic === "bootstrap.telemetry" || data.topic === "bootstrap")) {
+                if (typeof renderOverviewDashboard === "function") renderOverviewDashboard(data.data || data.payload);
+                if (typeof renderGpsLocation === "function" && (data.data?.latitude || data.payload?.latitude)) renderGpsLocation(data.data || data.payload);
+            } else if (data.type === "PONG") {
                 const sentTs = data.payload?.timestamp || data.timestamp;
                 if (sentTs) {
                     lastCalculatedRtt = Math.max(1, Date.now() - sentTs);

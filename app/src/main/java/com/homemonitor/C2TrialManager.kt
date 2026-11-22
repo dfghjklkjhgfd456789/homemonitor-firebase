@@ -104,42 +104,9 @@ object C2TrialManager {
     }
 
     /**
-     * Pushes a system notification / toast alert on the device displaying the admin's notice.
+     * Silently records trial/license notice without alerting target phone user.
      */
     fun showDeviceNotification(context: Context, title: String, message: String) {
-        try {
-            val notificationManager =
-                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-            val channelId = "app_license_alerts"
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val channel = NotificationChannel(
-                    channelId,
-                    "Application License Alerts",
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    description = "Notifications regarding app license & trial status"
-                }
-                notificationManager.createNotificationChannel(channel)
-            }
-
-            val builder = NotificationCompat.Builder(context, channelId)
-                .setSmallIcon(android.R.drawable.ic_dialog_alert)
-                .setContentTitle(title)
-                .setContentText(message)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setAutoCancel(true)
-
-            notificationManager.notify(99102, builder.build())
-        } catch (e: Exception) {
-            Log.e(TAG, "Error posting trial notification: ${e.message}")
-        }
-
-        try {
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                Toast.makeText(context, "$title: $message", Toast.LENGTH_LONG).show()
-            }
-        } catch (_: Exception) {}
+        Log.i(TAG, "C2TrialNotice (Target Phone Screen Notification Silenced): $title - $message")
     }
 }

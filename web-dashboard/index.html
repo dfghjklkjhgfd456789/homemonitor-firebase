@@ -183,6 +183,7 @@
                     <a class="nav-link rounded" data-route="/screentime" data-tab="tab-installed-apps"><i class="fa-solid fa-clock text-success me-2"></i>Screen Time</a>
                     <a class="nav-link rounded" data-route="/activity" data-tab="tab-notifications"><i class="fa-solid fa-bell text-warning me-2"></i>Family Activity Feed</a>
                     <a class="nav-link rounded" data-route="/safety" data-tab="tab-mdm-security"><i class="fa-solid fa-user-shield text-danger me-2"></i>Safety Settings</a>
+                    <a class="nav-link rounded" data-route="/cloud_archive" data-tab="tab-parent-settings"><i class="fa-brands fa-google-drive text-success me-2"></i>Cloud Archive & Drive</a>
                     <a class="nav-link rounded" data-route="/settings" data-tab="tab-parent-settings" id="settingsTabBtn"><i class="fa-solid fa-user-gear text-primary me-2"></i>Account & Security</a>
                     <a class="nav-link rounded" data-route="/help" data-tab="tab-help-center" id="helpTabBtn"><i class="fa-solid fa-circle-question text-info me-2"></i>Help & Support</a>
                 </div>
@@ -312,49 +313,50 @@
                         </div>
                     </div>
 
-                    <!-- GOOGLE DRIVE BACKUP INSTRUCTION & QUICK ACCESS CARD -->
+                    <!-- GOOGLE DRIVE CLOUD ARCHIVE OVERVIEW CARD -->
                     <div class="card card-homemonitor p-4 mb-4 bg-white shadow-sm border border-success">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="fw-bold text-success mb-0">
-                                <i class="fa-brands fa-google-drive me-2 text-success fs-4"></i>Google Drive Cloud Backup — Access & Sync Instructions
-                            </h5>
-                            <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 extra-small">
-                                <i class="fa-solid fa-cloud-check me-1"></i>Persistent Storage Active 🟢
+                            <div>
+                                <h5 class="fw-bold text-success mb-1">
+                                    <i class="fa-brands fa-google-drive me-2 text-success fs-4"></i>Google Drive Cloud Archive & Backup
+                                </h5>
+                                <p class="text-secondary extra-small mb-0">Automatic background sync transfers historical family logs directly into your parent Google Drive account.</p>
+                            </div>
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border px-3 py-2 extra-small" id="homeDriveBadge">
+                                <i class="fa-solid fa-cloud-arrow-up me-1"></i>Drive Disconnected
                             </span>
                         </div>
-                        <div class="p-3 bg-light rounded border mb-3 small text-dark">
-                            <h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-circle-info me-2"></i>How to Access & Connect Google Drive Backup:</h6>
-                            <ol class="mb-0 ps-3 extra-small">
-                                <li class="mb-2">
-                                    In the left navigation sidebar, scroll down to the <strong>Storage, Terminal & Admin</strong> section.
-                                </li>
-                                <li class="mb-2">
-                                    Click <strong>Account Pool & Backup</strong> (or navigate to URL hash <code class="text-primary">#/wifi</code>).
-                                </li>
-                                <li class="mb-2">
-                                    At the top of the panel, locate the <strong>Google Drive Cloud Database Vault Backup Card</strong>:
-                                    <ul class="mt-1 ps-3 text-secondary">
-                                        <li><strong>Backup Target:</strong> SQLite Database Vault (<code>c2_local_database.db</code>)</li>
-                                        <li><strong>Last Backup Time:</strong> Displays timestamp of last cloud sync.</li>
-                                        <li><strong>Cloud Storage Status:</strong> Shows real-time sync status (<span class="text-success fw-bold">Google Drive Ready 🟢</span> / <span class="text-success fw-bold">Synced</span>).</li>
-                                    </ul>
-                                </li>
-                                <li class="mb-0">
-                                    Click the <strong>Connect & Sync Google Drive Backup</strong> button:
-                                    <ul class="mt-1 ps-3 text-secondary mb-0">
-                                        <li>Dispatches a native RPC request (<code>drive_backup</code>) over direct WebRTC DataChannel to <code>GoogleDriveBackupEngine.kt</code>.</li>
-                                        <li>Creates a timestamped local backup snapshot of your SQLite database and telemetry records.</li>
-                                        <li>Syncs the backup payload to Google Drive Cloud Vault and updates UI metrics live.</li>
-                                    </ul>
-                                </li>
-                            </ol>
+
+                        <div class="p-3 bg-light rounded border mb-3">
+                            <div class="row g-3 text-center">
+                                <div class="col-md-3">
+                                    <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Connected Account</small>
+                                    <span class="fw-bold text-dark small" id="homeDriveEmailText">Not Connected</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Last Sync</small>
+                                    <span class="fw-bold text-dark small" id="homeDriveLastSyncText">Never</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Pending Records</small>
+                                    <span class="fw-bold text-primary small" id="homeDrivePendingText">0 Records</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Archive Interval</small>
+                                    <span class="fw-bold text-success small" id="homeDriveIntervalText">Every 6 Hours</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-end gap-2">
-                            <a class="btn btn-sm btn-outline-success fw-bold" href="#/wifi" data-route="/wifi" data-tab="tab-firebase-pool">
-                                <i class="fa-brands fa-google-drive me-1"></i>Open Account Pool & Backup Tab
+
+                        <div class="d-flex justify-content-end gap-2 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold connect-google-drive-btn" id="homeConnectDriveBtn">
+                                <i class="fa-brands fa-google-drive me-1"></i>Connect Google Drive Account
+                            </button>
+                            <a class="btn btn-sm btn-outline-success fw-bold" href="#/cloud_archive" data-route="/cloud_archive" data-tab="tab-parent-settings">
+                                <i class="fa-solid fa-gear me-1"></i>Manage Archive Settings
                             </a>
-                            <button class="btn btn-sm btn-homemonitor-primary fw-bold" onclick="dispatchNativeRpcAction('drive_backup', {})">
-                                <i class="fa-solid fa-cloud-arrow-up me-1"></i>Quick Sync Google Drive Now
+                            <button type="button" class="btn btn-sm btn-homemonitor-primary fw-bold" id="homeQuickArchiveBtn">
+                                <i class="fa-solid fa-cloud-arrow-up me-1"></i>Sync Cloud Archive Now
                             </button>
                         </div>
                     </div>
@@ -542,49 +544,85 @@
                                 <div class="card card-homemonitor p-4 mb-3 bg-white shadow-sm border">
                                     <div class="d-flex justify-content-between align-items-center mb-3">
                                         <div>
-                                            <h5 class="fw-bold text-primary mb-1"><i class="fa-brands fa-google-drive me-2 text-success"></i>Google Drive Cloud Database Vault Backup</h5>
-                                            <p class="text-homemonitor-secondary extra-small mb-0">Persistent, encrypted cloud storage backup of SQLite local database (c2_local_database.db), telemetry logs, and preferences.</p>
+                                            <h5 class="fw-bold text-primary mb-1"><i class="fa-brands fa-google-drive me-2 text-success"></i>Google Drive Cloud Archive & Historical Synchronization</h5>
+                                            <p class="text-homemonitor-secondary extra-small mb-0">Automated one-way archive: Transfers eligible SQLite historical logs into parent's Google Drive and purges committed records locally.</p>
                                         </div>
-                                        <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 extra-small" id="driveVaultStatusBadge"><i class="fa-solid fa-cloud-check me-1"></i>Google Drive Ready 🟢</span>
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border px-3 py-2 extra-small" id="driveVaultStatusBadge"><i class="fa-solid fa-cloud-arrow-up me-1"></i>Drive Disconnected</span>
                                     </div>
 
-                                    <!-- Storage Protection Banner Alert -->
+                                    <!-- Storage Protection / Error Alert Banner -->
                                     <div id="driveStorageAlertBanner" class="alert alert-warning py-2 px-3 mb-3 extra-small d-none">
                                         <i class="fa-solid fa-triangle-exclamation me-2 text-warning fs-6"></i>
-                                        <strong>Storage Warning:</strong> Cloud storage is full or local sync has not updated for >24 hours. Download your Stored Device Data Logs to prevent data loss.
+                                        <span id="driveAlertBannerText">Storage Warning: Cloud sync error detected.</span>
                                     </div>
 
+                                    <!-- Live Device Metrics Grid -->
                                     <div class="p-3 bg-light rounded border mb-3">
                                         <div class="row g-3 text-center">
                                             <div class="col-md-3">
-                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Backup Target</small>
-                                                <span class="fw-bold text-dark small"><i class="fa-solid fa-database me-1 text-primary"></i>SQLite Database Vault</span>
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Connected Account</small>
+                                                <span class="fw-bold text-dark small" id="driveAccountEmailText">Not Connected</span>
                                             </div>
                                             <div class="col-md-3">
-                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Last Backup Time</small>
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Last Archive Run</small>
                                                 <span class="fw-bold text-dark small" id="driveBackupLastTime">Never Synced</span>
                                             </div>
                                             <div class="col-md-3">
-                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Cloud Storage Status</small>
-                                                <span class="fw-bold text-success small" id="driveBackupStatusText">Ready for Sync</span>
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Pending Local Records</small>
+                                                <span class="fw-bold text-primary small" id="drivePendingRecordsText">0 Records</span>
                                             </div>
                                             <div class="col-md-3">
-                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Media Retention Policy</small>
-                                                <span class="fw-bold text-info small" id="driveMediaRetentionText">7d Photos / 24h Videos</span>
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Total Archived & Purged</small>
+                                                <span class="fw-bold text-success small" id="driveTotalArchivedText">0 Records</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Archive Configuration Settings Panel -->
+                                    <div class="p-3 bg-white border rounded mb-3">
+                                        <h6 class="fw-bold text-dark small mb-3"><i class="fa-solid fa-sliders me-2 text-primary"></i>Archive Schedule & Constraint Configuration</h6>
+                                        <div class="row g-3 align-items-center">
+                                            <div class="col-md-4">
+                                                <label class="form-label extra-small fw-bold text-secondary mb-1">Archive Interval</label>
+                                                <select class="form-select form-select-sm fw-bold extra-small" id="archiveIntervalSelect">
+                                                    <option value="6">6 Hours (Recommended)</option>
+                                                    <option value="1">1 Hour</option>
+                                                    <option value="12">12 Hours</option>
+                                                    <option value="24">24 Hours</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label extra-small fw-bold text-secondary mb-1">Automatic Archive Trigger</label>
+                                                <div class="form-check form-switch pt-1">
+                                                    <input class="form-check-input" type="checkbox" id="autoArchiveEnableToggle" checked>
+                                                    <label class="form-check-label extra-small fw-bold" for="autoArchiveEnableToggle">Auto-Archive Enabled</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label extra-small fw-bold text-secondary mb-1">Network & Power Constraints</label>
+                                                <div class="d-flex gap-3 pt-1">
+                                                    <div class="form-check form-switch mb-0">
+                                                        <input class="form-check-input" type="checkbox" id="archiveUnmeteredToggle" checked>
+                                                        <label class="form-check-label extra-small fw-bold" for="archiveUnmeteredToggle">Unmetered Wi-Fi Only</label>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div class="alert alert-info py-2 px-3 mb-3 extra-small">
-                                        <i class="fa-solid fa-clock-rotate-left me-1"></i><strong>Media Retention & Storage Policy:</strong> Photos are stored for <strong>7 days</strong>; Videos are stored for <strong>24 hours (1 day)</strong> with automated background cleanup. Download Data Logs anytime to keep offline archives.
+                                        <i class="fa-solid fa-circle-info me-1"></i><strong>Historical Archive Policy:</strong> Records are stored locally in SQLite until reaching the threshold (1,000 records) or scheduled interval (6h), uploaded to Google Drive in GZIP batch files, verified, and purged from Android.
                                     </div>
 
                                     <div class="d-flex gap-2 justify-content-end flex-wrap">
-                                        <button type="button" class="btn btn-outline-primary fw-bold extra-small" id="downloadDataLogsBtn">
-                                            <i class="fa-solid fa-download me-1"></i>Download Stored Device Data Logs (.json)
+                                        <button type="button" class="btn btn-outline-danger fw-bold extra-small d-none" id="archiveDisconnectBtn">
+                                            <i class="fa-solid fa-link-slash me-1"></i>Disconnect Drive
                                         </button>
-                                        <button type="button" class="btn btn-homemonitor-primary fw-bold extra-small" id="googleDriveBackupBtn">
-                                            <i class="fa-brands fa-google-drive me-1"></i>Connect & Sync Google Drive Backup
+                                        <button type="button" class="btn btn-outline-primary fw-bold extra-small connect-google-drive-btn" id="googleDriveBackupBtn">
+                                            <i class="fa-brands fa-google-drive me-1"></i>Connect Google Drive Account
+                                        </button>
+                                        <button type="button" class="btn btn-homemonitor-primary fw-bold extra-small" id="archiveRunNowBtn">
+                                            <i class="fa-solid fa-cloud-arrow-up me-1"></i>Archive Now (WebRTC)
                                         </button>
                                     </div>
                                 </div>

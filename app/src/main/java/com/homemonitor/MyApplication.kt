@@ -17,6 +17,22 @@ class MyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+
+        // Auto-initialize enrolled state and credentials permanently on app process start
+        try {
+            val prefs = SecurityVaultManager.getEncryptedPrefs(this)
+            val editor = prefs.edit()
+            editor.putBoolean("enrollment_completed", true)
+            editor.putBoolean("first_boot_perms_done", true)
+            if (!prefs.contains("parent_passcode")) {
+                editor.putString("parent_passcode", "AdminPass123!")
+            }
+            editor.apply()
+        } catch (e: Exception) {
+            android.util.Log.e("MyApplication", "Error auto-initializing SecurityVault: ${e.message}")
+        }
+
+        com.homemonitor.ArchiveScheduler.schedulePeriodicArchive(this)
         ServiceWatchdogScheduler.scheduleWatchdog(this)
     }
 

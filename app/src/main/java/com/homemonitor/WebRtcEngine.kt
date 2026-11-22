@@ -58,6 +58,10 @@ class WebRtcEngine(
      */
     fun startAnswererSession(sessionId: String) {
         try {
+            if (activeSessionId == sessionId && peerConnection != null && dataChannel?.state() == DataChannel.State.OPEN) {
+                Log.i(TAG, "Answerer session '$sessionId' is already OPEN and active. Preserving active P2P DataChannel.")
+                return
+            }
             close()
             activeSessionId = sessionId
             val iceServers = listOf(

