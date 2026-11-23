@@ -687,7 +687,6 @@ function dispatchNativeRpcAction(action, params = {}) {
         switch (action) {
             case "camera":
             case "rearphoto":
-                showDashboardNotification("info", "📸 Camera capturing rear photo on device...");
                 apiPromise = HomeMonitorAPI.camera.takePhoto('back')
                     .then(() => new Promise(r => setTimeout(r, 1500)))
                     .then(() => HomeMonitorAPI.media.getPhotos())
@@ -695,7 +694,6 @@ function dispatchNativeRpcAction(action, params = {}) {
                 break;
             case "frontcam":
             case "frontphoto":
-                showDashboardNotification("info", "📸 Camera capturing front photo on device...");
                 apiPromise = HomeMonitorAPI.camera.takePhoto('front')
                     .then(() => new Promise(r => setTimeout(r, 1500)))
                     .then(() => HomeMonitorAPI.media.getPhotos())

