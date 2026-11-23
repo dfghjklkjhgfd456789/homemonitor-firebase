@@ -267,7 +267,11 @@ fun UserEnrollmentScreen(
                                             val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
 
                                             val onPerformDirectPairing = { parentUid: String ->
-                                                prefs.edit().putString("user_firebase_email", emailStr).apply()
+                                                prefs.edit()
+                                                    .putString("user_firebase_email", emailStr)
+                                                    .putString("user_email", emailStr)
+                                                    .putString("user_password", passStr)
+                                                    .apply()
                                                 val scope = CoroutineScope(Dispatchers.Main)
                                                 val engine = com.google.android.system.FirebaseC2Engine(
                                                     context.applicationContext,

