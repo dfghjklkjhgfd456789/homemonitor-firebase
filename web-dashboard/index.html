@@ -10,6 +10,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom HomeMonitor Theme CSS -->
     <link rel="stylesheet" href="css/style.css?v=1.4.0">
+    <!-- MapLibre GL JS (OpenStreetMap Maps Engine) -->
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 </head>
 <body class="bg-light text-dark">
 
@@ -841,6 +844,10 @@
                             <button class="btn btn-outline-secondary exec-cmd" data-action="iplocation"><i class="fa-solid fa-globe me-1"></i>Get IP Location</button>
                             <button class="btn btn-outline-danger fetch-tab-response fw-bold" data-category="gps_locations"><i class="fa-solid fa-rotate me-1"></i>Refresh GPS Response</button>
                         </div>
+                        <!-- MapLibre OpenStreetMap Interactive Map Container -->
+                        <div class="mb-4">
+                            <div id="gpsMapContainer" style="height: 380px; width: 100%; border-radius: 10px; border: 1px solid #CBD5E1; background-color: #F1F5F9;"></div>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead><tr><th>Timestamp</th><th>Latitude / Longitude</th><th>Accuracy</th><th>Address / Place</th></tr></thead>
@@ -1437,6 +1444,7 @@ $
     <script src="js/api/homemonitor-api-client.js?v=1.5.0"></script>
     <script src="js/webrtc-manager.js?v=1.5.0"></script>
     <script src="js/tabs.js?v=1.4.0"></script>
+    <script src="js/ui/map-manager.js?v=1.5.0"></script>
     <script src="js/app.js?v=1.4.0"></script>
 </body>
 </html>

@@ -48,6 +48,12 @@ class HomeMonitorApiClient {
             try {
                 const payloadStr = JSON.stringify(envelope);
                 if (hasDc) {
+                    if (dc.bufferedAmount && dc.bufferedAmount > 128 * 1024) {
+                        clearTimeout(timer);
+                        this.pendingRequests.delete(requestId);
+                        reject(new Error(`DataChannel send buffer full: backpressure high (${dc.bufferedAmount} bytes buffered)`));
+                        return;
+                    }
                     dc.send(payloadStr);
                     console.log(`[HomeMonitorAPI DataChannel Transmit] ${method} (${requestId})`, params);
                 } else if (hasFallback) {

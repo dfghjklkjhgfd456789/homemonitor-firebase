@@ -65,6 +65,21 @@ class DeviceApiDispatcher(
 
         try {
             val json = JSONObject(msgText)
+            val type = json.optString("type", "")
+
+            if (type == "PING") {
+                val reqTs = json.optLong("timestamp", System.currentTimeMillis())
+                val pongPayload = JSONObject().apply {
+                    put("version", 1)
+                    put("type", "PONG")
+                    put("timestamp", reqTs)
+                    put("deviceTime", System.currentTimeMillis())
+                    put("status", "ACTIVE")
+                }
+                wsSender(pongPayload.toString())
+                return
+            }
+
             val method = json.optString("method", json.optString("command", json.optString("action", "")))
             val requestId = json.optString("requestId", "req_${System.currentTimeMillis()}")
             val sessionId = json.optString("sessionId", "sess_ws")

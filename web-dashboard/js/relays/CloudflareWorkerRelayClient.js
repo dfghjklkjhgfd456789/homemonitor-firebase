@@ -42,6 +42,14 @@ class CloudflareWorkerRelayClient {
                 console.log("%c[CloudflareWorkerRelayClient] WebSocket Connected 🟢", "color: #10b981; font-weight: bold;");
                 this.isConnected = true;
                 window.cloudflareWs = this.ws;
+
+                if (this.pingInterval) clearInterval(this.pingInterval);
+                this.pingInterval = setInterval(() => {
+                    if (this.ws && this.ws.readyState === 1) {
+                        this.ws.send(JSON.stringify({ version: 1, type: "PING", timestamp: Date.now() }));
+                    }
+                }, 4000);
+
                 if (typeof updateWebRtcConnectionBadge === "function" && (typeof dc === "undefined" || !dc || dc.readyState !== "open")) {
                     updateWebRtcConnectionBadge("WEBSOCKET_RELAY_CONNECTED");
                 }
@@ -50,6 +58,16 @@ class CloudflareWorkerRelayClient {
             this.ws.onmessage = (event) => {
                 try {
                     const rawData = event.data;
+                    if (rawData.includes('"type":"PONG"')) {
+                        const pongJson = JSON.parse(rawData);
+                        const rtt = Date.now() - (pongJson.timestamp || Date.now());
+                        console.log(`[CloudflareWorkerRelayClient Latency] Android App Live PONG (${rtt}ms)`);
+                        if (typeof updateWebRtcConnectionBadge === "function" && (typeof dc === "undefined" || !dc || dc.readyState !== "open")) {
+                            updateWebRtcConnectionBadge("WEBSOCKET_RELAY_CONNECTED", `${rtt}`);
+                        }
+                        return;
+                    }
+
                     console.log("[CloudflareWorkerRelayClient Inbound]", rawData.substring(0, 120));
                     if (typeof HomeMonitorAPI !== "undefined" && HomeMonitorAPI && typeof HomeMonitorAPI.handleIncomingEnvelope === "function") {
                         HomeMonitorAPI.handleIncomingEnvelope(rawData);
@@ -62,11 +80,13 @@ class CloudflareWorkerRelayClient {
             this.ws.onclose = () => {
                 this.isConnected = false;
                 window.cloudflareWs = null;
+                if (this.pingInterval) clearInterval(this.pingInterval);
                 console.warn("[CloudflareWorkerRelayClient] WebSocket closed. Scheduling reconnect in 4s...");
                 if (typeof updateWebRtcConnectionBadge === "function" && (typeof dc === "undefined" || !dc || dc.readyState !== "open")) {
                     updateWebRtcConnectionBadge("DISCONNECTED");
                 }
                 this.scheduleReconnect();
+            };
             };
 
             this.ws.onerror = (err) => {

@@ -1353,6 +1353,12 @@ function renderGpsLocation(data) {
     if (metaEl && data) {
         metaEl.innerText = `Updated: ${formatTimestamp(data.timestamp || Date.now())} (${data.provider || 'GPS'})`;
     }
+    if (data && typeof activeGpsMapManager !== "undefined" && activeGpsMapManager) {
+        const lat = data.latitude || 37.7749;
+        const lng = data.longitude || -122.4194;
+        const accuracy = data.accuracy || 5.0;
+        activeGpsMapManager.updateLocation(lat, lng, accuracy, "Child Device");
+    }
 }
 
 function renderGpsHistory(data) {
