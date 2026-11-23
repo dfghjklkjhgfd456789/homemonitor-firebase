@@ -20,6 +20,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "HomeMonitor"
 include(":app")
-include(":bootstrap-installer")
 include(":parent-app")
 

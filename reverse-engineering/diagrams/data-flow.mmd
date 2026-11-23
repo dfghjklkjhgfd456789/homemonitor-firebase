@@ -1,5 +1,0 @@
-graph LR
-    Sensors[GPS / Audio / Phone State / SMS] -->|Raw Events| Receivers[Services & Receivers]
-    Receivers -->|POJO Serialization| DBModels[dbModels POJOs]
-    DBModels -->|JSON Stringifying| Payload[JSON Payload]
-    Payload -->|OkHttp POST| Server[Remote Backend]

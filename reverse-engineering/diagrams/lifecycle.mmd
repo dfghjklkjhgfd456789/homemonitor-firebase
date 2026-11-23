@@ -1,8 +1,0 @@
-stateDiagram-v2
-    [*] --> BootCompleted
-    BootCompleted --> InitialProcess
-    InitialProcess --> ScheduleJobs
-    ScheduleJobs --> BackgroundServices
-    BackgroundServices --> TelemetryUpload
-    TelemetryUpload --> Sleep
-    Sleep --> TelemetryUpload

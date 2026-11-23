@@ -1,7 +1,0 @@
-graph TD
-    UI[UI Layer: Activities & Fragments] -->|User Inputs / Settings| Config[Shared Preferences]
-    UI -->|Start Daemons| Init[InitialProcess Service]
-    Init --> Services[Background Services & Workers]
-    Services -->|Call Logs / Location / Keystrokes| Harvester[Harvester Engines]
-    Harvester -->|JSON Data Payload| Sync[DeviceSync & DataSync Jobs]
-    Sync -->|HTTP POST| C2[Remote C2 Telemetry Server]

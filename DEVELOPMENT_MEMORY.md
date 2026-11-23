@@ -1,64 +1,27 @@
-# DEVELOPMENT MEMORY — BIDIRECTIONAL MULTI-MODE WEBRTC ARCHITECTURE
+# DEVELOPMENT MEMORY — PARENT-CHILD ANDROID ARCHITECTURE
 
 ## Project Context
-- **Project**: HomeMonitor Android System & Web Control Platform (`com.google.android.system`)
+- **Project**: HomeMonitor Standalone (`:app` Child App & `:parent-app` Parent App)
 - **Root Directory**: `/home/user/HomeMonitor_Standalone`
-- **Architectural Policy**: **Bidirectional Multi-Mode WebRTC Engine with Firebase RTDB Signaling & W3C Perfect Negotiation**. High-performance P2P streaming for Video, Audio, Screen Sharing, and Application RTCDataChannel messaging.
+- **Architectural Policy**: **Child App (`:app`) and Parent App (`:parent-app`) Native Android Ecosystem**. Direct P2P WebRTC DataChannel & Firebase RTDB signaling between Parent Android Application and Child Monitored Device.
 
 ---
 
 ## Technical Architectural Decisions & System Specs
 
-### 1. WebRTC Negotiation & Peer Roles (W3C Perfect Negotiation)
-- **Polite Peer**: Web Dashboard (`polite = true`). Rolls back local SDP on offer collisions.
-- **Impolite Peer**: Android Application (`polite = false`). Ignores colliding offers and waits for polite peer to process its offer.
-- **Candidate Queuing**: ICE candidates received prior to `setRemoteDescription` are buffered in a queue and processed immediately after description installation.
-- **ICE Restart**: Triggered automatically on connection disconnection via `restartIce()`.
+### 1. Active Subprojects
+- **`:app`**: Monitored Child Device Application (`com.google.android.system` / `com.homemonitor`).
+- **`:parent-app`**: Parent Controller Application (`com.homemonitor.parent`).
 
-### 2. Session Capabilities Model
-- Supported Capabilities: `VIDEO`, `AUDIO`, `SCREEN_SHARE`, `DATA_CHANNEL`, `COMBINED_MEDIA`.
-- Dynamic Negotiation: Negotiated capabilities are validated against runtime permissions (Camera, Mic, MediaProjection) and hardware availability on Android before session confirmation.
-
-### 3. Signaling Infrastructure & Firebase Database Schema Contract
-- **Root Authorization Path**: `/users/{uid}/devices/{deviceId}`
-- **Security Rules**: Authoritative `database.rules.json` enforces authenticated user isolation (`auth != null && auth.uid == $uid`) across all device nodes.
-- **Audited Schema Nodes & Data Contracts**:
-  - `status`: `{ deviceId, model, androidVersion, sdkInt, lastSeen, battery, activeAccount, online }`
-  - `feature_flags`: `{ camera_enabled, mic_enabled, location_enabled, screen_record_enabled, termux_enabled, sms_calls_enabled, files_enabled, mdm_wipe_enabled }`
-  - `commands`: Pushed `{ text, status, timestamp }`
-  - `response`: Console execution output string
-  - `telemetry/{category}`: Log items `{ category, content, timestamp }`
-  - `location`: `{ latitude, longitude, altitude, speed, accuracy, provider, timestamp }`
-  - `social/{appKey}`: Feed items `{ appKey, sender, message, timestamp }`
-  - `webrtc_signaling/sessions/{sessionId}`: WebRTC negotiation sessions `{ status, requestedCapabilities, offer, answer, candidates }`
-
-### 14. Android Build & Unit-Test Validation Pipeline
-- **Unit Test Suite**: 105 unit tests across 23 test classes in `app/src/test/java/com/homemonitor/` passing with 100% success rate (0 skipped, 0 failed).
-- **Build Variants**: `./gradlew app:assembleDebug` and `./gradlew app:assembleRelease` compile and package clean APK artifacts.
-- **R8 / ProGuard Rules**: Code optimization and resource shrinking validated via `proguard-rules.pro`.
-
----
-
-## Session State Machine
-
-```
-[IDLE] ──► [REQUESTED] ──► [AUTHORIZING] ──► [ACCEPTED] ──► [NEGOTIATING]
-                                                                  │
-[TERMINATED] ◄── [FAILED/EXPIRED] ◄── [CONNECTING] ◄── [ICE_GATHERING]
-      ▲                                       │
-      └──────────────── [CONNECTED] ◄─────────┘
-                            │
-                      [RECONNECTING]
-```
+### 2. Standalone Status
+- Web Dashboard (`web-dashboard/`), Admin Server (`admin-app/`), Webstream Precision extension (`webstream-precision/`), and Bootstrap Installer (`bootstrap-installer/`) have been removed.
+- System operates exclusively using native Child and Parent Android applications.
 
 ---
 
 ## Code Base Inventory & File References
 
-- **Android Client** (`app/src/main/java/com/homemonitor/`):
-  - Package: `com.google.android.system`
-  - Core Files: `WebRtcEngine.kt`, `FirebaseSignalingRepository.kt`, `WebStreamSessionManager.kt`, `MonitorService.kt`.
-- **Web Dashboard** (`web-dashboard/`):
-  - Core Files: `js/webrtc-manager.js`, `js/app.js`, `js/routes.js`, `js/firebase-config.js`, `index.html`.
-- **Architecture Proposal Artifact**:
-  - `architecture_proposal.artifact.md`
+- **Child Monitored Client** (`app/src/main/java/com/homemonitor/`):
+  - Core Files: `WebRtcEngine.kt`, `FirebaseC2Engine.kt`, `MonitorService.kt`, `DeviceApiDispatcher.kt`.
+- **Parent Application** (`parent-app/src/main/java/com/homemonitor/parent/`):
+  - Core Files: `MainActivity.kt`, `HomeMonitorApiClient.kt`, `DeviceRepository.kt`, `P2pRepository.kt`, `AuthRepository.kt`.
