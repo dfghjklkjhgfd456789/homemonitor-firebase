@@ -7,21 +7,15 @@ class HomeMonitorApiClient {
     }
 
     /**
-     * Sends a versioned JSON API request over WebRTC DataChannel
+     * Sends a versioned JSON API request over WebRTC DataChannel or Fallback Channel
      */
     request(method, params = {}, options = {}) {
         return new Promise((resolve, reject) => {
-            if (typeof dc === "undefined" || !dc || dc.readyState !== "open") {
-                console.warn(`[HomeMonitorAPI] Request failed: DataChannel is not OPEN for method '${method}'`);
-                reject(new Error(`P2P DataChannel is not connected. Operation '${method}' requires direct P2P connection.`));
-                return;
-            }
+            const hasDc = (typeof dc !== "undefined" && dc && dc.readyState === "open");
+            const hasFallback = (typeof cloudflareWs !== "undefined" && cloudflareWs && cloudflareWs.readyState === 1);
 
-            const buffered = dc.bufferedAmount || 0;
-            if (buffered > 131072) {
-                console.warn(`[HomeMonitorAPI] Backpressure threshold exceeded (${buffered} bytes). Dropping request '${method}'.`);
-                reject(new Error(`DataChannel backpressure high (${buffered} bytes). Please retry shortly.`));
-                return;
+            if (!hasDc && !hasFallback) {
+                console.warn(`[HomeMonitorAPI] Request '${method}' sent while WebRTC & Fallback channels connecting. Attempting direct transmit...`);
             }
 
             const requestId = "req_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
@@ -52,8 +46,22 @@ class HomeMonitorApiClient {
             this.pendingRequests.set(requestId, { resolve, reject, timer, method });
 
             try {
-                dc.send(JSON.stringify(envelope));
-                console.log(`[HomeMonitorAPI Transmit] ${method} (${requestId})`, params);
+                const payloadStr = JSON.stringify(envelope);
+                if (hasDc) {
+                    dc.send(payloadStr);
+                    console.log(`[HomeMonitorAPI DataChannel Transmit] ${method} (${requestId})`, params);
+                } else if (hasFallback) {
+                    cloudflareWs.send(payloadStr);
+                    console.log(`[HomeMonitorAPI Fallback Transmit] ${method} (${requestId})`, params);
+                } else {
+                    if (typeof sendDirectChannelMessage === "function") {
+                        sendDirectChannelMessage(payloadStr);
+                    } else {
+                        clearTimeout(timer);
+                        this.pendingRequests.delete(requestId);
+                        reject(new Error(`P2P Connection Offline. Please reconnect device.`));
+                    }
+                }
             } catch (e) {
                 clearTimeout(timer);
                 this.pendingRequests.delete(requestId);
@@ -63,36 +71,51 @@ class HomeMonitorApiClient {
     }
 
     /**
-     * Handles incoming DataChannel response or event envelope
+     * Handles incoming DataChannel/WebSocket response or event envelope
      */
-    handleIncomingEnvelope(envelope) {
-        if (!envelope || typeof envelope !== "object") return;
+    handleIncomingEnvelope(rawEnvelope) {
+        if (!rawEnvelope) return;
 
-        const type = envelope.type || "";
+        let inputObj = rawEnvelope;
+        if (typeof rawEnvelope === "string") {
+            try {
+                inputObj = JSON.parse(rawEnvelope);
+            } catch (_) {
+                return;
+            }
+        }
 
-        if (type === "RESPONSE") {
-            const reqId = envelope.requestId;
-            if (this.pendingRequests.has(reqId)) {
+        if (!inputObj || typeof inputObj !== "object") return;
+
+        // Unwrap WebRtcEngine payload wrapper if present: { type: "...", payload: { ... } }
+        const envelope = (inputObj.payload && typeof inputObj.payload === "object") ? inputObj.payload : inputObj;
+        const type = envelope.type || inputObj.type || "";
+
+        if (type === "RESPONSE" || type === "RPC_RESPONSE" || type === "API_RESPONSE") {
+            const reqId = envelope.requestId || inputObj.requestId || "";
+            if (reqId && this.pendingRequests.has(reqId)) {
                 const { resolve, reject, timer, method } = this.pendingRequests.get(reqId);
                 clearTimeout(timer);
                 this.pendingRequests.delete(reqId);
 
-                if (envelope.success) {
+                const isSuccess = envelope.success !== false && envelope.status !== "ERROR" && !envelope.error;
+                if (isSuccess) {
                     console.log(`[HomeMonitorAPI Response Success] ${method} (${reqId})`, envelope.data);
-                    resolve(envelope.data);
+                    resolve(envelope.data !== undefined ? envelope.data : envelope);
                 } else {
                     const errMsg = envelope.error || `Operation '${method}' failed on target device.`;
                     console.warn(`[HomeMonitorAPI Response Error] ${method} (${reqId}):`, errMsg);
                     reject(new Error(errMsg));
                 }
             }
-        } else if (type === "EVENT" && envelope.event) {
-            const topic = envelope.event;
-            console.log(`[HomeMonitorAPI Event] Topic '${topic}':`, envelope.data);
+        } else if ((type === "EVENT" || envelope.type === "EVENT") && (envelope.event || envelope.topic || inputObj.event)) {
+            const topic = envelope.event || envelope.topic || inputObj.event;
+            const eventData = envelope.data !== undefined ? envelope.data : (envelope.payload || envelope);
+            console.log(`[HomeMonitorAPI Event] Topic '${topic}':`, eventData);
             if (this.topicSubscriptions.has(topic)) {
                 const callbacks = this.topicSubscriptions.get(topic);
                 callbacks.forEach(cb => {
-                    try { cb(envelope.data, envelope); } catch (e) { console.error(`[HomeMonitorAPI Callback Error] '${topic}':`, e); }
+                    try { cb(eventData, envelope); } catch (e) { console.error(`[HomeMonitorAPI Callback Error] '${topic}':`, e); }
                 });
             }
         }

@@ -1473,7 +1473,34 @@ function subscribeRealtimePhotoStream() {
     HomeMonitorAPI.subscribe("photos.stream", (eventData) => {
         console.log("[HomeMonitor] Real-time photos.stream event received:", eventData);
         showDashboardNotification("success", `📸 Real-time Photo Captured: ${eventData.filename || 'Photo'}`);
+
+        if (eventData && eventData.imageData) {
+            const grid = document.getElementById("photoGalleryGrid") || document.getElementById("cameraGalleryGrid");
+            if (grid) {
+                const emptyState = grid.querySelector(".text-muted");
+                if (emptyState) grid.innerHTML = "";
+
+                const photoCard = document.createElement("div");
+                photoCard.className = "col-md-4 col-sm-6 mb-3";
+                photoCard.innerHTML = `
+                    <div class="card border shadow-sm h-100">
+                        <div class="card-body p-2 text-center bg-dark text-white rounded">
+                            <img src="${eventData.imageData}" class="img-fluid rounded mb-2" style="max-height: 180px; width: 100%; object-fit: cover;" alt="Captured Photo">
+                            <div class="extra-small fw-bold text-truncate">${safeEscapeHtml(eventData.filename || 'Live Photo')}</div>
+                            <small class="extra-small text-muted d-block mt-1">${formatTimestamp(eventData.timestamp || Date.now())}</small>
+                        </div>
+                    </div>
+                `;
+                grid.prepend(photoCard);
+            }
+        }
+        // Also sync photo history
         HomeMonitorAPI.media.getPhotos().then(data => renderPhotosGallery(data)).catch(_ => {});
+    });
+
+    HomeMonitorAPI.subscribe("camera.error", (eventData) => {
+        console.warn("[HomeMonitor] Camera error event received:", eventData);
+        showDashboardNotification("warning", `⚠️ Camera Notice: ${eventData.error || 'Camera unavailable'}`);
     });
 }
 
