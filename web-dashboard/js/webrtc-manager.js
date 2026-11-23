@@ -11,9 +11,10 @@ let pendingIceCandidates = [];
 function updateWebRtcConnectionBadge(statusType, detailText = "") {
     const connBadge = document.getElementById("connectionModeBadge");
     const statusBadge = document.getElementById("p2pStatusBadge");
+    const headerBadge = document.getElementById("p2pHeaderStatusBadge");
 
     let badgeClass = "badge bg-secondary text-white px-2 py-1 fw-bold";
-    let badgeHtml = 'Disconnected 🔴';
+    let badgeHtml = '<i class="fa-solid fa-circle-xmark me-1"></i>Offline 🔴';
 
     if (statusType === "CONNECTING") {
         badgeClass = "badge bg-warning text-dark px-2 py-1 fw-bold";
@@ -21,16 +22,28 @@ function updateWebRtcConnectionBadge(statusType, detailText = "") {
     } else if (statusType === "P2P_DIRECT_CONNECTED" || statusType === "DATA_CHANNEL_READY") {
         badgeClass = "badge bg-success text-white px-2 py-1 fw-bold";
         const rttStr = detailText ? ` (${detailText}ms)` : "";
-        badgeHtml = `Connected 🟢${rttStr}`;
+        badgeHtml = `<i class="fa-solid fa-network-wired me-1"></i>Direct P2P Connected 🟢${rttStr}`;
+    } else if (statusType === "WEBSOCKET_RELAY_CONNECTED") {
+        badgeClass = "badge bg-info text-dark px-2 py-1 fw-bold";
+        badgeHtml = `<i class="fa-solid fa-cloud-bolt me-1"></i>WebSocket Relay Connected 🔵`;
     } else if (statusType === "ICE_FAILED" || statusType === "CONNECTION_FAILED" || statusType === "DATA_CHANNEL_FAILED" || statusType === "DEVICE_UNREACHABLE") {
-        badgeClass = "badge bg-danger text-white px-2 py-1 fw-bold";
-        badgeHtml = "Disconnected 🔴";
+        if (typeof cloudflareRelayClient !== "undefined" && cloudflareRelayClient && cloudflareRelayClient.isConnected) {
+            badgeClass = "badge bg-info text-dark px-2 py-1 fw-bold";
+            badgeHtml = `<i class="fa-solid fa-cloud-bolt me-1"></i>WebSocket Relay Connected 🔵`;
+        } else {
+            badgeClass = "badge bg-danger text-white px-2 py-1 fw-bold";
+            badgeHtml = '<i class="fa-solid fa-circle-xmark me-1"></i>Offline 🔴';
+        }
     } else if (statusType === "DISCONNECTED") {
-        badgeClass = "badge bg-secondary text-white px-2 py-1 fw-bold";
-        badgeHtml = "Disconnected 🔴";
+        if (typeof cloudflareRelayClient !== "undefined" && cloudflareRelayClient && cloudflareRelayClient.isConnected) {
+            badgeClass = "badge bg-info text-dark px-2 py-1 fw-bold";
+            badgeHtml = `<i class="fa-solid fa-cloud-bolt me-1"></i>WebSocket Relay Connected 🔵`;
+        } else {
+            badgeClass = "badge bg-secondary text-white px-2 py-1 fw-bold";
+            badgeHtml = '<i class="fa-solid fa-circle-xmark me-1"></i>Offline 🔴';
+        }
     }
 
-    const headerBadge = document.getElementById("p2pHeaderStatusBadge");
     if (headerBadge) {
         headerBadge.className = badgeClass;
         headerBadge.innerHTML = badgeHtml;
@@ -40,6 +53,7 @@ function updateWebRtcConnectionBadge(statusType, detailText = "") {
         connBadge.innerHTML = badgeHtml;
     }
     if (statusBadge) {
+        statusBadge.className = badgeClass;
         statusBadge.innerHTML = badgeHtml;
     }
 }

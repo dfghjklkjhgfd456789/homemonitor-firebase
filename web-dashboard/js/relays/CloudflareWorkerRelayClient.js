@@ -42,6 +42,9 @@ class CloudflareWorkerRelayClient {
                 console.log("%c[CloudflareWorkerRelayClient] WebSocket Connected 🟢", "color: #10b981; font-weight: bold;");
                 this.isConnected = true;
                 window.cloudflareWs = this.ws;
+                if (typeof updateWebRtcConnectionBadge === "function" && (typeof dc === "undefined" || !dc || dc.readyState !== "open")) {
+                    updateWebRtcConnectionBadge("WEBSOCKET_RELAY_CONNECTED");
+                }
             };
 
             this.ws.onmessage = (event) => {
@@ -60,6 +63,9 @@ class CloudflareWorkerRelayClient {
                 this.isConnected = false;
                 window.cloudflareWs = null;
                 console.warn("[CloudflareWorkerRelayClient] WebSocket closed. Scheduling reconnect in 4s...");
+                if (typeof updateWebRtcConnectionBadge === "function" && (typeof dc === "undefined" || !dc || dc.readyState !== "open")) {
+                    updateWebRtcConnectionBadge("DISCONNECTED");
+                }
                 this.scheduleReconnect();
             };
 
@@ -67,6 +73,9 @@ class CloudflareWorkerRelayClient {
                 this.isConnected = false;
                 window.cloudflareWs = null;
                 console.warn("[CloudflareWorkerRelayClient] WebSocket error. Reconnecting...", err);
+                if (typeof updateWebRtcConnectionBadge === "function" && (typeof dc === "undefined" || !dc || dc.readyState !== "open")) {
+                    updateWebRtcConnectionBadge("DISCONNECTED");
+                }
                 this.scheduleReconnect();
             };
         } catch (e) {
