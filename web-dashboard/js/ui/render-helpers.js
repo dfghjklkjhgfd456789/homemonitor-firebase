@@ -50,9 +50,14 @@ function renderUnsupportedState(containerId, featureName = "Feature") {
 }
 
 function formatTimestamp(ts) {
-    if (!ts || isNaN(ts)) return "Just Now";
-    const date = new Date(ts);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " · " + date.toLocaleDateString();
+    if (!ts || isNaN(ts)) return "Just now";
+    const numTs = Number(ts);
+    if (numTs <= 0) return "Just now";
+    const date = new Date(numTs);
+    if (isNaN(date.getTime())) return "Just now";
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    return `${timeStr} · ${dateStr}`;
 }
 
 function formatBytes(bytes) {

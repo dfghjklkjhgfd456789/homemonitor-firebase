@@ -38,6 +38,7 @@ class HomeMonitorApiClient {
                 params: params || {},
                 role: userRole,
                 timestamp: Date.now(),
+                ttlMs: timeoutMs,
                 deadline: Date.now() + timeoutMs
             };
 

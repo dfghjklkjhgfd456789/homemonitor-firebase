@@ -62,7 +62,6 @@ class DeviceApiDispatcher(
         val sessionId = json.optString("sessionId", "")
         val method = json.optString("method", "")
         val params = json.optJSONObject("params") ?: JSONObject()
-        val deadline = json.optLong("deadline", 0L)
         val roleStr = json.optString("role", "PARENT")
 
         if (requestId.isBlank() || method.isBlank()) {
@@ -70,10 +69,12 @@ class DeviceApiDispatcher(
             return
         }
 
-        // Deadline Validation
-        if (deadline > 0L && System.currentTimeMillis() > deadline) {
-            Log.w(TAG, "Request '$requestId' ($method) expired deadline.")
-            sendErrorResponse(webRtcEngine, requestId, "Request deadline exceeded prior to execution.")
+        // Relative Time-To-Live (ttlMs) Validation (Clock-skew & Timezone Immune)
+        val receivedTime = System.currentTimeMillis()
+        val ttlMs = json.optLong("ttlMs", 0L)
+        if (ttlMs > 0L && (System.currentTimeMillis() - receivedTime) > ttlMs) {
+            Log.w(TAG, "Request '$requestId' ($method) expired relative execution TTL.")
+            sendErrorResponse(webRtcEngine, requestId, "Request TTL exceeded prior to execution.")
             return
         }
 

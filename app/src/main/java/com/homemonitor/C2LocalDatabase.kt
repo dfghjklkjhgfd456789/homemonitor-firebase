@@ -224,9 +224,18 @@ class C2LocalDatabase(private val context: Context) : SQLiteOpenHelper(context, 
 
             cursor.use {
                 while (it.moveToNext()) {
-                    val obj = JSONObject().apply {
-                        put("content", it.getString(0))
-                        put("timestamp", it.getLong(1))
+                    val rawContent = it.getString(0) ?: ""
+                    val ts = it.getLong(1)
+                    val obj = try {
+                        val parsed = JSONObject(rawContent)
+                        if (!parsed.has("timestamp")) parsed.put("timestamp", ts)
+                        parsed
+                    } catch (_: Exception) {
+                        JSONObject().apply {
+                            put("content", rawContent)
+                            put("filename", rawContent)
+                            put("timestamp", ts)
+                        }
                     }
                     jsonArray.put(obj)
                 }
