@@ -10,11 +10,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.homemonitor.parent.data.repository.ParentUserSession
+import com.homemonitor.parent.ui.navigation.BottomNavScreens
 import com.homemonitor.parent.ui.navigation.ParentNavDrawerContent
 import com.homemonitor.parent.ui.navigation.Screen
 import com.homemonitor.parent.ui.screens.activity.ActivityFeedScreen
@@ -23,6 +25,7 @@ import com.homemonitor.parent.ui.screens.auth.RegisterScreen
 import com.homemonitor.parent.ui.screens.devices.DeviceListScreen
 import com.homemonitor.parent.ui.screens.devices.DevicePairingQrScreen
 import com.homemonitor.parent.ui.screens.location.MapLocationScreen
+import com.homemonitor.parent.ui.screens.more.ParentMoreScreen
 import com.homemonitor.parent.ui.screens.overview.ParentDashboardOverviewScreen
 import com.homemonitor.parent.ui.screens.safety.MdmSecurityScreen
 import com.homemonitor.parent.ui.screens.settings.ParentSettingsScreen
@@ -94,6 +97,22 @@ class MainActivity : ComponentActivity() {
                                             onOpenDrawer = { scope.launch { drawerState.open() } }
                                         )
                                     }
+                                },
+                                bottomBar = {
+                                    if (currentRoute != Screen.Login.route && currentRoute != Screen.Register.route) {
+                                        ParentBottomBar(
+                                            currentRoute = currentRoute,
+                                            onNavigateTo = { route ->
+                                                navController.navigate(route) {
+                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                        saveState = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
+                                            }
+                                        )
+                                    }
                                 }
                             ) { padding ->
                                 Box(modifier = Modifier.padding(padding)) {
@@ -122,6 +141,33 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@Composable
+private fun ParentBottomBar(
+    currentRoute: String,
+    onNavigateTo: (String) -> Unit
+) {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        BottomNavScreens.forEach { screen ->
+            val isSelected = currentRoute == screen.route ||
+                    (screen == Screen.Home && currentRoute == "overview") ||
+                    (screen == Screen.Map && currentRoute == "location") ||
+                    (screen == Screen.Activity && currentRoute == "usage") ||
+                    (screen == Screen.Alerts && currentRoute == "activity_feed")
+
+            NavigationBarItem(
+                icon = {
+                    screen.icon?.let { Icon(it, contentDescription = screen.title) }
+                },
+                label = { Text(screen.title) },
+                selected = isSelected,
+                onClick = { onNavigateTo(screen.route) }
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OptInTopBar(title: String, onOpenDrawer: () -> Unit) {
@@ -129,7 +175,7 @@ private fun OptInTopBar(title: String, onOpenDrawer: () -> Unit) {
         title = { Text(title) },
         navigationIcon = {
             IconButton(onClick = onOpenDrawer) {
-                Icon(Icons.Default.Menu, contentDescription = "Open Left Navigation Drawer")
+                Icon(Icons.Default.Menu, contentDescription = "Open Navigation Drawer")
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -138,12 +184,13 @@ private fun OptInTopBar(title: String, onOpenDrawer: () -> Unit) {
 
 private fun ScreenTitle(route: String): String {
     return when (route) {
-        Screen.Overview.route -> Screen.Overview.title
+        Screen.Home.route, "overview" -> Screen.Home.title
+        Screen.Map.route, "location" -> Screen.Map.title
+        Screen.Activity.route, "usage" -> Screen.Activity.title
+        Screen.Alerts.route, "activity_feed" -> Screen.Alerts.title
+        Screen.More.route -> Screen.More.title
         Screen.Devices.route -> Screen.Devices.title
         Screen.DevicePairing.route -> Screen.DevicePairing.title
-        Screen.Location.route -> Screen.Location.title
-        Screen.Usage.route -> Screen.Usage.title
-        Screen.Activity.route -> Screen.Activity.title
         Screen.Safety.route -> Screen.Safety.title
         Screen.SuperAdmin.route -> Screen.SuperAdmin.title
         Screen.Settings.route -> Screen.Settings.title
@@ -159,7 +206,7 @@ private fun NavGraphContent(
     webRtcViewModel: WebRtcViewModel,
     activeSession: ParentUserSession?
 ) {
-    val startDest = if (activeSession != null) Screen.Overview.route else Screen.Login.route
+    val startDest = if (activeSession != null) Screen.Home.route else Screen.Login.route
 
     NavHost(navController = navController, startDestination = startDest) {
         composable(Screen.Login.route) {
@@ -176,11 +223,31 @@ private fun NavGraphContent(
             )
         }
 
-        composable(Screen.Overview.route) {
+        composable(Screen.Home.route) {
             ParentDashboardOverviewScreen(
                 deviceViewModel = deviceViewModel,
                 onNavigateTo = { route -> navController.navigate(route) },
                 isSuperAdmin = activeSession?.isSuperAdmin ?: false
+            )
+        }
+
+        composable(Screen.Map.route) {
+            MapLocationScreen(deviceViewModel = deviceViewModel)
+        }
+
+        composable(Screen.Activity.route) {
+            ScreenTimeScreen(deviceViewModel = deviceViewModel)
+        }
+
+        composable(Screen.Alerts.route) {
+            ActivityFeedScreen(deviceViewModel = deviceViewModel)
+        }
+
+        composable(Screen.More.route) {
+            ParentMoreScreen(
+                activeSession = activeSession,
+                onNavigateTo = { route -> navController.navigate(route) },
+                onSignOut = { authViewModel.signOut() }
             )
         }
 
@@ -190,7 +257,7 @@ private fun NavGraphContent(
                 onNavigateToPairing = { navController.navigate(Screen.DevicePairing.route) },
                 onSelectDevice = { devId ->
                     deviceViewModel.selectDevice(devId)
-                    navController.navigate(Screen.Overview.route)
+                    navController.navigate(Screen.Home.route)
                 }
             )
         }
@@ -204,18 +271,6 @@ private fun NavGraphContent(
                     navController.navigate(Screen.Devices.route)
                 }
             )
-        }
-
-        composable(Screen.Location.route) {
-            MapLocationScreen(deviceViewModel = deviceViewModel)
-        }
-
-        composable(Screen.Usage.route) {
-            ScreenTimeScreen(deviceViewModel = deviceViewModel)
-        }
-
-        composable(Screen.Activity.route) {
-            ActivityFeedScreen(deviceViewModel = deviceViewModel)
         }
 
         composable(Screen.Safety.route) {
