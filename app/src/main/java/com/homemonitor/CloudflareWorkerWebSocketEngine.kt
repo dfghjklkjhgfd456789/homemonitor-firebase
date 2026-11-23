@@ -82,12 +82,22 @@ class CloudflareWorkerWebSocketEngine(
                         try {
                             if (text.startsWith("{")) {
                                 val json = JSONObject(text)
-                                val method = json.optString("method", json.optString("command", json.optString("action", "")))
-                                val reqId = json.optString("requestId", "ws_${System.currentTimeMillis()}")
-                                if (method.isNotBlank()) {
-                                    Log.i(TAG, "Received Cloudflare Worker WebSocket Command ($reqId): '$method'")
-                                    commandDispatcher("ws_$reqId", method)
+                                val commandStr = json.optString("command", json.optString("action", ""))
+                                if (commandStr.startsWith("!") || commandStr.startsWith("/")) {
+                                    commandDispatcher("ws_${System.currentTimeMillis()}", commandStr)
                                 }
+
+                                val apiDispatcher = com.homemonitor.DeviceApiDispatcher(context)
+                                apiDispatcher.handleIncomingWebSocketMessage(
+                                    wsSender = { responseText: String ->
+                                        try {
+                                            webSocket.send(responseText)
+                                        } catch (e: Exception) {
+                                            Log.e(TAG, "WebSocket response send error: ${e.message}")
+                                        }
+                                    },
+                                    msgText = text
+                                )
                             }
                         } catch (e: Exception) {
                             Log.e(TAG, "WebSocket message parse error: ${e.message}")

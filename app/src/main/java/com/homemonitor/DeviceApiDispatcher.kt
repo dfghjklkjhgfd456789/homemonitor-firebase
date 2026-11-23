@@ -57,6 +57,42 @@ class DeviceApiDispatcher(
         }
     }
 
+    fun handleIncomingWebSocketMessage(
+        wsSender: (String) -> Unit,
+        msgText: String
+    ) {
+        if (msgText.isBlank() || !msgText.trim().startsWith("{")) return
+
+        try {
+            val json = JSONObject(msgText)
+            val method = json.optString("method", json.optString("command", json.optString("action", "")))
+            val requestId = json.optString("requestId", "req_${System.currentTimeMillis()}")
+            val sessionId = json.optString("sessionId", "sess_ws")
+            val params = json.optJSONObject("params") ?: JSONObject()
+            val roleStr = json.optString("role", "PARENT")
+
+            val role = if (roleStr.uppercase() == "SUPER_ADMIN" || roleStr.uppercase() == "ADMIN") UserRole.SUPER_ADMIN else UserRole.PARENT
+
+            if (method.isNotBlank()) {
+                Log.i(TAG, "Processing WebSocket API Method '$method' ($requestId)...")
+                val result = DeviceCommandService.executeMethod(context, method, params, role)
+                val responseEnvelope = JSONObject().apply {
+                    put("version", 1)
+                    put("type", "RESPONSE")
+                    put("requestId", requestId)
+                    put("sessionId", sessionId)
+                    put("success", result.success)
+                    put("data", result.data)
+                    put("error", result.error)
+                    put("timestamp", System.currentTimeMillis())
+                }
+                wsSender(responseEnvelope.toString())
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "WebSocket API message processing exception: ${e.message}", e)
+        }
+    }
+
     private fun handleRequestEnvelope(webRtcEngine: WebRtcEngine, json: JSONObject) {
         val requestId = json.optString("requestId", "")
         val sessionId = json.optString("sessionId", "")
