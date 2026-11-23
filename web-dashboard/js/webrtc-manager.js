@@ -74,6 +74,11 @@ function initWebRtcSession(sessionId) {
     const devId = getActiveRealDeviceId();
     const parentUid = (typeof currentUser !== "undefined" && currentUser) ? currentUser.uid : "";
 
+    // Start Standalone Cloudflare Worker WebSocket Relay Client ($0 Cost, Zero KV)
+    if (typeof cloudflareRelayClient !== "undefined" && cloudflareRelayClient) {
+        cloudflareRelayClient.start(devId);
+    }
+
     if (pc) {
         try { pc.close(); } catch (_) {}
     }
