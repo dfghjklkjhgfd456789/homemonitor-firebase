@@ -24,7 +24,7 @@ class CloudflareSignalingProvider(
 ) {
     companion object {
         private const val TAG = "CloudflareSignaling"
-        private const val CLOUDFLARE_WORKER_URL = "https://websocket-worker-relay.johnduck99.workers.dev"
+        private const val CLOUDFLARE_WORKER_URL = "https://webrtc.johnduck99.workers.dev"
     }
 
     interface Listener {
@@ -84,18 +84,22 @@ class CloudflareSignalingProvider(
                     .build()
 
                 var ticket: String? = null
-                httpClient.newCall(ticketRequest).execute().use { response ->
-                    if (response.isSuccessful) {
-                        val bodyStr = response.body?.string() ?: ""
-                        if (bodyStr.startsWith("{")) {
-                            val json = JSONObject(bodyStr)
-                            if (json.has("ticket")) {
-                                ticket = json.getString("ticket")
+                try {
+                    httpClient.newCall(ticketRequest).execute().use { response ->
+                        if (response.isSuccessful) {
+                            val bodyStr = response.body?.string() ?: ""
+                            if (bodyStr.startsWith("{")) {
+                                val json = JSONObject(bodyStr)
+                                if (json.has("ticket")) {
+                                    ticket = json.getString("ticket")
+                                }
                             }
+                        } else {
+                            Log.w(TAG, "Ticket request returned HTTP ${response.code}")
                         }
-                    } else {
-                        Log.w(TAG, "Ticket request returned HTTP ${response.code}")
                     }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Cloudflare ticket request exception: ${e.message}")
                 }
 
                 if (ticket.isNullOrBlank()) {
@@ -113,7 +117,7 @@ class CloudflareSignalingProvider(
 
                 webSocket = httpClient.newWebSocket(wsRequest, object : WebSocketListener() {
                     override fun onOpen(webSocket: WebSocket, response: Response) {
-                        Log.i(TAG, "Cloudflare Worker WebSocket Connected 🟢")
+                        Log.i(TAG, "Cloudflare Worker WebRTC Signaling Connected 🟢 ($wsUrl)")
                         isConnected = true
                         listener?.onConnected()
                     }

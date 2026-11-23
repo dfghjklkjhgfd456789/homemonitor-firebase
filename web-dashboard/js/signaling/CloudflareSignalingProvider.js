@@ -1,6 +1,6 @@
 // CloudflareSignalingProvider.js - Secondary WebRTC Signaling Provider via Worker WebSocket & Tickets
 
-const DEFAULT_CLOUDFLARE_WORKER_URL = "https://websocket-worker-relay.johnduck99.workers.dev";
+const DEFAULT_CLOUDFLARE_WORKER_URL = "https://webrtc.johnduck99.workers.dev";
 
 class CloudflareSignalingProvider {
     constructor(workerUrl = DEFAULT_CLOUDFLARE_WORKER_URL) {
@@ -40,8 +40,8 @@ class CloudflareSignalingProvider {
 
         try {
             let idToken = "";
-            if (firebase && firebase.auth && firebase.auth().currentUser) {
-                idToken = await firebase.auth().currentUser.getIdToken();
+            if (typeof firebase !== "undefined" && firebase && firebase.auth && firebase.auth().currentUser) {
+                idToken = await firebase.auth().currentUser.getIdToken().catch(() => "");
             }
 
             if (!idToken) {
@@ -58,6 +58,26 @@ class CloudflareSignalingProvider {
                     "Authorization": `Bearer ${idToken}`
                 },
                 body: JSON.stringify({
+                    deviceId: this.currentDeviceId,
+                    role: "DASHBOARD"
+                })
+            });
+
+            let ticket = "";
+            if (ticketResp.ok) {
+                const ticketData = await ticketResp.json();
+                ticket = ticketData ? ticketData.ticket : "";
+            }
+
+            if (!ticket) {
+                console.warn("[CloudflareSignalingProvider] Ticket retrieval failed. Will retry in 10s...");
+                this.scheduleReconnect();
+                return;
+            }
+
+            const wsUrl = `${this.workerUrl}/v1/devices/${this.currentDeviceId}/signal?ticket=${ticket}`
+                .replace("https://", "wss://")
+                .replace("http://", "ws://");
                     deviceId: this.currentDeviceId,
                     role: "WEB"
                 })
