@@ -24,7 +24,7 @@ class CloudflareSignalingProvider(
 ) {
     companion object {
         private const val TAG = "CloudflareSignaling"
-        private const val CLOUDFLARE_WORKER_URL = "https://webrtc.johnduck99.workers.dev"
+        private const val CLOUDFLARE_WORKER_URL = "https://websocket-worker-relay.johnduck99.workers.dev"
     }
 
     interface Listener {

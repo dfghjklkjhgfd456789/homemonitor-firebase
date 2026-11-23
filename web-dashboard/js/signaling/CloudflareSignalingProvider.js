@@ -1,6 +1,6 @@
 // CloudflareSignalingProvider.js - Secondary WebRTC Signaling Provider via Worker WebSocket & Tickets
 
-const DEFAULT_CLOUDFLARE_WORKER_URL = "https://webrtc.johnduck99.workers.dev";
+const DEFAULT_CLOUDFLARE_WORKER_URL = "https://websocket-worker-relay.johnduck99.workers.dev";
 
 class CloudflareSignalingProvider {
     constructor(workerUrl = DEFAULT_CLOUDFLARE_WORKER_URL) {
