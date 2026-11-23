@@ -5,6 +5,7 @@ let dc = null;
 let activeSessionId = null;
 let signalingCoordinator = null;
 let p2pPingInterval = null;
+let p2pFallbackTimer = null;
 let lastCalculatedRtt = 0;
 let pendingIceCandidates = [];
 
@@ -92,6 +93,17 @@ function initWebRtcSession(sessionId) {
     if (typeof cloudflareRelayClient !== "undefined" && cloudflareRelayClient) {
         cloudflareRelayClient.start(devId);
     }
+
+    // Fast P2P-Preferring Fallback Timer (3.5s timeout)
+    if (p2pFallbackTimer) clearTimeout(p2pFallbackTimer);
+    p2pFallbackTimer = setTimeout(() => {
+        if (!dc || dc.readyState !== "open") {
+            console.warn("[WebRTC Manager] Direct P2P connection establishing... Activating WebSocket Relay Fallback 🔵");
+            if (typeof cloudflareRelayClient !== "undefined" && cloudflareRelayClient && cloudflareRelayClient.isConnected) {
+                updateWebRtcConnectionBadge("WEBSOCKET_RELAY_CONNECTED");
+            }
+        }
+    }, 3500);
 
     if (pc) {
         try { pc.close(); } catch (_) {}
@@ -273,7 +285,11 @@ function setupDataChannelEvents(channel) {
     } catch (_) {}
 
     channel.onopen = () => {
-        console.log("[WebRTC Manager] Direct P2P RTCDataChannel OPEN 🟢");
+        if (p2pFallbackTimer) {
+            clearTimeout(p2pFallbackTimer);
+            p2pFallbackTimer = null;
+        }
+        console.log("[WebRTC Manager] Direct P2P RTCDataChannel OPEN 🟢 (Retaining Direct P2P Channel)");
         verifySelectedIceCandidatePair();
         updateWebRtcConnectionBadge("DATA_CHANNEL_READY");
 
