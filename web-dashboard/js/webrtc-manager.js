@@ -78,13 +78,28 @@ function initWebRtcSession(sessionId) {
         try { pc.close(); } catch (_) {}
     }
 
-    // Dual-STUN ICE negotiation (Cloudflare + Google, STUN-Only P2P)
+    // Free Google STUN + OpenRelay TURN ICE Configuration ($0/month, 4G/5G Carrier NAT Traversal)
     const rtcConfig = {
         iceServers: [
-            { urls: "stun:stun.cloudflare.com:3478" },
             { urls: "stun:stun.l.google.com:19302" },
             { urls: "stun:stun1.l.google.com:19302" },
-            { urls: "stun:stun2.l.google.com:19302" }
+            { urls: "stun:stun2.l.google.com:19302" },
+            { urls: "stun:stun.relay.metered.ca:80" },
+            {
+                urls: "turn:relay.metered.ca:80?transport=udp",
+                username: "openrelayproject",
+                credential: "openrelayproject"
+            },
+            {
+                urls: "turn:relay.metered.ca:443?transport=tcp",
+                username: "openrelayproject",
+                credential: "openrelayproject"
+            },
+            {
+                urls: "turns:relay.metered.ca:443?transport=tcp",
+                username: "openrelayproject",
+                credential: "openrelayproject"
+            }
         ]
     };
 

@@ -383,10 +383,25 @@ export default {
             if (path === "/api/webrtc/ice-servers" && request.method === "GET") {
                 const iceConfig = {
                     iceServers: [
-                        { urls: "stun:stun.cloudflare.com:3478" },
                         { urls: "stun:stun.l.google.com:19302" },
                         { urls: "stun:stun1.l.google.com:19302" },
-                        { urls: "stun:stun2.l.google.com:19302" }
+                        { urls: "stun:stun2.l.google.com:19302" },
+                        { urls: "stun:stun.relay.metered.ca:80" },
+                        {
+                            urls: "turn:relay.metered.ca:80?transport=udp",
+                            username: "openrelayproject",
+                            credential: "openrelayproject"
+                        },
+                        {
+                            urls: "turn:relay.metered.ca:443?transport=tcp",
+                            username: "openrelayproject",
+                            credential: "openrelayproject"
+                        },
+                        {
+                            urls: "turns:relay.metered.ca:443?transport=tcp",
+                            username: "openrelayproject",
+                            credential: "openrelayproject"
+                        }
                     ]
                 };
                 return new Response(JSON.stringify(iceConfig), {

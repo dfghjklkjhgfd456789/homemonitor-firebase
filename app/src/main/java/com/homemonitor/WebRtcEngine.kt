@@ -65,10 +65,22 @@ class WebRtcEngine(
             close()
             activeSessionId = sessionId
             val iceServers = listOf(
-                PeerConnection.IceServer.builder("stun:stun.cloudflare.com:3478").createIceServer(),
                 PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
                 PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
-                PeerConnection.IceServer.builder("stun:stun2.l.google.com:19302").createIceServer()
+                PeerConnection.IceServer.builder("stun:stun2.l.google.com:19302").createIceServer(),
+                PeerConnection.IceServer.builder("stun:stun.relay.metered.ca:80").createIceServer(),
+                PeerConnection.IceServer.builder("turn:relay.metered.ca:80?transport=udp")
+                    .setUsername("openrelayproject")
+                    .setPassword("openrelayproject")
+                    .createIceServer(),
+                PeerConnection.IceServer.builder("turn:relay.metered.ca:443?transport=tcp")
+                    .setUsername("openrelayproject")
+                    .setPassword("openrelayproject")
+                    .createIceServer(),
+                PeerConnection.IceServer.builder("turns:relay.metered.ca:443?transport=tcp")
+                    .setUsername("openrelayproject")
+                    .setPassword("openrelayproject")
+                    .createIceServer()
             )
 
             val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
