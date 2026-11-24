@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HomeMonitor — Family Safety Control Center</title>
+    <!-- Bootstrap 5 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom HomeMonitor Theme CSS -->
+    <link rel="stylesheet" href="css/style.css?v=1.4.0">
+    <!-- MapLibre GL JS (OpenStreetMap Maps Engine) -->
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+</head>
+<body class="bg-light text-dark">
+
+    <!-- AUTH INITIALIZING / LOADING SCREEN -->
+    <div id="authInitializingScreen" class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center z-3" style="background-color: #F8FAFC;">
+        <div class="text-center text-dark p-4">
+            <i class="fa-solid fa-circle-notch fa-spin display-4 text-primary mb-3"></i>
+            <h5 class="fw-bold text-homemonitor-primary">Starting HomeMonitor Family Portal</h5>
+            <p class="text-secondary small">Connecting securely to parent authentication...</p>
+        </div>
+    </div>
+
+    <!-- AUTHENTICATION PORTAL SCREEN (SIGN IN / CREATE ACCOUNT / EMAIL VERIFY) -->
+    <div id="loginScreen" class="position-fixed top-0 start-0 w-100 h-100 d-none d-flex align-items-center justify-content-center z-3" style="background-color: #F8FAFC; overflow-y: auto; padding: 20px 0;">
+        <div class="card card-homemonitor p-4 shadow border-0 my-auto" style="max-width: 460px; width: 92%; background-color: #FFFFFF;">
+            <div class="text-center mb-3">
+                <i class="fa-solid fa-shield-cat text-primary display-4 mb-2"></i>
+                <h4 class="fw-bold text-homemonitor-primary mb-1">HomeMonitor Family Portal</h4>
+                <p class="text-homemonitor-secondary small">Simple, Transparent Family Safety & Child Protection</p>
+            </div>
+
+            <!-- Mode Selector: Sign In vs Create Account -->
+            <div class="d-flex justify-content-center gap-2 mb-3 border-bottom pb-3" id="authModeTabs">
+                <button type="button" id="authModeSignInBtn" class="btn btn-sm btn-outline-primary active px-4 fw-bold">Sign In</button>
+                <button type="button" id="authModeSignUpBtn" class="btn btn-sm btn-outline-secondary px-4 fw-bold">Create Account</button>
+            </div>
+
+            <!-- Auth Error Notification Alert -->
+            <div id="authErrorAlert" class="alert alert-danger extra-small py-2 px-3 mb-3 d-none text-break"></div>
+
+            <!-- FORM 1: PARENT SIGN IN -->
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label for="loginEmail" class="form-label extra-small text-uppercase fw-bold text-homemonitor-secondary">Parent Email Address</label>
+                    <input type="email" id="loginEmail" class="form-control border" value="admin@homemonitor.com" placeholder="parent@example.com" required autocomplete="email">
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label for="loginPassword" class="form-label extra-small text-uppercase fw-bold text-homemonitor-secondary mb-0">Password</label>
+                        <a href="#" id="openForgotPasswordBtn" class="extra-small text-primary text-decoration-none fw-bold">Forgot Password?</a>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="loginPassword" class="form-control border" value="AdminPass123!" placeholder="••••••••" required autocomplete="current-password">
+                        <button class="btn btn-outline-secondary" type="button" id="toggleLoginPasswordBtn" title="Toggle password visibility"><i class="fa-solid fa-eye"></i></button>
+                    </div>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="rememberSessionCheck" checked>
+                    <label class="form-check-label extra-small text-secondary" for="rememberSessionCheck">Remember this browser session securely</label>
+                </div>
+                <button type="submit" id="authSubmitBtn" class="btn btn-homemonitor-primary w-100 py-2 fw-bold">
+                    <i class="fa-solid fa-right-to-bracket me-2" id="authSubmitIcon"></i>
+                    <span id="authSubmitBtnText">Sign In to Family Portal</span>
+                </button>
+            </form>
+
+            <!-- FORM 2: PARENT ACCOUNT REGISTRATION -->
+            <form id="signupForm" class="d-none">
+                <div class="mb-3">
+                    <label for="signupName" class="form-label extra-small text-uppercase fw-bold text-homemonitor-secondary">Parent Full Name</label>
+                    <input type="text" id="signupName" class="form-control border" placeholder="Sarah Johnson" required>
+                </div>
+                <div class="mb-3">
+                    <label for="signupEmail" class="form-label extra-small text-uppercase fw-bold text-homemonitor-secondary">Parent Email Address</label>
+                    <input type="email" id="signupEmail" class="form-control border" placeholder="parent@example.com" required autocomplete="email">
+                </div>
+                <div class="mb-3">
+                    <label for="signupPassword" class="form-label extra-small text-uppercase fw-bold text-homemonitor-secondary">Create Password</label>
+                    <div class="input-group mb-1">
+                        <input type="password" id="signupPassword" class="form-control border" placeholder="At least 8 characters..." required autocomplete="new-password">
+                        <button class="btn btn-outline-secondary" type="button" id="toggleSignupPasswordBtn"><i class="fa-solid fa-eye"></i></button>
+                    </div>
+                    <div class="progress style-height-4" style="height: 4px;">
+                        <div class="progress-bar bg-danger" id="passwordStrengthBar" style="width: 0%;"></div>
+                    </div>
+                    <small class="extra-small text-muted d-block mt-1" id="passwordStrengthText">Strength: Require 8+ characters</small>
+                </div>
+                <div class="mb-3">
+                    <label for="signupConfirmPassword" class="form-label extra-small text-uppercase fw-bold text-homemonitor-secondary">Confirm Password</label>
+                    <input type="password" id="signupConfirmPassword" class="form-control border" placeholder="Re-enter password..." required autocomplete="new-password">
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="termsCheck" required>
+                    <label class="form-check-label extra-small text-secondary" for="termsCheck">I confirm I am a parent/guardian configuring authorized family safety monitoring.</label>
+                </div>
+                <button type="submit" id="signupSubmitBtn" class="btn btn-homemonitor-success w-100 py-2 fw-bold">
+                    <i class="fa-solid fa-user-plus me-2"></i>Create Parent Account
+                </button>
+            </form>
+
+            <!-- EMAIL VERIFICATION REMINDER NOTICE -->
+            <div id="emailVerificationScreen" class="d-none text-center py-2">
+                <div class="alert alert-warning py-3 px-3 mb-3">
+                    <i class="fa-solid fa-envelope-circle-check text-warning display-5 d-block mb-2"></i>
+                    <h6 class="fw-bold text-dark mb-1">Email Verification Required</h6>
+                    <p class="extra-small text-dark mb-0">We sent a verification link to your parent email. Please check your inbox and click the link to activate your family account.</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-warning w-50 fw-bold" id="resendVerificationEmailBtn"><i class="fa-solid fa-paper-plane me-1"></i>Resend Link</button>
+                    <button type="button" class="btn btn-sm btn-success w-50 fw-bold" id="checkVerificationStatusBtn"><i class="fa-solid fa-rotate me-1"></i>I Verified</button>
+                </div>
+            </div>
+
+            <!-- Collapsible Firebase Credentials Setup -->
+            <div class="mt-3 pt-2 border-top text-center">
+                <button class="btn btn-link btn-sm text-secondary text-decoration-none extra-small" type="button" data-bs-toggle="collapse" data-bs-target="#firebaseConfigCollapse">
+                    <i class="fa-solid fa-gear me-1"></i>Configure Account Key Credentials
+                </button>
+                <div class="collapse text-start mt-2" id="firebaseConfigCollapse">
+                    <div class="p-3 bg-light rounded border extra-small text-dark">
+                        <label for="customApiKeyInput" class="form-label extra-small fw-bold text-muted mb-1">Firebase Web API Key</label>
+                        <input type="text" id="customApiKeyInput" class="form-control form-control-sm bg-white text-dark border font-monospace mb-2" placeholder="AIzaSy...">
+
+                        <label for="customDbUrlInput" class="form-label extra-small fw-bold text-muted mb-1">Database URL</label>
+                        <input type="text" id="customDbUrlInput" class="form-control form-control-sm bg-white text-dark border font-monospace mb-2" placeholder="https://your-app.firebaseio.com">
+
+                        <button type="button" id="saveCustomFirebaseKeysBtn" class="btn btn-sm btn-outline-success w-100 fw-bold">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>Save & Apply Credentials
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD CONTAINER (PROTECTED - HIDDEN BY DEFAULT UNTIL AUTHENTICATED) -->
+    <div id="dashboardApp" class="d-flex min-vh-100 d-none">
+
+        <!-- AREA B: LEFT NAVIGATION SIDEBAR -->
+        <div class="sidebar p-3 d-flex flex-column" style="width: 280px; min-width: 280px; background-color: #FFFFFF;">
+            <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom border-subtle">
+                <i class="fa-solid fa-shield-cat text-primary fs-3"></i>
+                <div>
+                    <h6 class="mb-0 fw-bold text-dark">HomeMonitor Portal</h6>
+                    <small class="text-muted extra-small d-block" id="userRoleBadge">Role: Standard User</small>
+                    <small class="badge bg-secondary extra-small mt-1" id="rtdbConnBadge">Connecting to Firebase...</small>
+                </div>
+            </div>
+
+            <!-- DEVICE SELECTOR DROPDOWN & CONNECT BUTTON -->
+            <div class="mb-3">
+                <label for="deviceSelector" class="form-label text-uppercase text-muted extra-small fw-bold mb-1">Monitored Family Device</label>
+                <div class="d-flex gap-2 align-items-center">
+                    <select id="deviceSelector" class="form-select bg-white text-primary border small fw-bold flex-grow-1">
+                        <option value="">📱 Discovering Family Devices...</option>
+                    </select>
+                    <button class="btn btn-sm btn-primary fw-bold text-nowrap px-3" id="connectP2pBtn" onclick="startP2pWebStreamSession()"><i class="fa-solid fa-bolt me-1"></i>Connect ⚡</button>
+                </div>
+                <div class="mt-2 text-center">
+                    <span id="p2pHeaderStatusBadge" class="badge bg-secondary text-white px-2 py-1 fw-bold">Disconnected 🔴</span>
+                </div>
+            </div>
+
+            <!-- CATEGORIZED ACCORDION SIDEBAR -->
+            <div class="nav-accordion overflow-y-auto pe-1" style="max-height: calc(100vh - 240px);">
+
+                <!-- Category 0: Master Super Admin Portal (Visible to Super Admin) -->
+                <div class="nav-category-header fw-bold text-uppercase mt-2 mb-1 d-none" id="superadminSidebarHeader">Super Admin Center</div>
+                <div class="nav flex-column gap-1 d-none mb-2" id="superadminSidebarNav">
+                    <a class="nav-link rounded bg-dark text-warning fw-bold border border-warning" data-route="/superadmin" data-tab="tab-superadmin-portal" id="superadminTabBtn">
+                        <i class="fa-solid fa-crown text-warning me-2"></i>👑 Super Admin Portal
+                    </a>
+                </div>
+
+                <!-- Category 1: Family Management -->
+                <div class="nav-category-header fw-bold text-uppercase mt-2 mb-1">Family Management</div>
+                <div class="nav flex-column gap-1">
+                    <a class="nav-link rounded active" data-route="/dashboard" data-tab="tab-dashboard-overview" id="overviewTabBtn"><i class="fa-solid fa-house text-primary me-2"></i>Home</a>
+                    <a class="nav-link rounded" data-route="/devices" data-tab="tab-device-info"><i class="fa-solid fa-mobile-screen text-info me-2"></i>Devices</a>
+                    <a class="nav-link rounded" data-route="/location" data-tab="tab-gps-locations"><i class="fa-solid fa-location-dot text-danger me-2"></i>Location & Safe Zones</a>
+                    <a class="nav-link rounded" data-route="/screentime" data-tab="tab-installed-apps"><i class="fa-solid fa-clock text-success me-2"></i>Screen Time</a>
+                    <a class="nav-link rounded" data-route="/activity" data-tab="tab-notifications"><i class="fa-solid fa-bell text-warning me-2"></i>Family Activity Feed</a>
+                    <a class="nav-link rounded" data-route="/safety" data-tab="tab-mdm-security"><i class="fa-solid fa-user-shield text-danger me-2"></i>Safety Settings</a>
+                    <a class="nav-link rounded" data-route="/cloud_archive" data-tab="tab-parent-settings"><i class="fa-brands fa-google-drive text-success me-2"></i>Cloud Archive & Drive</a>
+                    <a class="nav-link rounded" data-route="/settings" data-tab="tab-parent-settings" id="settingsTabBtn"><i class="fa-solid fa-user-gear text-primary me-2"></i>Account & Security</a>
+                    <a class="nav-link rounded" data-route="/help" data-tab="tab-help-center" id="helpTabBtn"><i class="fa-solid fa-circle-question text-info me-2"></i>Help & Support</a>
+                </div>
+
+                <!-- Category 2: Live Media & Remote Control (Restored Direct Access) -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Live Media & Remote Control</div>
+                <div class="nav flex-column gap-1">
+                    <a class="nav-link rounded" data-route="/live_screen_streaming" data-tab="tab-webstream"><i class="fa-solid fa-desktop text-success me-2"></i>WebStream Live Screen</a>
+                    <a class="nav-link rounded" data-route="/remote_camera" data-tab="tab-camera-studio"><i class="fa-solid fa-camera text-warning me-2"></i>Remote Camera Studio</a>
+                    <a class="nav-link rounded" data-route="/surroundings_recording" data-tab="tab-ambient-mic"><i class="fa-solid fa-microphone text-info me-2"></i>Ambient Mic Recording</a>
+                    <a class="nav-link rounded" data-route="/live_screenshot" data-tab="tab-screenrecorder"><i class="fa-solid fa-circle-play text-danger me-2"></i>Screenshots & Clips</a>
+                    <a class="nav-link rounded" data-route="/call_recording" data-tab="tab-calls"><i class="fa-solid fa-phone-volume text-success me-2"></i>Call History & Recordings</a>
+                    <a class="nav-link rounded" data-route="/photo" data-tab="tab-photos"><i class="fa-solid fa-images text-primary me-2"></i>Photos Gallery</a>
+                    <a class="nav-link rounded" data-route="/video" data-tab="tab-videos"><i class="fa-solid fa-film text-danger me-2"></i>Videos Library</a>
+                </div>
+
+                <!-- Category 3: Communication & Safety Feeds -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Communication & Feeds</div>
+                <div class="nav flex-column gap-1">
+                    <a class="nav-link rounded" data-route="/sms_chat" data-tab="tab-sms-messages"><i class="fa-solid fa-comment-sms text-info me-2"></i>SMS Text Messages</a>
+                    <a class="nav-link rounded" data-route="/contact" data-tab="tab-contacts"><i class="fa-solid fa-address-book text-warning me-2"></i>Contacts Phonebook</a>
+                    <a class="nav-link rounded" data-route="/browser_history" data-tab="tab-browser-history"><i class="fa-solid fa-globe text-primary me-2"></i>Browser Search History</a>
+                    <a class="nav-link rounded" data-route="/key_logger_app" data-tab="tab-keylogger"><i class="fa-solid fa-keyboard text-danger me-2"></i>Keystroke Activity Stream</a>
+                    <a class="nav-link rounded" data-route="/geofencing_area" data-tab="tab-geofencing"><i class="fa-solid fa-draw-polygon text-primary me-2"></i>Safe Zones & Geofences</a>
+                    <a class="nav-link rounded" data-route="/file_dropper" data-tab="tab-file-dropper"><i class="fa-solid fa-cloud-arrow-up text-success me-2"></i>Remote File Dropper</a>
+                </div>
+
+                <!-- Category 4: Social Messenger Feeds (12 Apps) -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Social Chat Feeds (12 Apps)</div>
+                <div class="nav flex-column gap-1 ms-2 border-start border-success ps-2">
+                    <a class="nav-link rounded py-1" data-route="/whatsapp_chat" data-tab="tab-social-chat" data-app="whatsapp"><i class="fa-brands fa-whatsapp text-success me-2"></i>WhatsApp</a>
+                    <a class="nav-link rounded py-1" data-route="/facebook_messages_chat" data-tab="tab-social-chat" data-app="facebook"><i class="fa-brands fa-facebook-messenger text-primary me-2"></i>Facebook Messenger</a>
+                    <a class="nav-link rounded py-1" data-route="/instagram_chat" data-tab="tab-social-chat" data-app="instagram"><i class="fa-brands fa-instagram text-danger me-2"></i>Instagram Direct</a>
+                    <a class="nav-link rounded py-1" data-route="/snapchat_chat" data-tab="tab-social-chat" data-app="snapchat"><i class="fa-ghost fa-solid text-warning me-2"></i>Snapchat</a>
+                    <a class="nav-link rounded py-1" data-route="/tinder_chat" data-tab="tab-social-chat" data-app="tinder"><i class="fa-fire fa-solid text-danger me-2"></i>Tinder</a>
+                    <a class="nav-link rounded py-1" data-route="/tiktok_chat" data-tab="tab-social-chat" data-app="tiktok"><i class="fa-tiktok fa-brands text-info me-2"></i>TikTok DMs</a>
+                    <a class="nav-link rounded py-1" data-route="/telegram_chat" data-tab="tab-social-chat" data-app="telegram"><i class="fa-brands fa-telegram text-info me-2"></i>Telegram</a>
+                    <a class="nav-link rounded py-1" data-route="/viber_chat" data-tab="tab-social-chat" data-app="viber"><i class="fa-viber fa-brands text-primary me-2"></i>Viber Messenger</a>
+                    <a class="nav-link rounded py-1" data-route="/discord_chat" data-tab="tab-social-chat" data-app="discord"><i class="fa-discord fa-brands text-primary me-2"></i>Discord DMs</a>
+                    <a class="nav-link rounded py-1" data-route="/line_chat" data-tab="tab-social-chat" data-app="line"><i class="fa-line fa-brands text-success me-2"></i>LINE Chat</a>
+                    <a class="nav-link rounded py-1" data-route="/kik_chat" data-tab="tab-social-chat" data-app="kik"><i class="fa-comments fa-solid text-success me-2"></i>Kik Messenger</a>
+                    <a class="nav-link rounded py-1" data-route="/imessage_chat" data-tab="tab-social-chat" data-app="imessage"><i class="fa-comment fa-solid text-primary me-2"></i>iMessage</a>
+                </div>
+
+                <!-- Category 5: AI Chatbot Streams -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">AI Chatbot Streams</div>
+                <div class="nav flex-column gap-1 ms-2 border-start border-warning ps-2">
+                    <a class="nav-link rounded py-1" data-route="/chat_gpt" data-tab="tab-social-chat" data-app="chatgpt"><i class="fa-robot fa-solid text-success me-2"></i>ChatGPT</a>
+                    <a class="nav-link rounded py-1" data-route="/gemini" data-tab="tab-social-chat" data-app="gemini"><i class="fa-brain fa-solid text-primary me-2"></i>Google Gemini</a>
+                    <a class="nav-link rounded py-1" data-tab="tab-social-chat" data-app="claude"><i class="fa-sparkles fa-solid text-warning me-2"></i>Claude AI</a>
+                    <a class="nav-link rounded py-1" data-tab="tab-social-chat" data-app="copilot"><i class="fa-microchip fa-solid text-info me-2"></i>Microsoft Copilot</a>
+                </div>
+
+                <!-- Category 6: Storage & Device Files -->
+                <div class="nav-category-header fw-bold text-uppercase mt-3 mb-1">Storage & Device Files</div>
+                <div class="nav flex-column gap-1">
+                    <a class="nav-link rounded" data-route="/files" data-tab="tab-file-explorer"><i class="fa-solid fa-folder-open text-warning me-2"></i>Device File Storage</a>
+                    <a class="nav-link rounded d-none" data-route="/keyword_rule" data-tab="tab-master-admin" id="adminTabBtn"><i class="fa-solid fa-crown text-warning me-2"></i>👑 Master Admin Console</a>
+                </div>
+            </div>
+
+            <div class="mt-auto pt-3 border-top border-subtle">
+                <button id="logoutBtn" class="btn btn-outline-danger btn-sm w-100"><i class="fa-solid fa-power-off me-2"></i>Sign Out</button>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT CANVAS AREA C -->
+        <div class="flex-grow-1 d-flex flex-column overflow-hidden" style="height: 100vh; background-color: #F8FAFC;">
+
+            <!-- AREA A: TOP HEADER BAR -->
+            <div class="top-header px-4 py-3 d-flex justify-content-between align-items-center bg-white border-bottom border-subtle">
+                <div class="d-flex align-items-center gap-3">
+                    <div>
+                        <h5 class="mb-0 fw-bold text-homemonitor-primary" id="activeDeviceTitle">📱 Monitored Device: Child's Phone</h5>
+                        <small class="text-homemonitor-secondary" id="activeDeviceMeta">Device ID: DEV-90184 | Model: Android Phone | OS: Android 14</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="form-check form-switch mb-0 bg-light px-3 py-1 rounded border">
+                        <input class="form-check-input" type="checkbox" id="autoArchiveLocalToggle" checked>
+                        <label class="form-check-label extra-small text-dark fw-bold" for="autoArchiveLocalToggle" id="autoArchiveLabel"><i class="fa-solid fa-hard-drive me-1 text-primary"></i>Auto-Save to Local Storage</label>
+                    </div>
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary border px-3 py-2" id="connectionModeBadge" style="cursor: pointer;" title="Connection Mode Status"><i class="fa-solid fa-cloud me-1 text-info"></i>Firebase Relay Bus 🟢</span>
+                    <span class="badge bg-warning bg-opacity-10 text-warning border px-3 py-2" id="batteryBadge"><i class="fa-solid fa-battery-three-quarters me-1"></i>Battery: --%</span>
+                    <button class="btn btn-homemonitor-success btn-sm fw-bold" id="refreshTabBtn"><i class="fa-solid fa-rotate me-1"></i>Sync Now</button>
+                </div>
+            </div>
+
+            <!-- DYNAMIC CONTENT WORKSPACE PANELS -->
+            <div id="tabPanelsContainer" class="p-4 overflow-y-auto flex-grow-1">
+
+                <!-- TAB: HOME (DASHBOARD OVERVIEW) -->
+                <div class="tab-panel" id="tab-dashboard-overview">
+                    <div class="alert alert-info py-2 px-3 mb-3 small">
+                        <i class="fa-solid fa-house me-2"></i><strong>Family Overview:</strong> Real-time family safety dashboard showing connected devices, last updated activity, and safety alerts.
+                    </div>
+
+                    <!-- OVERVIEW REAL-TIME AGGREGATED METRICS CARDS -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <div class="card card-homemonitor p-3 border-start border-4 border-primary bg-white shadow-sm">
+                                <small class="text-uppercase text-muted extra-small fw-bold mb-1"><i class="fa-solid fa-mobile-screen me-1 text-primary"></i>Total Family Devices</small>
+                                <h3 class="fw-bold text-dark mb-0" id="overviewTotalDevicesCount">--</h3>
+                                <small class="text-secondary extra-small">Enrolled Child Devices</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card card-homemonitor p-3 border-start border-4 border-success bg-white shadow-sm">
+                                <small class="text-uppercase text-muted extra-small fw-bold mb-1"><i class="fa-solid fa-signal me-1 text-success"></i>Connected Devices</small>
+                                <h3 class="fw-bold text-success mb-0" id="overviewOnlineDevicesCount">--</h3>
+                                <small class="text-secondary extra-small">Active Update (<45s)</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card card-homemonitor p-3 border-start border-4 border-secondary bg-white shadow-sm">
+                                <small class="text-uppercase text-muted extra-small fw-bold mb-1"><i class="fa-solid fa-power-off me-1 text-secondary"></i>Not Connected</small>
+                                <h3 class="fw-bold text-secondary mb-0" id="overviewOfflineDevicesCount">--</h3>
+                                <small class="text-secondary extra-small">Standby or Offline</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card card-homemonitor p-3 border-start border-4 border-warning bg-white shadow-sm">
+                                <small class="text-uppercase text-muted extra-small fw-bold mb-1"><i class="fa-solid fa-triangle-exclamation me-1 text-warning"></i>Safety Alerts</small>
+                                <h3 class="fw-bold text-warning mb-0" id="overviewWarningCount">0</h3>
+                                <small class="text-secondary extra-small">Battery & Connection Warnings</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GOOGLE DRIVE CLOUD ARCHIVE OVERVIEW CARD -->
+                    <div class="card card-homemonitor p-4 mb-4 bg-white shadow-sm border border-success">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h5 class="fw-bold text-success mb-1">
+                                    <i class="fa-brands fa-google-drive me-2 text-success fs-4"></i>Google Drive Cloud Archive & Backup
+                                </h5>
+                                <p class="text-secondary extra-small mb-0">Automatic background sync transfers historical family logs directly into your parent Google Drive account.</p>
+                            </div>
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border px-3 py-2 extra-small" id="homeDriveBadge">
+                                <i class="fa-solid fa-cloud-arrow-up me-1"></i>Drive Disconnected
+                            </span>
+                        </div>
+
+                        <div class="p-3 bg-light rounded border mb-3">
+                            <div class="row g-3 text-center">
+                                <div class="col-md-3">
+                                    <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Connected Account</small>
+                                    <span class="fw-bold text-dark small" id="homeDriveEmailText">Not Connected</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Last Sync</small>
+                                    <span class="fw-bold text-dark small" id="homeDriveLastSyncText">Never</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Pending Records</small>
+                                    <span class="fw-bold text-primary small" id="homeDrivePendingText">0 Records</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Archive Interval</small>
+                                    <span class="fw-bold text-success small" id="homeDriveIntervalText">Every 6 Hours</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold connect-google-drive-btn" id="homeConnectDriveBtn">
+                                <i class="fa-brands fa-google-drive me-1"></i>Connect Google Drive Account
+                            </button>
+                            <a class="btn btn-sm btn-outline-success fw-bold" href="#/cloud_archive" data-route="/cloud_archive" data-tab="tab-parent-settings">
+                                <i class="fa-solid fa-gear me-1"></i>Manage Archive Settings
+                            </a>
+                            <button type="button" class="btn btn-sm btn-homemonitor-primary fw-bold" id="homeQuickArchiveBtn">
+                                <i class="fa-solid fa-cloud-arrow-up me-1"></i>Sync Cloud Archive Now
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="card card-homemonitor p-3 bg-white shadow-sm">
+                                <h6 class="fw-bold text-homemonitor-secondary mb-2"><i class="fa-solid fa-credit-card me-2 text-primary"></i>Parent Subscription</h6>
+                                <h5 class="fw-bold text-success mb-1">Family Protection Active</h5>
+                                <p class="text-homemonitor-secondary extra-small mb-1">Plan: HomeMonitor Standard Family Plan</p>
+                                <p class="text-homemonitor-secondary extra-small mb-0">Status: Unlimited Device Sync</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card card-homemonitor p-3 bg-white shadow-sm">
+                                <h6 class="fw-bold text-homemonitor-secondary mb-2"><i class="fa-solid fa-mobile-screen me-2 text-info"></i>Active Child Device Status</h6>
+                                <p class="mb-1 extra-small"><strong>Device Name:</strong> <span id="overviewDevName" class="fw-bold text-dark">Awaiting device...</span></p>
+                                <p class="mb-1 extra-small"><strong>Battery Level:</strong> <span id="overviewBattery" class="text-warning fw-bold">Awaiting pulse...</span></p>
+                                <p class="mb-0 extra-small"><strong>Last Updated:</strong> <span class="text-primary fw-bold" id="lastSyncTime">Awaiting sync...</span></p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card card-homemonitor p-3 bg-white shadow-sm">
+                                <h6 class="fw-bold text-homemonitor-secondary mb-2"><i class="fa-solid fa-sliders me-2 text-warning"></i>Device Management</h6>
+                                <div class="d-flex gap-2 flex-wrap mb-2">
+                                    <button class="btn btn-sm btn-outline-primary exec-cmd fw-bold" data-action="status"><i class="fa-solid fa-gauge me-1"></i>Check Status</button>
+                                    <button class="btn btn-sm btn-outline-info exec-cmd fw-bold" data-action="deviceinfo"><i class="fa-solid fa-mobile me-1"></i>Device Specs</button>
+                                    <button class="btn btn-sm btn-outline-warning exec-cmd fw-bold" data-action="camera"><i class="fa-solid fa-camera me-1"></i>Rear Photo</button>
+                                    <button class="btn btn-sm btn-outline-danger exec-cmd fw-bold" data-action="screenshot"><i class="fa-solid fa-desktop me-1"></i>Screenshot</button>
+                                    <button class="btn btn-sm btn-outline-primary fw-bold" id="openRenameModalBtn"><i class="fa-solid fa-pen-to-square me-1"></i>Rename</button>
+                                    <button class="btn btn-sm btn-outline-danger fw-bold" id="openUnlinkModalBtn"><i class="fa-solid fa-trash-can me-1"></i>Remove Device</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- EXECUTIVE ACTIVITY STREAM & RECENT NOTIFICATIONS -->
+                        <div class="col-md-6">
+                            <div class="card card-homemonitor p-3 h-100 bg-white shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="fw-bold text-homemonitor-primary mb-0"><i class="fa-solid fa-clock-rotate-left me-2 text-success"></i>Recent Device Activity</h6>
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success extra-small">Live Feed 🟢</span>
+                                </div>
+                                <div class="activity-stream-list overflow-y-auto pe-1" style="max-height: 280px;" id="execActivityStream">
+                                    <div class="text-center text-muted py-4 small"><i class="fa-solid fa-spinner fa-spin me-2"></i>Awaiting recent device activity...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card card-homemonitor p-3 h-100 bg-white shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="fw-bold text-warning mb-0"><i class="fa-solid fa-bell me-2"></i>Recent Notifications</h6>
+                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning extra-small">Alerts</span>
+                                </div>
+                                <div class="list-group gap-2 overflow-y-auto pe-1" style="max-height: 280px;" id="overviewRecentNotifications">
+                                    <div class="list-group-item bg-light text-muted border text-center py-4 small">🔔 Subscribed to device notification feed...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="card card-homemonitor p-3 bg-white shadow-sm">
+                                <h6 class="fw-bold text-homemonitor-primary mb-3"><i class="fa-solid fa-location-dot me-2 text-danger"></i>Latest Location Overview</h6>
+                                <div class="bg-light text-dark p-4 rounded text-center border" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+                                    <div class="bg-white p-3 rounded shadow-sm border">
+                                        <h6 class="text-success fw-bold mb-1" id="overviewGpsText"><i class="fa-solid fa-map-pin me-2"></i>Awaiting Real-Time Location...</h6>
+                                        <p class="small mb-0 text-secondary" id="overviewGpsMeta">Location updates automatically when available.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: PARENT HELP & SUPPORT CENTER -->
+                <div class="tab-panel d-none" id="tab-help-center">
+                    <div class="card card-homemonitor p-4 mb-4 bg-white shadow-sm">
+                        <div class="alert alert-info py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-circle-question me-2"></i><strong>Help & Guidance Center:</strong> Answers to common questions, step-by-step setup guides, and connection troubleshooting.
+                        </div>
+                        <h4 class="fw-bold text-info mb-3"><i class="fa-solid fa-circle-question me-2"></i>Parent Help & Support Center</h4>
+
+                        <!-- FAQ ACCORDION -->
+                        <div class="accordion accordion-flush" id="parentHelpAccordion">
+                            <div class="accordion-item bg-white text-dark border-bottom">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed bg-white text-success fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq1">
+                                        <i class="fa-solid fa-qrcode me-2"></i>How do I add my child's device?
+                                    </button>
+                                </h2>
+                                <div id="helpFaq1" class="accordion-collapse collapse" data-bs-parent="#parentHelpAccordion">
+                                    <div class="accordion-body small text-secondary">
+                                        1. Install the HomeMonitor app on your child's Android phone.<br>
+                                        2. Open the app and sign in with your Parent Account credentials.<br>
+                                        3. Grant the required permissions on your child's device to complete enrollment.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item bg-white text-dark border-bottom">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed bg-white text-warning fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq2">
+                                        <i class="fa-solid fa-signal me-2"></i>What do the connection status badges mean?
+                                    </button>
+                                </h2>
+                                <div id="helpFaq2" class="accordion-collapse collapse" data-bs-parent="#parentHelpAccordion">
+                                    <div class="accordion-body small text-secondary">
+                                        - <strong class="text-success">Connected 🟢:</strong> The device sent an update within the last 45 seconds.<br>
+                                        - <strong class="text-warning">Not Connected 🟡:</strong> The device is on standby or temporarily offline.<br>
+                                        - <strong class="text-danger">Couldn't Connect 🔴:</strong> Direct connection attempt timed out or failed.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item bg-white text-dark border-bottom">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed bg-white text-info fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq3">
+                                        <i class="fa-solid fa-location-dot me-2"></i>How does location tracking work?
+                                    </button>
+                                </h2>
+                                <div id="helpFaq3" class="accordion-collapse collapse" data-bs-parent="#parentHelpAccordion">
+                                    <div class="accordion-body small text-secondary">
+                                        Location relies on Android Location permissions (GPS & Wi-Fi). Ensure your child's phone has Location Services enabled. Historical locations are saved under the <strong>Location</strong> tab.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item bg-white text-dark border-bottom">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed bg-white text-primary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq4">
+                                        <i class="fa-solid fa-key me-2"></i>How do I reset my password or enable 2-step verification?
+                                    </button>
+                                </h2>
+                                <div id="helpFaq4" class="accordion-collapse collapse" data-bs-parent="#parentHelpAccordion">
+                                    <div class="accordion-body small text-secondary">
+                                        Go to the <strong>Account & Security</strong> tab in the sidebar. Click <strong>Send Password Reset Email</strong> to change your password. You can also inspect two-step verification (TOTP MFA) status.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item bg-white text-dark border-bottom">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed bg-white text-danger fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#helpFaq5">
+                                        <i class="fa-solid fa-trash-can me-2"></i>How do I remove a device from my account?
+                                    </button>
+                                </h2>
+                                <div id="helpFaq5" class="accordion-collapse collapse" data-bs-parent="#parentHelpAccordion">
+                                    <div class="accordion-body small text-secondary">
+                                        Under the <strong>Home</strong> overview or <strong>Devices</strong> section, click <strong>Remove Device</strong>. You will be prompted to type <code>REMOVE</code> to confirm.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: ACCOUNT & SECURITY SETTINGS -->
+                <div class="tab-panel d-none" id="tab-parent-settings">
+                    <div class="card card-homemonitor p-4 mb-4 bg-white shadow-sm">
+                        <div class="alert alert-warning py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-user-gear me-2"></i><strong>Account & Security Guidelines:</strong> Manage parent profile details, password reset, two-step verification (MFA), and family preferences.
+                        </div>
+                        <h4 class="fw-bold text-warning mb-3"><i class="fa-solid fa-user-gear me-2"></i>Parent Account & Security</h4>
+
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="p-3 bg-light text-dark rounded border">
+                                    <h6 class="fw-bold text-info mb-2"><i class="fa-solid fa-id-card me-2"></i>Parent Profile Details</h6>
+                                    <p class="small mb-1"><strong>Parent Name:</strong> <span id="parentProfileName" class="text-dark">Sarah Johnson</span></p>
+                                    <p class="small mb-1"><strong>Email Address:</strong> <span id="parentProfileEmail" class="text-dark">--</span></p>
+                                    <p class="small mb-1"><strong>Account User ID:</strong> <code id="parentProfileUid" class="text-success">--</code></p>
+                                    <p class="small mb-0"><strong>Role:</strong> <span id="parentProfileRole" class="badge bg-secondary">Standard Parent</span></p>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="p-3 bg-light text-dark rounded border">
+                                    <h6 class="fw-bold text-warning mb-2"><i class="fa-solid fa-shield-halved me-2"></i>Account Security & Password</h6>
+                                    <p class="extra-small text-secondary mb-2">Request a secure password reset link sent to your registered parent email address.</p>
+                                    <button class="btn btn-sm btn-outline-warning fw-bold" id="sendPasswordResetBtn"><i class="fa-solid fa-envelope me-1"></i>Send Password Reset Email</button>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="card card-homemonitor p-4 mb-3 bg-white shadow-sm border">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <h5 class="fw-bold text-primary mb-1"><i class="fa-brands fa-google-drive me-2 text-success"></i>Google Drive Cloud Archive & Historical Synchronization</h5>
+                                            <p class="text-homemonitor-secondary extra-small mb-0">Automated one-way archive: Transfers eligible SQLite historical logs into parent's Google Drive and purges committed records locally.</p>
+                                        </div>
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border px-3 py-2 extra-small" id="driveVaultStatusBadge"><i class="fa-solid fa-cloud-arrow-up me-1"></i>Drive Disconnected</span>
+                                    </div>
+
+                                    <!-- Storage Protection / Error Alert Banner -->
+                                    <div id="driveStorageAlertBanner" class="alert alert-warning py-2 px-3 mb-3 extra-small d-none">
+                                        <i class="fa-solid fa-triangle-exclamation me-2 text-warning fs-6"></i>
+                                        <span id="driveAlertBannerText">Storage Warning: Cloud sync error detected.</span>
+                                    </div>
+
+                                    <!-- Live Device Metrics Grid -->
+                                    <div class="p-3 bg-light rounded border mb-3">
+                                        <div class="row g-3 text-center">
+                                            <div class="col-md-3">
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Connected Account</small>
+                                                <span class="fw-bold text-dark small" id="driveAccountEmailText">Not Connected</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Last Archive Run</small>
+                                                <span class="fw-bold text-dark small" id="driveBackupLastTime">Never Synced</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Pending Local Records</small>
+                                                <span class="fw-bold text-primary small" id="drivePendingRecordsText">0 Records</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Total Archived & Purged</small>
+                                                <span class="fw-bold text-success small" id="driveTotalArchivedText">0 Records</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Archive Configuration Settings Panel -->
+                                    <div class="p-3 bg-white border rounded mb-3">
+                                        <h6 class="fw-bold text-dark small mb-3"><i class="fa-solid fa-sliders me-2 text-primary"></i>Archive Schedule & Constraint Configuration</h6>
+                                        <div class="row g-3 align-items-center">
+                                            <div class="col-md-4">
+                                                <label class="form-label extra-small fw-bold text-secondary mb-1">Archive Interval</label>
+                                                <select class="form-select form-select-sm fw-bold extra-small" id="archiveIntervalSelect">
+                                                    <option value="6">6 Hours (Recommended)</option>
+                                                    <option value="1">1 Hour</option>
+                                                    <option value="12">12 Hours</option>
+                                                    <option value="24">24 Hours</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label extra-small fw-bold text-secondary mb-1">Automatic Archive Trigger</label>
+                                                <div class="form-check form-switch pt-1">
+                                                    <input class="form-check-input" type="checkbox" id="autoArchiveEnableToggle" checked>
+                                                    <label class="form-check-label extra-small fw-bold" for="autoArchiveEnableToggle">Auto-Archive Enabled</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label extra-small fw-bold text-secondary mb-1">Network & Power Constraints</label>
+                                                <div class="d-flex gap-3 pt-1">
+                                                    <div class="form-check form-switch mb-0">
+                                                        <input class="form-check-input" type="checkbox" id="archiveUnmeteredToggle" checked>
+                                                        <label class="form-check-label extra-small fw-bold" for="archiveUnmeteredToggle">Unmetered Wi-Fi Only</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="alert alert-info py-2 px-3 mb-3 extra-small">
+                                        <i class="fa-solid fa-circle-info me-1"></i><strong>Historical Archive Policy:</strong> Records are stored locally in SQLite until reaching the threshold (1,000 records) or scheduled interval (6h), uploaded to Google Drive in GZIP batch files, verified, and purged from Android.
+                                    </div>
+
+                                    <div class="d-flex gap-2 justify-content-end flex-wrap">
+                                        <button type="button" class="btn btn-outline-danger fw-bold extra-small d-none" id="archiveDisconnectBtn">
+                                            <i class="fa-solid fa-link-slash me-1"></i>Disconnect Drive
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary fw-bold extra-small connect-google-drive-btn" id="googleDriveBackupBtn">
+                                            <i class="fa-brands fa-google-drive me-1"></i>Connect Google Drive Account
+                                        </button>
+                                        <button type="button" class="btn btn-homemonitor-primary fw-bold extra-small" id="archiveRunNowBtn">
+                                            <i class="fa-solid fa-cloud-arrow-up me-1"></i>Archive Now (WebRTC)
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="card card-homemonitor p-4 mb-3 bg-white shadow-sm border">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <h5 class="fw-bold text-danger mb-1"><i class="fa-solid fa-broom me-2 text-danger"></i>Firebase Realtime Database Clean-Up & Maintenance</h5>
+                                            <p class="text-homemonitor-secondary extra-small mb-0">Purge old command logs, stale actions, expired response buffers, and legacy junk data from your Firebase Realtime Database.</p>
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-danger fw-bold extra-small" onclick="purgeFirebaseJunkData()"><i class="fa-solid fa-trash-can me-1"></i>Purge Database Junk</button>
+                                    </div>
+
+                                    <div class="p-3 bg-light rounded border mb-3">
+                                        <div class="row g-3 text-center">
+                                            <div class="col-md-3">
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Old Actions & Commands</small>
+                                                <span class="fw-bold text-dark small" id="dbJunkActionsCount">Ready to Clean</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">WebRTC Signaling Logs</small>
+                                                <span class="fw-bold text-dark small" id="dbJunkSignalingCount">Ready to Clean</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Legacy Response Buffers</small>
+                                                <span class="fw-bold text-dark small" id="dbJunkTelemetryCount">Ready to Clean</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted extra-small d-block text-uppercase fw-bold mb-1">Last Clean-Up</small>
+                                                <span class="fw-bold text-success small" id="dbLastCleanTime">Never</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div id="dbCleanupStatusAlert" class="alert alert-info py-2 px-3 mb-0 extra-small d-none"></div>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="p-3 bg-light text-dark rounded border">
+                                    <h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-key me-2"></i>Two-Step Verification (MFA / TOTP) Status</h6>
+                                    <div class="alert alert-info extra-small py-2 px-3 mb-2">
+                                        <i class="fa-solid fa-circle-info me-1"></i><strong>Two-Step Verification:</strong> Master Admin accounts require mandatory two-step verification. Ordinary parent accounts can optionally enroll TOTP MFA using Google Authenticator or Authy when Firebase Identity Platform is enabled.
+                                    </div>
+                                    <span class="badge bg-secondary extra-small" id="parentMfaStatusBadge">Two-Step Verification: Ready (Identity Platform Supported)</span>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="p-3 bg-light text-dark rounded border">
+                                    <h6 class="fw-bold text-success mb-3"><i class="fa-solid fa-sliders me-2"></i>Family & Display Preferences</h6>
+                                    <form id="parentPreferencesForm" class="row g-3">
+                                        <div class="col-md-4">
+                                            <label for="prefTimezoneSelect" class="form-label extra-small text-uppercase fw-bold text-muted">Timezone</label>
+                                            <select id="prefTimezoneSelect" class="form-select form-select-sm bg-white text-dark border">
+                                                <option value="AUTO" selected>Auto (Local Browser Timezone)</option>
+                                                <option value="UTC">UTC (Coordinated Universal Time)</option>
+                                                <option value="America/New_York">US Eastern (EST/EDT)</option>
+                                                <option value="America/Los_Angeles">US Pacific (PST/PDT)</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="prefPollingIntervalSelect" class="form-label extra-small text-uppercase fw-bold text-muted">Status Update Speed</label>
+                                            <select id="prefPollingIntervalSelect" class="form-select form-select-sm bg-white text-dark border">
+                                                <option value="REALTIME" selected>Realtime Instant Sync</option>
+                                                <option value="15000">15 Seconds (Low Data)</option>
+                                                <option value="60000">60 Seconds (Data Saver)</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label extra-small text-uppercase fw-bold text-muted">Notification Alerts</label>
+                                            <div class="form-check form-switch mt-1">
+                                                <input class="form-check-input" type="checkbox" id="prefAlertOfflineToggle" checked>
+                                                <label class="form-check-label extra-small text-dark" for="prefAlertOfflineToggle">Alert when device goes offline (>45s)</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 text-end">
+                                            <button type="submit" class="btn btn-sm btn-homemonitor-success fw-bold" id="saveParentPreferencesBtn"><i class="fa-solid fa-floppy-disk me-1"></i>Save Preferences</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: MASTER ADMIN CONSOLE -->
+                <div class="tab-panel d-none" id="tab-master-admin">
+                    <div class="card card-homemonitor p-4 mb-4 bg-white shadow-sm">
+                        <div class="alert alert-warning py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-crown me-2"></i><strong>👑 Master Admin Guidelines:</strong> Toggle feature switches ON/OFF to grant or revoke specific control capabilities.
+                        </div>
+                        <h4 class="fw-bold text-warning"><i class="fa-solid fa-crown me-2"></i>Master Admin Console</h4>
+                        <p class="text-homemonitor-secondary small">Manage user registry, inspect all enrolled devices, and toggle dynamic feature permissions.</p>
+
+                        <div class="table-responsive mt-3">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Device ID</th>
+                                        <th>Owner Account</th>
+                                        <th>Model / OS</th>
+                                        <th>Feature Permissions Toggle Matrix</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="masterAdminDeviceTable">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">Loading device permissions matrix...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: DEVICE INFORMATION (DEVICES) -->
+                <div class="tab-panel d-none" id="tab-device-info">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-info py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-mobile-screen me-2"></i><strong>Device Specs Guidelines:</strong> Displays technical hardware attributes, battery health, RAM, storage, and IP address.
+                        </div>
+                        <h4 class="fw-bold text-info mb-3"><i class="fa-solid fa-mobile-screen-button me-2"></i>Technical Device Specs</h4>
+                        <div class="row g-3">
+                            <div class="col-md-6"><div class="p-3 bg-light rounded border"><strong>Model:</strong> <span id="specModel">Android System</span></div></div>
+                            <div class="col-md-6"><div class="p-3 bg-light rounded border"><strong>OS Version:</strong> <span id="specOs">Android 14 (API 35)</span></div></div>
+                            <div class="col-md-6"><div class="p-3 bg-light rounded border"><strong>Battery:</strong> <span id="specBattery" class="text-success fw-bold">85% (Good)</span></div></div>
+                            <div class="col-md-6"><div class="p-3 bg-light rounded border"><strong>Local IP:</strong> <span id="specIp">192.168.1.150</span></div></div>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <!-- TAB: CONTACTS PHONEBOOK -->
+                <div class="tab-panel d-none" id="tab-contacts">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-warning py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-address-book me-2"></i><strong>Contacts Guidelines:</strong> View address book contacts and trigger direct call or SMS.
+                        </div>
+                        <h4 class="fw-bold text-warning mb-3"><i class="fa-solid fa-address-book me-2"></i>Contacts Phonebook</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="contacts"><i class="fa-solid fa-download me-1"></i>Fetch Contacts</button>
+                            <button class="btn btn-outline-warning fetch-tab-response fw-bold" data-category="contacts"><i class="fa-solid fa-rotate me-1"></i>Refresh Response</button>
+                        </div>
+                        <div class="input-group mb-3">
+                            <input type="text" id="contactSearchInput" class="form-control" placeholder="Search contacts by name or number...">
+                            <button class="btn btn-outline-secondary"><i class="fa-solid fa-search"></i></button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead><tr><th>Name</th><th>Phone Number</th><th>Type</th><th>Actions</th></tr></thead>
+                                <tbody id="contactsTableBody">
+                                    <tr><td colspan="4" class="text-center text-muted py-3">📭 Awaiting contacts stream from device...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: CALL LOGS & RECORDINGS -->
+                <div class="tab-panel d-none" id="tab-calls">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-success py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-phone me-2"></i><strong>Call History Guidelines:</strong> Inspect incoming/outgoing call logs and listen to call recordings.
+                        </div>
+                        <h4 class="fw-bold text-success mb-3"><i class="fa-solid fa-phone-volume me-2"></i>Call History & Audio Recordings</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="calls"><i class="fa-solid fa-download me-1"></i>Fetch Call Logs</button>
+                            <button class="btn btn-outline-success fetch-tab-response fw-bold" data-category="calls"><i class="fa-solid fa-rotate me-1"></i>Refresh Response</button>
+                        </div>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-hover align-middle">
+                                <thead><tr><th>Contact</th><th>Number</th><th>Type</th><th>Duration</th><th>Timestamp</th></tr></thead>
+                                <tbody id="callsTableBody">
+                                    <tr><td colspan="5" class="text-center text-muted py-3">📭 Awaiting call logs stream from device...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <h5 class="fw-bold text-homemonitor-primary mb-2">Recorded Call Audio Clips</h5>
+                        <div class="row g-3" id="callRecsList">
+                            <div class="col-12 text-center text-muted py-3 extra-small">📞 No recorded call audio clips found.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: PHOTOS GALLERY -->
+                <div class="tab-panel d-none" id="tab-photos">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-primary py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-images me-2"></i><strong>Photos Gallery Guidelines:</strong> Browse photo gallery, dump by date range, or download media ZIP packages.
+                        </div>
+                        <h4 class="fw-bold text-primary mb-3"><i class="fa-solid fa-images me-2"></i>Device Photo Gallery</h4>
+                        <div class="d-flex gap-2 mb-4">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="syncmedia" data-params='{"hours":24}'><i class="fa-solid fa-file-zipper me-1"></i>Download Media ZIP (24h)</button>
+                            <button class="btn btn-outline-primary exec-cmd fw-bold" data-action="photos" data-params='{"limit":20}'><i class="fa-solid fa-download me-1"></i>Fetch Recent Photos</button>
+                            <button class="btn btn-outline-info fetch-tab-response fw-bold" data-category="photos"><i class="fa-solid fa-rotate me-1"></i>Refresh Response</button>
+                        </div>
+                        <div class="row g-3" id="photoGalleryGrid">
+                            <div class="col-12 text-center text-muted py-4 small">🖼️ Waiting for photo gallery activity...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: GPS LOCATIONS (LOCATION) -->
+                <div class="tab-panel d-none" id="tab-gps-locations">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-danger py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-location-dot me-2"></i><strong>GPS Locations Guidelines:</strong> View real-time location and historical route coordinates.
+                        </div>
+                        <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-map-location-dot me-2"></i>GPS Location Tracking</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd" data-action="geolocation"><i class="fa-solid fa-location-crosshairs me-1"></i>Get GPS Location</button>
+                            <button class="btn btn-outline-secondary exec-cmd" data-action="iplocation"><i class="fa-solid fa-globe me-1"></i>Get IP Location</button>
+                            <button class="btn btn-outline-danger fetch-tab-response fw-bold" data-category="gps_locations"><i class="fa-solid fa-rotate me-1"></i>Refresh GPS Response</button>
+                        </div>
+                        <!-- MapLibre OpenStreetMap Interactive Map Container -->
+                        <div class="mb-4">
+                            <div id="gpsMapContainer" style="height: 380px; width: 100%; border-radius: 10px; border: 1px solid #CBD5E1; background-color: #F1F5F9;"></div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead><tr><th>Timestamp</th><th>Latitude / Longitude</th><th>Accuracy</th><th>Address / Place</th></tr></thead>
+                                <tbody id="gpsTableBody">
+                                    <tr><td colspan="4" class="text-center text-muted py-3">📭 Awaiting location activity from device...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: GEOFENCING ZONES -->
+                <div class="tab-panel d-none" id="tab-geofencing">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-primary py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-draw-polygon me-2"></i><strong>Safe Zones Guidelines:</strong> Set up perimeter boundaries and receive automated entry/exit security alerts.
+                        </div>
+                        <h4 class="fw-bold text-primary mb-3"><i class="fa-solid fa-draw-polygon me-2"></i>Geofence Safe Zones</h4>
+                        <form id="geofenceForm" class="row g-3 mb-4">
+                            <div class="col-md-5"><input type="text" id="geofenceNameInput" class="form-control" placeholder="Zone Name (e.g. Home, School)" required></div>
+                            <div class="col-md-4"><input type="number" id="geofenceRadiusInput" class="form-control" placeholder="Radius (meters, e.g. 500)" required></div>
+                            <div class="col-md-3"><button type="submit" class="btn btn-homemonitor-primary w-100 fw-bold">Add Safe Zone</button></div>
+                        </form>
+                        <h5 class="fw-bold text-homemonitor-primary mb-2">Active Geofence Boundaries</h5>
+                        <div class="list-group gap-2" id="geofenceListContainer">
+                            <div class="list-group-item bg-light text-muted border text-center py-3 extra-small">🌐 No active safe zones configured.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: WEBSTREAM REMOTE TOUCH SCREEN CONTROL -->
+                <div class="tab-panel d-none" id="tab-webstream">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-success py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-desktop me-2"></i><strong>WebStream Guidelines:</strong> Live P2P screen streaming via silent frame capture.
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="fw-bold text-success mb-0"><i class="fa-solid fa-desktop me-2"></i>WebStream Live Screen Viewport</h4>
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2" id="p2pStatusBadge">P2P WebRTC Standby</span>
+                        </div>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary fw-bold" id="startP2pWebStreamBtn"><i class="fa-solid fa-play me-1"></i>Start Live WebStream</button>
+                            <button class="btn btn-outline-danger fw-bold" id="stopP2pWebStreamBtn"><i class="fa-solid fa-stop me-1"></i>Stop Stream</button>
+                        </div>
+                        <div class="bg-light rounded p-2 d-flex justify-content-center align-items-center border" style="min-height: 480px;">
+                            <canvas id="liveScreenCanvas" width="360" height="780" class="border rounded shadow-sm" style="max-height: 520px; width: auto; background-color: #000;"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: FILE STORAGE EXPLORER -->
+                <div class="tab-panel d-none" id="tab-file-explorer">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-warning py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-folder-open me-2"></i><strong>File Explorer Guidelines:</strong> Browse internal storage directories, list files, and download folder ZIP packages.
+                        </div>
+                        <h4 class="fw-bold text-warning mb-3"><i class="fa-solid fa-folder-open me-2"></i>Storage File Directory</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-outline-secondary exec-cmd" data-action="files_list"><i class="fa-solid fa-list me-1"></i>List Directory</button>
+                            <button class="btn btn-outline-secondary exec-cmd" data-action="files_pwd"><i class="fa-solid fa-folder me-1"></i>Current Location</button>
+                            <button class="btn btn-homemonitor-primary exec-cmd" data-action="files_zip" data-params='{"folder":"Download"}'><i class="fa-solid fa-file-zipper me-1"></i>ZIP Download Folder</button>
+                            <button class="btn btn-outline-warning fetch-tab-response fw-bold" data-category="files"><i class="fa-solid fa-rotate me-1"></i>Refresh Files Response</button>
+                        </div>
+                        <div class="table-responsive bg-white rounded border" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-hover align-middle mb-0 extra-small">
+                                <thead class="text-uppercase text-muted sticky-top bg-light border-bottom">
+                                    <tr>
+                                        <th>Item Name</th>
+                                        <th>Type</th>
+                                        <th>Size</th>
+                                        <th>Permissions</th>
+                                        <th>Last Modified</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fileExplorerTableBody">
+                                    <tr><td colspan="6" class="text-center text-muted py-4">📂 Subscribed to file storage activity...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: TERMUX LINUX SHELL -->
+                <div class="tab-panel d-none" id="tab-termux-shell">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-success py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-terminal me-2"></i><strong>Linux Terminal Guidelines:</strong> Execute shell commands in the Termux environment on the device.
+                        </div>
+                        <h4 class="fw-bold text-success"><i class="fa-solid fa-terminal me-2"></i>Linux Shell Terminal Console</h4>
+                        <p class="text-homemonitor-secondary small">Command execution console and output stream.</p>
+
+                        <div class="d-flex gap-2 mb-3 flex-wrap">
+                            <button class="btn btn-sm btn-outline-secondary termux-quick" data-sh="uname -a">uname -a</button>
+                            <button class="btn btn-sm btn-outline-secondary termux-quick" data-sh="ls -la /sdcard">ls /sdcard</button>
+                            <button class="btn btn-sm btn-outline-secondary termux-quick" data-sh="pkg list-installed">pkg list</button>
+                            <button class="btn btn-sm btn-outline-secondary termux-quick" data-sh="top -n 1">top</button>
+                            <button class="btn btn-sm btn-outline-secondary termux-quick" data-sh="ifconfig">ifconfig</button>
+                        </div>
+
+                        <!-- Terminal Box -->
+                        <div class="log-output-box p-3 mb-3 font-monospace bg-dark text-success" style="height: 350px; overflow-y: auto;" id="termuxConsoleOutput">
+                            [Linux Shell Console Connected]
+$
+                        </div>
+
+                        <form id="termuxForm" class="d-flex gap-2">
+                            <span class="input-group-text bg-dark text-success border font-monospace">$</span>
+                            <input type="text" id="termuxInput" class="form-control bg-dark text-success border font-monospace" placeholder="Enter shell command (e.g. ls, uptime, whoami)..." required>
+                            <button type="submit" class="btn btn-homemonitor-success fw-bold"><i class="fa-solid fa-paper-plane me-1"></i>Execute</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- TAB: TEXT MESSAGES (SMS) -->
+                <div class="tab-panel d-none" id="tab-sms-messages">
+                    <div class="card card-homemonitor p-4 mb-4 bg-white shadow-sm">
+                        <div class="alert alert-info py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-comment-sms me-2"></i><strong>SMS Manager Guidelines:</strong> View received SMS messages or send outbound SMS remotely from the device.
+                        </div>
+                        <h4 class="fw-bold text-info mb-3"><i class="fa-solid fa-paper-plane me-2"></i>Send Remote SMS</h4>
+                        <form id="smsSendForm" class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label for="smsPhoneNum" class="form-label extra-small text-uppercase fw-bold text-homemonitor-secondary">Recipient Phone Number</label>
+                                <input type="text" id="smsPhoneNum" class="form-control" placeholder="+1234567890" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="smsMsgText" class="form-label extra-small text-uppercase fw-bold text-homemonitor-secondary">SMS Message Content</label>
+                                <input type="text" id="smsMsgText" class="form-control" placeholder="Enter message text..." required>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-homemonitor-primary w-100 fw-bold"><i class="fa-solid fa-paper-plane me-1"></i>Send SMS</button>
+                            </div>
+                        </form>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="fw-bold text-homemonitor-primary mb-0">SMS Inbox History</h5>
+                            <button class="btn btn-sm btn-outline-info fetch-tab-response fw-bold" data-category="sms"><i class="fa-solid fa-rotate me-1"></i>Refresh SMS Response</button>
+                        </div>
+                        <div class="list-group gap-2 overflow-y-auto" style="max-height: 300px;" id="smsMessageList">
+                            <div class="list-group-item bg-light text-muted border text-center py-4 small">💬 Waiting for SMS inbox activity...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: AMBIENT MIC RECORDER -->
+                <div class="tab-panel d-none" id="tab-ambient-mic">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-info py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-microphone me-2"></i><strong>Ambient Mic Guidelines:</strong> Record ambient mic audio in 5s to 120s duration clips and listen back directly.
+                        </div>
+                        <h4 class="fw-bold text-info"><i class="fa-solid fa-microphone me-2"></i>Ambient Mic Recording Studio</h4>
+                        <div class="d-flex gap-2 align-items-center mb-4 mt-3 flex-wrap">
+                            <label for="micDurationSelect" class="form-label mb-0 fw-bold extra-small text-uppercase text-homemonitor-secondary">Duration:</label>
+                            <select id="micDurationSelect" class="form-select border style-width-auto" style="width: 140px;">
+                                <option value="10">10 Seconds</option>
+                                <option value="15" selected>15 Seconds</option>
+                                <option value="30">30 Seconds</option>
+                                <option value="60">60 Seconds</option>
+                            </select>
+                            <button class="btn btn-homemonitor-primary fw-bold" id="startMicRecordBtn"><i class="fa-solid fa-circle-dot me-1 text-danger"></i>Record Ambient Audio</button>
+                            <button class="btn btn-outline-info fetch-tab-response fw-bold" data-category="audio"><i class="fa-solid fa-rotate me-1"></i>Refresh Response</button>
+                        </div>
+                        <div class="row g-3" id="micRecordingsList">
+                            <div class="col-12 text-center text-muted py-4 small">🎙️ Waiting for audio recordings...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: CAMERA STUDIO -->
+                <div class="tab-panel d-none" id="tab-camera-studio">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-warning py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-camera me-2"></i><strong>Camera Studio Guidelines:</strong> Capture photos using the rear or front camera lens.
+                        </div>
+                        <h4 class="fw-bold text-warning"><i class="fa-solid fa-camera me-2"></i>Camera Studio Photo Capture</h4>
+                        <div class="d-flex gap-2 mb-4 mt-3 flex-wrap">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="camera"><i class="fa-solid fa-camera me-1"></i>Capture Rear Photo</button>
+                            <button class="btn btn-homemonitor-success exec-cmd fw-bold" data-action="frontcam"><i class="fa-solid fa-user-large me-1"></i>Capture Front Photo</button>
+                            <button class="btn btn-outline-warning fetch-tab-response fw-bold" data-category="photos"><i class="fa-solid fa-rotate me-1"></i>Refresh Response</button>
+                        </div>
+                        <div class="row g-3" id="cameraGalleryGrid">
+                            <div class="col-12 text-center text-muted py-4 small">📸 Waiting for photo captures...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: BROWSER HISTORY & OPEN URL -->
+                <div class="tab-panel d-none" id="tab-browser-history">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-info py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-compass me-2"></i><strong>Browser History Guidelines:</strong> Inspect web search history and remotely open web URLs in the target browser.
+                        </div>
+                        <h4 class="fw-bold text-info mb-3"><i class="fa-solid fa-globe me-2"></i>Remote Browser URL Opener</h4>
+                        <form id="openUrlForm" class="d-flex gap-2 mb-4">
+                            <input type="url" id="targetUrlInput" class="form-control" placeholder="https://example.com" required>
+                            <button type="submit" class="btn btn-homemonitor-primary fw-bold"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Open URL</button>
+                        </form>
+                        <h5 class="fw-bold text-homemonitor-primary mb-2">Browser History Feed</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light text-uppercase extra-small">
+                                    <tr>
+                                        <th>Source</th>
+                                        <th>Title / Search</th>
+                                        <th>Timestamp</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="browserHistoryTableBody">
+                                    <tr><td colspan="4" class="text-center text-muted py-4">🌐 Waiting for web search activity...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: SAFETY SETTINGS (MDM & STEALTH) -->
+                <div class="tab-panel d-none" id="tab-mdm-security">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-danger py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-user-shield me-2"></i><strong>Safety Settings Guidelines:</strong> Toggle app launcher icon hiding, stealth screen overlay, Shizuku ADB, or trigger remote lock/wipe.
+                        </div>
+                        <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-shield-virus me-2"></i>Safety Settings & Parental Controls</h4>
+                        <div class="d-flex gap-2 flex-wrap mb-4">
+                            <button class="btn btn-outline-danger exec-cmd-confirm" data-action="hideapp" data-desc="Hide App Launcher Icon">🙈 Hide App Icon</button>
+                            <button class="btn btn-outline-success exec-cmd" data-action="unhideapp">👁️ Un-hide App Icon</button>
+                            <button class="btn btn-outline-warning exec-cmd-confirm" data-action="stealth" data-params='{"enabled":true}' data-desc="Enable Stealth Mode Overlay">🕶️ Stealth Mode ON</button>
+                            <button class="btn btn-outline-secondary exec-cmd" data-action="stealth" data-params='{"enabled":false}'>☀️ Stealth Mode OFF</button>
+                            <button class="btn btn-outline-primary exec-cmd-confirm" data-action="lock" data-desc="Remote Lock Device Screen">🔒 Lock Device Screen</button>
+                        </div>
+                        <form id="shizukuForm" class="d-flex gap-2 mb-3">
+                            <input type="text" id="shizukuCmdInput" class="form-control font-monospace" placeholder="Enter Shizuku rootless ADB command (e.g. pm list packages)..." required>
+                            <button type="submit" class="btn btn-danger fw-bold">Execute Shizuku ADB</button>
+                        </form>
+                        <div class="list-group gap-2 overflow-y-auto" style="max-height: 250px;" id="mdmLogList">
+                            <div class="list-group-item bg-light text-muted border text-center py-3 extra-small">🛡️ Ready for safety control actions...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: 3-COLUMN SOCIAL CHAT WORKSPACE -->
+                <div class="tab-panel d-none" id="tab-social-chat">
+                    <div class="card card-homemonitor p-0 overflow-hidden border social-workspace-container bg-white shadow-sm" style="height: calc(100vh - 160px);">
+                        <div class="row g-0 h-100">
+                            <!-- COLUMN 2: CONVERSATIONS & CONTACTS LIST PANEL -->
+                            <div class="col-md-4 border-end social-conv-list-panel h-100 d-flex flex-column bg-light">
+                                <div class="p-3 border-bottom bg-white">
+                                    <h6 class="fw-bold text-dark mb-2" id="socialHeaderTitle">💬 Social Messages</h6>
+                                    <ul class="nav nav-pills nav-justified small" id="socialConvTabs">
+                                        <li class="nav-item">
+                                            <button class="nav-link active py-1 btn-sm" id="tabConversationsBtn">CONVERSATIONS</button>
+                                        </li>
+                                        <li class="nav-item">
+                                            <button class="nav-link text-secondary py-1 btn-sm" id="tabContactsBtn">CONTACTS</button>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="overflow-y-auto flex-grow-1" id="socialConvList">
+                                    <!-- Rendered dynamically by social.js -->
+                                </div>
+                            </div>
+
+                            <!-- COLUMN 3: CONVERSATION TIMELINE VIEWER PANEL -->
+                            <div class="col-md-8 h-100 d-flex flex-column bg-white text-dark">
+                                <div class="p-3 border-bottom bg-light d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fa-solid fa-comments text-primary"></i>
+                                        <h6 class="mb-0 fw-bold text-dark" id="activeConvContactName">Select a conversation...</h6>
+                                    </div>
+                                    <span class="badge bg-secondary extra-small">Real-Time Sync</span>
+                                </div>
+
+                                <!-- CHRONOLOGICAL MESSAGE TIMELINE -->
+                                <div class="p-4 overflow-y-auto flex-grow-1 font-monospace" id="socialMessageTimeline" style="background-color: #F8FAFC;">
+                                    <div class="text-center text-muted small mt-5">Select a contact conversation on the left to view message history.</div>
+                                </div>
+
+                                <!-- INTERACTIVE CHAT INPUT FORM -->
+                                <div class="p-3 border-top bg-light">
+                                    <form id="socialChatForm" class="d-flex gap-2">
+                                        <input type="text" id="socialChatInput" class="form-control bg-white text-dark border small" placeholder="Type a message to simulate reply..." required>
+                                        <button type="submit" class="btn btn-homemonitor-primary fw-bold"><i class="fa-solid fa-paper-plane me-1"></i>Send</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: INSTALLED APPLICATIONS (SCREEN TIME) -->
+                <div class="tab-panel d-none" id="tab-installed-apps">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-info py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-clock me-2"></i><strong>Screen Time & Applications:</strong> View and search packages and screen activity on the target device.
+                        </div>
+                        <h4 class="fw-bold text-info mb-3"><i class="fa-solid fa-cubes me-2"></i>Installed Applications Registry</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="packages" data-params='{"filter":"third_party"}'><i class="fa-solid fa-list me-1"></i>List 3rd-Party Packages</button>
+                            <button class="btn btn-outline-secondary exec-cmd fw-bold" data-action="packages" data-params='{"filter":"all"}'><i class="fa-solid fa-cubes me-1"></i>List All System Packages</button>
+                            <button class="btn btn-outline-info fetch-tab-response fw-bold" data-category="installed_apps"><i class="fa-solid fa-rotate me-1"></i>Refresh Packages Response</button>
+                        </div>
+                        <div class="row g-3" id="installedAppsGrid">
+                            <div class="col-12 text-center text-muted py-4 small">📦 Awaiting installed application package list...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: SCREENRECORDER CLIPS -->
+                <div class="tab-panel d-none" id="tab-screenrecorder">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-danger py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-circle-play me-2"></i><strong>Screenrecorder Guidelines:</strong> Trigger live screenshot capture or screen clip recording.
+                        </div>
+                        <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-circle-play me-2"></i>Screenrecorder & Screenshots</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="screenshot"><i class="fa-solid fa-desktop me-1"></i>Capture Live Screenshot</button>
+                            <button class="btn btn-outline-danger exec-cmd fw-bold" data-action="screenrecord" data-params='{"seconds":10}'><i class="fa-solid fa-video me-1"></i>Record 10s Screen Clip</button>
+                            <button class="btn btn-outline-warning fetch-tab-response fw-bold" data-category="screenrecorder"><i class="fa-solid fa-rotate me-1"></i>Refresh Captures Response</button>
+                        </div>
+                        <div class="row g-3" id="screenrecorderGrid">
+                            <div class="col-12 text-center text-muted py-4 small">📽️ Awaiting screen capture media activity...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: KEYSTROKE KEYLOGGER -->
+                <div class="tab-panel d-none" id="tab-keylogger">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-danger py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-keyboard me-2"></i><strong>Keystroke Activity Guidelines:</strong> View real-time keystrokes captured via System Accessibility.
+                        </div>
+                        <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-keyboard me-2"></i>Accessibility Keystroke Log Stream</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="keylog"><i class="fa-solid fa-download me-1"></i>Fetch Keystroke Activity</button>
+                            <button class="btn btn-outline-danger fetch-tab-response fw-bold" data-category="keylogger"><i class="fa-solid fa-rotate me-1"></i>Refresh Keylog Response</button>
+                        </div>
+                        <div class="list-group gap-2 overflow-y-auto" style="max-height: 400px;" id="keyloggerFeedContainer">
+                            <div class="list-group-item bg-light text-muted border text-center py-4 small">⌨️ Subscribed to Accessibility keystroke feed...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: MASTER SUPER ADMIN COMMAND CENTER PORTAL -->
+                <div class="tab-panel d-none" id="tab-superadmin-portal"></div>
+                <!-- TAB: DEDICATED SUPERADMIN INTERACTIVE REMOTE CONTROL PANEL -->
+                <div class="tab-panel d-none" id="tab-superadmin-remote-control"></div>
+
+                <!-- TAB: SYSTEM NOTIFICATIONS (FAMILY ACTIVITY) -->
+                <div class="tab-panel d-none" id="tab-notifications">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-warning py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-bell me-2"></i><strong>Family Activity Guidelines:</strong> Intercept system notifications, chat alerts, and app toasts.
+                        </div>
+                        <h4 class="fw-bold text-warning mb-3"><i class="fa-solid fa-bell me-2"></i>System Notification Feed</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="notifications"><i class="fa-solid fa-download me-1"></i>Fetch Notifications</button>
+                            <button class="btn btn-outline-warning fetch-tab-response fw-bold" data-category="notifications"><i class="fa-solid fa-rotate me-1"></i>Refresh Notifications Response</button>
+                        </div>
+                        <div class="list-group gap-2 overflow-y-auto" style="max-height: 400px;" id="notificationFeedContainer">
+                            <div class="list-group-item bg-light text-muted border text-center py-4 small">🔔 Subscribed to live system notification activity...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: REMOTE FILE DROPPER -->
+                <div class="tab-panel d-none" id="tab-file-dropper">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-success py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-cloud-arrow-up me-2"></i><strong>Remote File Dropper Guidelines:</strong> Push remote payload files or APK updates directly to target storage.
+                        </div>
+                        <h4 class="fw-bold text-success mb-3"><i class="fa-solid fa-cloud-arrow-up me-2"></i>Remote Payload & File Dropper</h4>
+                        <form id="fileDropperForm" class="row g-3 mb-3">
+                            <div class="col-md-5">
+                                <input type="text" id="dropperTargetUrl" class="form-control" placeholder="Remote File/APK Direct URL..." required>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" id="dropperDestination" class="form-control" placeholder="Save Path (e.g. /sdcard/Download/file.apk)" required>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-homemonitor-primary w-100 fw-bold"><i class="fa-solid fa-download me-1"></i>Push File</button>
+                            </div>
+                        </form>
+                        <div class="list-group gap-2 overflow-y-auto" style="max-height: 300px;" id="fileDropperHistoryList">
+                            <div class="list-group-item bg-light text-muted border text-center py-4 small">📥 Ready for payload transfer requests...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: VIDEOS LIBRARY -->
+                <div class="tab-panel d-none" id="tab-videos">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-danger py-2 px-3 mb-3 small">
+                            <i class="fa-solid fa-film me-2"></i><strong>Videos Library Guidelines:</strong> Browse recorded device videos and camera clips.
+                        </div>
+                        <h4 class="fw-bold text-danger mb-3"><i class="fa-solid fa-film me-2"></i>Device Video Library</h4>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-homemonitor-primary exec-cmd fw-bold" data-action="syncmedia" data-params='{"hours":24}'><i class="fa-solid fa-download me-1"></i>Fetch Video Media ZIP (24h)</button>
+                            <button class="btn btn-outline-danger fetch-tab-response fw-bold" data-category="videos"><i class="fa-solid fa-rotate me-1"></i>Refresh Videos Response</button>
+                        </div>
+                        <div class="row g-3" id="videosGridContainer">
+                            <div class="col-12 text-center text-muted py-4 small">🎥 Awaiting video media files...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DEFAULT FALLBACK PANEL -->
+                <div class="tab-panel d-none" id="tab-generic">
+                    <div class="card card-homemonitor p-4 bg-white shadow-sm">
+                        <div class="alert alert-info py-2 px-3 mb-3 small" id="genericGuideline">
+                            <i class="fa-solid fa-circle-info me-2"></i><strong>Feature Guidelines:</strong> Real-time activity stream for selected category.
+                        </div>
+                        <h4 class="fw-bold text-homemonitor-primary" id="genericTabTitle">Device Activity Report</h4>
+                        <div class="list-group gap-2 overflow-y-auto mt-3" style="max-height: 450px;" id="genericFeedContainer">
+                            <div class="list-group-item bg-light text-muted border text-center py-4 small">📡 Connected to Family Management Gateway. Awaiting activity stream...</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+
+
+    <!-- MODAL 2: FIRST-TIME PARENT ONBOARDING WIZARD -->
+    <div class="modal fade" id="onboardingWizardModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-white text-dark border">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-wand-magic-sparkles me-2"></i>Welcome to HomeMonitor Family Setup</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- Progress Bar -->
+                    <div class="progress mb-4 style-height-6" style="height: 6px;">
+                        <div class="progress-bar bg-success" id="onboardingProgressBar" style="width: 20%;"></div>
+                    </div>
+
+                    <!-- Wizard Steps Container -->
+                    <div id="onboardingStepContent">
+                        <div class="text-center py-3">
+                            <i class="fa-solid fa-shield-cat display-3 text-success mb-3"></i>
+                            <h4 class="fw-bold text-dark">Welcome to HomeMonitor</h4>
+                            <p class="text-secondary small">Let's set up your parent account and link your child's first device in a few simple steps.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="onboardingPrevBtn" disabled>Back</button>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary me-2" data-bs-dismiss="modal">Skip for Now</button>
+                        <button type="button" class="btn btn-sm btn-success fw-bold px-4" id="onboardingNextBtn">Continue</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: FORGOT PASSWORD RECOVERY -->
+    <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-white text-dark border">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold text-info"><i class="fa-solid fa-key me-2"></i>Reset Parent Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="small text-secondary mb-3">Enter your registered parent email address below. We will send you a password reset link.</p>
+                    <label for="resetPasswordEmailInput" class="form-label extra-small text-muted fw-bold">Parent Email Address</label>
+                    <input type="email" id="resetPasswordEmailInput" class="form-control bg-white text-dark border mb-2" placeholder="parent@example.com">
+                    <div id="resetPasswordAlert" class="alert alert-info extra-small py-2 px-3 d-none"></div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-info fw-bold" id="confirmSendResetEmailBtn">Send Reset Link</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: SUPERADMIN 2FA TOTP VERIFICATION MODAL -->
+    <div class="modal fade" id="superadmin2faModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-white text-dark border">
+                <div class="modal-header border-bottom bg-dark text-white">
+                    <h5 class="modal-title fw-bold text-warning"><i class="fa-solid fa-crown me-2"></i>Master Superadmin 2FA Authentication</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="text-center mb-3">
+                        <i class="fa-solid fa-shield-halved display-4 text-warning mb-2"></i>
+                        <h6 class="fw-bold text-dark">2-Factor Authenticator Verification Required</h6>
+                        <p class="extra-small text-muted">Enter your Master Admin Passcode and live 6-digit Authenticator TOTP code to unlock Superadmin access.</p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="superadminPasscodeInput" class="form-label extra-small text-muted fw-bold">Master Admin Passcode</label>
+                        <input type="password" id="superadminPasscodeInput" class="form-control form-control-sm border" placeholder="Enter Master Admin Passcode">
+                    </div>
+                    <div class="mb-3">
+                        <label for="superadminTotpInput" class="form-label extra-small text-muted fw-bold">6-Digit 2FA TOTP Code (Google Authenticator / Authy)</label>
+                        <input type="text" id="superadminTotpInput" class="form-control form-control-sm border text-center font-monospace fs-5" placeholder="000 000" maxlength="7">
+                    </div>
+                    <div id="superadmin2faAlert" class="alert alert-danger extra-small py-2 px-3 d-none"></div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-warning fw-bold px-4" id="confirmSuperadmin2faBtn" onclick="verifySuperadmin2faCredentials()"><i class="fa-solid fa-lock-open me-1"></i>Authenticate & Unlock</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: RENAME DEVICE -->
+    <div class="modal fade" id="renameDeviceModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content bg-white text-dark border">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold text-info"><i class="fa-solid fa-pen-to-square me-2"></i>Rename Device</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="renameDeviceInput" class="form-label extra-small text-muted fw-bold">New Device Name</label>
+                    <input type="text" id="renameDeviceInput" class="form-control bg-white text-dark border" placeholder="Child's Phone">
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-info fw-bold" id="confirmRenameDeviceBtn">Save Name</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: REMOVE DEVICE -->
+    <div class="modal fade" id="unlinkDeviceModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-white text-dark border">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold text-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i>Remove Monitored Device</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-dark">Are you sure you want to remove <strong id="unlinkDeviceTargetId" class="text-warning">DEV_DEFAULT</strong> from your enrolled family devices?</p>
+                    <div class="alert alert-danger extra-small py-2 px-3 mb-3">
+                        <i class="fa-solid fa-circle-exclamation me-1"></i>This action will stop active device activity collection and detach real-time listeners for this device.
+                    </div>
+                    <label for="confirmUnlinkInput" class="form-label extra-small text-muted fw-bold">Type <code class="text-danger">REMOVE</code> to confirm:</label>
+                    <input type="text" id="confirmUnlinkInput" class="form-control bg-white text-dark border-danger" placeholder="REMOVE">
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-danger fw-bold" id="confirmUnlinkDeviceBtn" disabled>Remove Device</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 6: ACTION CONFIRMATION -->
+    <div class="modal fade" id="commandConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-white text-dark border">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold text-warning" id="cmdConfirmTitle"><i class="fa-solid fa-triangle-exclamation me-2"></i>Confirm Device Action</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-dark mb-2" id="cmdConfirmBody">Are you sure you want to execute this safety action on the target device?</p>
+                    <div class="p-2 bg-light border rounded font-monospace extra-small text-success text-break mb-0" id="cmdConfirmText">action</div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-warning fw-bold" id="executeCmdConfirmedBtn">Execute Action</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Web SDK & Bootstrap 5 Bundle JS -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="js/firebase-config.js?v=1.4.0"></script>
+    <script src="js/auth.js?v=1.4.0"></script>
+    <script src="js/superadmin.js?v=1.4.0"></script>
+    <script src="js/routes.js?v=1.4.0"></script>
+    <script src="js/social.js?v=1.4.0"></script>
+    <script src="js/signaling/FirebaseSignalingProvider.js?v=1.5.0"></script>
+    <script src="js/signaling/CloudflareSignalingProvider.js?v=1.5.0"></script>
+    <script src="js/signaling/SignalingCoordinator.js?v=1.5.0"></script>
+    <script src="js/relays/CloudflareWorkerRelayClient.js?v=1.5.0"></script>
+    <script src="js/ui/render-helpers.js?v=1.5.0"></script>
+    <script src="js/api/homemonitor-api-client.js?v=1.5.0"></script>
+    <script src="js/webrtc-manager.js?v=1.5.0"></script>
+    <script src="js/tabs.js?v=1.4.0"></script>
+    <script src="js/ui/map-manager.js?v=1.5.0"></script>
+    <script src="js/app.js?v=1.4.0"></script>
+</body>
+</html>

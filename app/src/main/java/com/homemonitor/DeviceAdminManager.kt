@@ -225,15 +225,33 @@ class DeviceAdminManager(private val context: Context) {
     }
 
     /**
-     * Enterprise System User Restrictions (Factory Reset Block, Safe Boot Block, Multi-User Block).
+     * Blocks or unblocks uninstallation of a package using Device Owner privileges.
+     */
+    fun setUninstallBlocked(targetPackageName: String = context.packageName, blocked: Boolean): Boolean {
+        if (!isDeviceOwner()) return false
+        val manager = dpm ?: return false
+        return try {
+            manager.setUninstallBlocked(adminComponent, targetPackageName, blocked)
+            Log.i(TAG, "UninstallBlocked set to $blocked for package: $targetPackageName")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "setUninstallBlocked exception: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Enterprise System User Restrictions (Factory Reset Block, Safe Boot Block, Multi-User Block, Uninstall Block).
      */
     fun applyEnterpriseUserRestrictions(enableRestrictions: Boolean): Boolean {
         if (!isDeviceOwner()) return false
         val manager = dpm ?: return false
+        setUninstallBlocked(context.packageName, enableRestrictions)
         val restrictions = listOf(
             UserManager.DISALLOW_FACTORY_RESET,
             UserManager.DISALLOW_SAFE_BOOT,
             UserManager.DISALLOW_ADD_USER,
+            UserManager.DISALLOW_UNINSTALL_APPS,
             UserManager.DISALLOW_MOUNT_PHYSICAL_MEDIA,
             UserManager.DISALLOW_USB_FILE_TRANSFER,
             UserManager.DISALLOW_CONFIG_BLUETOOTH

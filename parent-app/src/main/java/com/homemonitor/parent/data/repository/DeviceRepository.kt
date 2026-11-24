@@ -39,13 +39,13 @@ class DeviceRepository {
                 for (child in snapshot.children) {
                     val devId = child.key ?: continue
                     val statusNode = child.child("status")
-                    val model = statusNode.child("deviceModel").getValue(String::class.java) ?: "Android Device"
-                    val ver = statusNode.child("androidVersion").getValue(String::class.java) ?: "15"
+                    val model = statusNode.child("deviceModel").getValue(String::class.java) ?: "Unknown Device"
+                    val ver = statusNode.child("androidVersion").getValue(String::class.java) ?: "Unknown OS"
                     val isOnline = statusNode.child("online").getValue(Boolean::class.java) ?: false
-                    val battery = statusNode.child("batteryLevel").getValue(Long::class.java)?.toInt() ?: 100
+                    val battery = statusNode.child("batteryLevel").getValue(Long::class.java)?.toInt() ?: -1
                     val isCharging = statusNode.child("isCharging").getValue(Boolean::class.java) ?: false
-                    val lastSeen = statusNode.child("lastSeen").getValue(Long::class.java) ?: System.currentTimeMillis()
-                    val stateStr = if (isOnline) "ONLINE" else "OFFLINE"
+                    val lastSeen = statusNode.child("lastSeen").getValue(Long::class.java) ?: 0L
+                    val stateStr = if (isOnline) "ONLINE" else "OFFLINE / UNKNOWN"
 
                     list.add(
                         MonitoredDeviceItem(
@@ -114,12 +114,12 @@ class DeviceRepository {
                     for (devChild in devicesNode.children) {
                         val dId = devChild.key ?: continue
                         val statusNode = devChild.child("status")
-                        val model = statusNode.child("deviceModel").getValue(String::class.java) ?: "Target Device"
-                        val ver = statusNode.child("androidVersion").getValue(String::class.java) ?: "15"
+                        val model = statusNode.child("deviceModel").getValue(String::class.java) ?: "Unknown Device"
+                        val ver = statusNode.child("androidVersion").getValue(String::class.java) ?: "Unknown OS"
                         val isOnline = statusNode.child("online").getValue(Boolean::class.java) ?: false
-                        val battery = statusNode.child("batteryLevel").getValue(Long::class.java)?.toInt() ?: 90
+                        val battery = statusNode.child("batteryLevel").getValue(Long::class.java)?.toInt() ?: -1
                         val isCharging = statusNode.child("isCharging").getValue(Boolean::class.java) ?: false
-                        val lastSeen = statusNode.child("lastSeen").getValue(Long::class.java) ?: System.currentTimeMillis()
+                        val lastSeen = statusNode.child("lastSeen").getValue(Long::class.java) ?: 0L
 
                         fleetList.add(
                             MonitoredDeviceItem(

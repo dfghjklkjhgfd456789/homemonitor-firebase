@@ -3,6 +3,7 @@ package com.homemonitor.parent.ui.screens.more
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -29,37 +30,37 @@ fun ParentMoreScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // User Profile Header Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.fillMaxWidth()
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     imageVector = Icons.Default.AccountCircle,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(48.dp)
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(
-                        text = activeSession?.displayName ?: "Parent Account",
+                        text = activeSession?.displayName ?: "Parent Workspace Owner",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        fontSize = 17.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = activeSession?.email ?: "parent@homemonitor.com",
                         fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                     )
                     if (activeSession?.isSuperAdmin == true) {
                         Spacer(modifier = Modifier.height(4.dp))
@@ -68,7 +69,7 @@ fun ParentMoreScreen(
                             color = Color(0xFFFEF08A)
                         ) {
                             Text(
-                                text = "👑 SUPER ADMIN",
+                                text = "👑 MASTER SUPER ADMIN",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 10.sp,
                                 color = Color(0xFF854D0E),
@@ -80,74 +81,104 @@ fun ParentMoreScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
-
+        // Section 1: Family & Device Management
         Text(
-            text = "MANAGEMENT & CONTROLS",
-            fontSize = 12.sp,
+            text = "FAMILY & DEVICES",
+            fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Column {
                 MoreMenuItem(
-                    title = "Monitored Devices",
-                    subtitle = "View and select registered child devices",
+                    title = "Family Devices List",
+                    subtitle = "View and manage all registered child devices",
                     icon = Icons.Default.Devices,
                     onClick = { onNavigateTo(Screen.Devices.route) }
                 )
                 HorizontalDivider()
                 MoreMenuItem(
-                    title = "Pair New Device",
-                    subtitle = "Add a child device via QR code pairing",
+                    title = "Pair / Enroll New Device",
+                    subtitle = "Scan QR code or generate Android Enterprise DPC QR",
                     icon = Icons.Default.QrCodeScanner,
                     onClick = { onNavigateTo(Screen.DevicePairing.route) }
                 )
                 HorizontalDivider()
                 MoreMenuItem(
                     title = "Safety & MDM Controls",
-                    subtitle = "Remote screen lock, camera toggle, kiosk mode",
+                    subtitle = "Remote lock, app blocking, and kiosk mode policies",
                     icon = Icons.Default.Security,
                     onClick = { onNavigateTo(Screen.Safety.route) }
                 )
+            }
+        }
+
+        // Section 2: Data & Historical Archives
+        Text(
+            text = "DATA & ARCHIVES",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column {
+                MoreMenuItem(
+                    title = "Google Drive Archive",
+                    subtitle = "Verified historical telemetry database backups",
+                    icon = Icons.Default.CloudSync,
+                    onClick = { onNavigateTo(Screen.Settings.route) }
+                )
                 HorizontalDivider()
                 MoreMenuItem(
-                    title = "Account Settings",
-                    subtitle = "Manage security preferences and credentials",
-                    icon = Icons.Default.Settings,
+                    title = "Consented Support Sessions",
+                    subtitle = "Interactive support session requests with child approval",
+                    icon = Icons.Default.SupportAgent,
                     onClick = { onNavigateTo(Screen.Settings.route) }
                 )
             }
         }
 
-        if (activeSession?.isSuperAdmin == true) {
-            Spacer(modifier = Modifier.height(20.dp))
-            Text(
-                text = "ADMINISTRATION",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFB45309)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+        // Section 3: Account & System Settings
+        Text(
+            text = "ACCOUNT & PRIVACY",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF3C7))
-            ) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column {
                 MoreMenuItem(
-                    title = "👑 Super Admin Portal",
-                    subtitle = "Global fleet management, remote shell, DuckyScript",
-                    icon = Icons.Default.AdminPanelSettings,
-                    iconTint = Color(0xFFB45309),
-                    onClick = { onNavigateTo(Screen.SuperAdmin.route) }
+                    title = "Account & Security Settings",
+                    subtitle = "Parent credentials, MFA setup, and active sessions",
+                    icon = Icons.Default.Settings,
+                    onClick = { onNavigateTo(Screen.Settings.route) }
+                )
+                HorizontalDivider()
+                MoreMenuItem(
+                    title = "Privacy Policy & Disclosures",
+                    subtitle = "Disclosed monitoring transparency guidelines",
+                    icon = Icons.Default.Policy,
+                    onClick = { onNavigateTo(Screen.Settings.route) }
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         OutlinedButton(
             onClick = onSignOut,
@@ -156,7 +187,7 @@ fun ParentMoreScreen(
         ) {
             Icon(Icons.Default.ExitToApp, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Sign Out of Account", fontWeight = FontWeight.Bold)
+            Text("Sign Out of Workspace", fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -198,7 +229,25 @@ private fun MoreMenuItem(
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.outline
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+fun ParentMorePreview() {
+    com.homemonitor.parent.ui.theme.HomeMonitorTheme {
+        ParentMoreScreen(
+            activeSession = com.homemonitor.parent.data.repository.ParentUserSession(
+                uid = "PARENT_01",
+                email = "alex.parent@homemonitor.com",
+                displayName = "Alex Miller",
+                isEmailVerified = true,
+                isSuperAdmin = true
+            ),
+            onNavigateTo = {},
+            onSignOut = {}
         )
     }
 }

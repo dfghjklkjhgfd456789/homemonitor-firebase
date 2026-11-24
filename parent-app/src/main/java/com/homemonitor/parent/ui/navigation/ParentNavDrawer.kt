@@ -138,17 +138,6 @@ fun ParentNavDrawerContent(
                 modifier = Modifier.padding(vertical = 2.dp)
             )
 
-            if (isSuperAdmin) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                NavigationDrawerItem(
-                    label = { Text("👑 Super Admin Portal", fontWeight = FontWeight.Bold, color = Color(0xFFB45309)) },
-                    selected = currentRoute == Screen.SuperAdmin.route,
-                    onClick = { onNavigateTo(Screen.SuperAdmin.route) },
-                    icon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Color(0xFFB45309)) },
-                    modifier = Modifier.padding(vertical = 2.dp)
-                )
-            }
-
             Spacer(modifier = Modifier.weight(1f))
 
             HorizontalDivider()

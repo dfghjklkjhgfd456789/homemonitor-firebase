@@ -37,11 +37,13 @@ import com.homemonitor.parent.viewmodel.DeviceViewModel
 import com.homemonitor.parent.viewmodel.WebRtcViewModel
 import kotlinx.coroutines.launch
 
+import com.homemonitor.parent.ui.theme.HomeMonitorTheme
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
+            HomeMonitorTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     val authViewModel: AuthViewModel = viewModel()
                     val deviceViewModel: DeviceViewModel = viewModel()

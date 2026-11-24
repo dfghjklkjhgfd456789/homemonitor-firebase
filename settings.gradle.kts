@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 rootProject.name = "HomeMonitor"
 include(":app")
 include(":parent-app")
-
+include(":superadmin-app")
